@@ -16,13 +16,17 @@ the feedback is a canned example, but every screen works.
 2. Paste your OpenAI API key into it, on the line that mentions the key.
 3. The `.env` file stays on this computer; it is ignored by version control and never shared.
 
-## Putting it on iPads (deploy to Vercel)
+## The live site
 
-The app is built for Vercel hosting. Deploy the folder with the Vercel CLI or
-dashboard, and add the OpenAI key (and optionally the model name) as environment
-variables in the Vercel project settings, using the same variable names as
-`.env.example`. Then open the site in Safari on the iPad and use Share → Add to
-Home Screen so it looks like a normal app.
+The app is live at https://writing-sidekick.vercel.app. It is hosted on Vercel and
+connected to the GitHub repo (wesdlpteam/writing-sidekick): every push to `main`
+redeploys the site automatically within about a minute.
+
+The OpenAI key and model name live as environment variables in the Vercel project
+settings, using the same variable names as `.env.example`. They are never in the repo.
+
+On an iPad, open the site in Safari and use Share, then Add to Home Screen, so it
+looks and launches like a normal app.
 
 ## Privacy design
 
