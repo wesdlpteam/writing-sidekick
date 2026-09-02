@@ -1,57 +1,108 @@
-// Image clean-up: downscale, grayscale, contrast stretch. Pure math kept exportable for tests.
+// Image clean-up: downscale, grayscale, then flatten uneven lighting so the paper reads white
+// and the ink reads dark, like a phone's document-scan mode. Pure maths kept exportable for tests.
 
-const MAX_EDGE = 1600;
+// The AI reads the page at this resolution (image detail "original"), so keep it generous:
+// small marks like apostrophes survive at 2000px that vanish at 1000px.
+const DEFAULT_MAX_EDGE = 2000;
 const JPEG_QUALITY = 0.85;
+// Background window as a fraction of the longer edge: wide enough to span handwriting strokes,
+// narrow enough to follow a shadow across the page.
+const BACKGROUND_RADIUS_FRACTION = 1 / 30;
+const PAPER_RATIO = 0.96; // at or above this share of the local background = white paper
+const INK_RATIO = 0.45; // at or below = solid black
+const INK_GAMMA = 1.6; // pushes mid-greys (pencil strokes) darker
 
-// histogram: array of 256 counts. Returns levels at the 2nd/98th percentiles.
-export function computeLevels(histogram) {
-  const total = histogram.reduce((sum, n) => sum + n, 0);
-  if (!total) return { lo: 0, hi: 255 };
-  const loTarget = total * 0.02;
-  const hiTarget = total * 0.98;
-  let cumulative = 0;
-  let lo = 0;
-  let hi = 255;
-  let loFound = false;
-  for (let i = 0; i < 256; i++) {
-    cumulative += histogram[i];
-    if (!loFound && cumulative >= loTarget) {
-      lo = i;
-      loFound = true;
-    }
-    if (cumulative >= hiTarget) {
-      hi = i;
-      break;
+function integralImage(width, height, valueAt) {
+  const stride = width + 1;
+  const integral = new Uint32Array(stride * (height + 1));
+  for (let y = 1; y <= height; y++) {
+    let rowSum = 0;
+    for (let x = 1; x <= width; x++) {
+      rowSum += valueAt((y - 1) * width + (x - 1));
+      integral[y * stride + x] = integral[(y - 1) * stride + x] + rowSum;
     }
   }
-  if (hi <= lo) {
-    lo = Math.max(0, lo - 1);
-    hi = Math.min(255, lo + 2);
+  return integral;
+}
+
+function boxSum(integral, stride, x0, y0, x1, y1) {
+  return (
+    integral[y1 * stride + x1] -
+    integral[y0 * stride + x1] -
+    integral[y1 * stride + x0] +
+    integral[y0 * stride + x0]
+  );
+}
+
+// Local paper brightness for every pixel. First pass: plain box mean. Second pass: mean of only
+// the pixels that are not clearly darker than that first estimate, so ink strokes stop dragging
+// the background down.
+export function estimateBackground(gray, width, height, radius) {
+  const stride = width + 1;
+  const first = integralImage(width, height, (i) => gray[i]);
+  const rough = new Float32Array(width * height);
+  for (let y = 0; y < height; y++) {
+    const y0 = Math.max(0, y - radius);
+    const y1 = Math.min(height, y + radius + 1);
+    for (let x = 0; x < width; x++) {
+      const x0 = Math.max(0, x - radius);
+      const x1 = Math.min(width, x + radius + 1);
+      rough[y * width + x] = boxSum(first, stride, x0, y0, x1, y1) / ((y1 - y0) * (x1 - x0));
+    }
   }
-  return { lo, hi };
+  const isPaper = (i) => gray[i] >= rough[i] * 0.9;
+  const paperSum = integralImage(width, height, (i) => (isPaper(i) ? gray[i] : 0));
+  const paperCount = integralImage(width, height, (i) => (isPaper(i) ? 1 : 0));
+  const bg = new Uint8ClampedArray(width * height);
+  for (let y = 0; y < height; y++) {
+    const y0 = Math.max(0, y - radius);
+    const y1 = Math.min(height, y + radius + 1);
+    for (let x = 0; x < width; x++) {
+      const x0 = Math.max(0, x - radius);
+      const x1 = Math.min(width, x + radius + 1);
+      const count = boxSum(paperCount, stride, x0, y0, x1, y1);
+      const i = y * width + x;
+      bg[i] = count ? boxSum(paperSum, stride, x0, y0, x1, y1) / count : rough[i];
+    }
+  }
+  return bg;
+}
+
+// ratio = pixel brightness / local background. Paper goes white, ink goes black, pencil in between.
+export function scanCurve(ratio) {
+  if (ratio >= PAPER_RATIO) return 255;
+  if (ratio <= INK_RATIO) return 0;
+  const t = (ratio - INK_RATIO) / (PAPER_RATIO - INK_RATIO);
+  return Math.round(255 * Math.pow(t, INK_GAMMA));
+}
+
+export function flattenToScan(gray, width, height) {
+  const radius = Math.max(4, Math.round(Math.max(width, height) * BACKGROUND_RADIUS_FRACTION));
+  const bg = estimateBackground(gray, width, height, radius);
+  const out = new Uint8ClampedArray(width * height);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = scanCurve(gray[i] / Math.max(1, bg[i]));
+  }
+  return out;
 }
 
 function enhance(ctx, width, height) {
   const imageData = ctx.getImageData(0, 0, width, height);
   const px = imageData.data;
-  const histogram = new Array(256).fill(0);
-  for (let i = 0; i < px.length; i += 4) {
-    const gray = Math.round(0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]);
-    px[i] = gray;
-    histogram[gray]++;
+  const gray = new Uint8ClampedArray(width * height);
+  for (let i = 0, p = 0; i < gray.length; i++, p += 4) {
+    gray[i] = 0.299 * px[p] + 0.587 * px[p + 1] + 0.114 * px[p + 2];
   }
-  const { lo, hi } = computeLevels(histogram);
-  const scale = 255 / (hi - lo);
-  for (let i = 0; i < px.length; i += 4) {
-    const value = Math.max(0, Math.min(255, Math.round((px[i] - lo) * scale)));
-    px[i] = px[i + 1] = px[i + 2] = value;
+  const scan = flattenToScan(gray, width, height);
+  for (let i = 0, p = 0; i < scan.length; i++, p += 4) {
+    px[p] = px[p + 1] = px[p + 2] = scan[i];
   }
   ctx.putImageData(imageData, 0, 0);
 }
 
-export async function prepareScan(file) {
+export async function prepareScan(file, { maxEdge = DEFAULT_MAX_EDGE } = {}) {
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-  const ratio = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+  const ratio = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * ratio);
   const height = Math.round(bitmap.height * ratio);
   const canvas = document.createElement("canvas");

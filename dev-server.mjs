@@ -22,19 +22,35 @@ const MIME = {
   ".webmanifest": "application/manifest+json",
 };
 
+const MOCK_TRANSCRIPT =
+  "On the weekend I went to the beach with my famly.\nThe waves were huge and I got dumped!\nAfter that we had fish and chips.";
+
 const MOCK_PAYLOAD = {
-  transcript:
-    "On the weekend I went to the beach with my famly.\nThe waves were huge and I got dumped!\nAfter that we had fish and chips.",
   stars: [
-    "You told your events in order: the beach, the waves, then fish and chips. That makes your recount easy to follow.",
-    "'I got dumped!' is a great detail, and your exclamation mark shows the excitement.",
+    { quote: "After that we had fish and chips.", skill: "You used a time word, 'After that', to link your events, so your recount stays in order." },
+    { quote: "I got dumped!", skill: "Your exclamation mark shows the excitement of the moment." },
   ],
-  wish: "Try adding a describing word to one of your nouns, like 'the salty fish and chips' or 'the crashing waves'.",
+  powerUps: [
+    {
+      skill: "Add what you could hear and feel",
+      why: "Your beach has waves but no sounds or feelings yet. Senses put your reader right there with you.",
+      yourLine: "The waves were huge and I got dumped!",
+      tryThis: "The waves roared like lions and I got dumped, salty water stinging my eyes!",
+      nowYou: "Find your waves sentence and add one sound you heard or one thing you felt.",
+    },
+    {
+      skill: "Start a sentence with a time or place word",
+      why: "Two of your three sentences start with a plain word. A different opener makes your writing flow.",
+      yourLine: "After that we had fish and chips.",
+      tryThis: "Later, on the warm sand, we ate hot fish and chips.",
+      nowYou: "Rewrite your last sentence so it starts with where you were.",
+    },
+  ],
   detail: {
-    ideas: "A clear little story about a real event, with a fun moment in the middle.",
-    structure: "Three complete sentences in time order. A time word like 'First' could start it off.",
-    vocabulary: "'huge' and 'dumped' are strong choices. One more describing word would add colour.",
-    spelling: "Most words are spelled correctly. Check 'famly' - say it slowly: fam-i-ly.",
+    ideas: "A clear real event with a fun middle ('I got dumped!'). The ending needs a feeling or a thought to finish it off.",
+    structure: "Three complete sentences in time order. Two start with plain words; try a time or place opener.",
+    vocabulary: "'huge' and 'dumped' are strong. 'went' and 'had' are plain; try 'raced' and 'munched'.",
+    spelling: "Capital letters and full stops are all in place. Check 'famly': say it slowly, fam-i-ly.",
   },
   practiceWords: [
     { correct: "family", wrote: "famly" },
@@ -89,10 +105,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (MOCK) {
       await new Promise((r) => setTimeout(r, 1200)); // simulate thinking time
-      const payload = { ...MOCK_PAYLOAD };
-      if (typeof body.transcript === "string" && body.transcript.trim()) {
-        payload.transcript = body.transcript.trim();
-      }
+      const hasPhotos = (Array.isArray(body.images) && body.images.length) || body.image;
+      const payload = hasPhotos
+        ? { transcript: MOCK_TRANSCRIPT }
+        : { transcript: typeof body.transcript === "string" ? body.transcript.trim() : "", ...MOCK_PAYLOAD };
       res.writeHead(200).end(JSON.stringify(payload));
       return;
     }

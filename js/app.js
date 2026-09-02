@@ -1,13 +1,14 @@
 import { prepareScan, rotate90 } from "./scan.js";
-import { getFeedback, regenerateFeedback } from "./api.js";
+import { transcribePages, getFeedback } from "./api.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js";
+
+const MAX_PAGES = 4;
 
 const state = {
   yearLevel: null,
   genre: "",
-  scanDataUrl: null,
-  originalTranscript: "",
+  pages: [], // cleaned-up page photos as data URLs, in order
   feedback: null,
 };
 
@@ -58,64 +59,190 @@ $("btn-start").addEventListener("click", () => show("screen-camera"));
 $("btn-back-start").addEventListener("click", () => show("screen-start"));
 $("btn-back-camera").addEventListener("click", () => show("screen-camera"));
 
-// ---- photo -> AI -> review -------------------------------------------------
+// ---- pages: photo -> cleaned scan, up to four pages -------------------------
 
-async function handlePhoto(file) {
-  if (!file) return;
+async function addPage(file) {
+  if (!file || state.pages.length >= MAX_PAGES) return;
   try {
     setLoading(true, "Tidying up your photo…");
-    const { dataUrl } = await prepareScan(file);
-    state.scanDataUrl = dataUrl;
-    setLoading(true, "Your sidekick is reading your writing…");
-    const feedback = await getFeedback({
-      imageDataUrl: dataUrl,
-      yearLevel: state.yearLevel,
-      genre: state.genre,
-    });
-    state.feedback = feedback;
-    state.originalTranscript = feedback.transcript;
-    $("scan-image").src = dataUrl;
-    $("transcript").value = feedback.transcript;
+    // Later pages are kept a little smaller so four pages still fit in one request.
+    const { dataUrl } = await prepareScan(file, { maxEdge: state.pages.length < 2 ? 2000 : 1600 });
+    state.pages.push(dataUrl);
+    renderPages();
+  } catch {
+    showError("That photo didn't work. Please try taking it again.");
+  } finally {
+    setLoading(false);
+  }
+}
+
+function renderPages() {
+  const list = $("pages-list");
+  list.innerHTML = "";
+  state.pages.forEach((dataUrl, index) => {
+    const li = document.createElement("li");
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = `Page ${index + 1}`;
+    const label = document.createElement("span");
+    label.className = "page-num";
+    label.textContent = `Page ${index + 1}`;
+    const tools = document.createElement("div");
+    tools.className = "page-tools";
+    for (const [action, text] of [
+      ["rotate", "↻ Rotate"],
+      ["remove", "✕ Remove"],
+    ]) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ghost small";
+      btn.dataset.action = action;
+      btn.dataset.index = index;
+      btn.textContent = text;
+      tools.appendChild(btn);
+    }
+    li.append(img, label, tools);
+    list.appendChild(li);
+  });
+  const count = state.pages.length;
+  $("pages-box").hidden = count === 0;
+  $("first-photo").hidden = count > 0;
+  $("add-page").hidden = count >= MAX_PAGES;
+  $("pages-title").textContent = count === 1 ? "Your page" : `Your ${count} pages`;
+}
+
+$("pages-list").addEventListener("click", async (event) => {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) return;
+  const index = Number(btn.dataset.index);
+  if (btn.dataset.action === "remove") state.pages.splice(index, 1);
+  else state.pages[index] = await rotate90(state.pages[index]);
+  renderPages();
+});
+
+for (const id of ["photo-input", "photo-add"]) {
+  $(id).addEventListener("change", (e) => {
+    addPage(e.target.files[0]);
+    e.target.value = "";
+  });
+}
+
+// ---- step 1: pages -> transcript -> review screen ---------------------------
+
+function renderReviewPages() {
+  const box = $("review-pages");
+  box.innerHTML = "";
+  state.pages.forEach((dataUrl, index) => {
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = `Photo of page ${index + 1}`;
+    box.appendChild(img);
+  });
+}
+
+$("btn-read").addEventListener("click", async () => {
+  if (!state.pages.length) return;
+  try {
+    setLoading(
+      true,
+      state.pages.length === 1
+        ? "Your sidekick is reading your writing…"
+        : `Your sidekick is reading all ${state.pages.length} pages…`,
+    );
+    const { transcript } = await transcribePages({ images: state.pages, yearLevel: state.yearLevel });
+    $("transcript").value = transcript;
+    setEditMode(transcript.trim() ? "tap" : "type");
+    renderReviewPages();
     show("screen-review");
   } catch (error) {
     showError(error.message);
   } finally {
     setLoading(false);
   }
+});
+
+// ---- tap-a-word editing ----------------------------------------------------
+// Tapping inside a word on a tablet snaps the cursor to a word edge, so every word is a
+// button instead: tap it, retype it, save. The textarea stays the source of truth.
+
+let editingWord = null; // { line, word } indexes into the transcript
+
+function renderWordChips() {
+  const box = $("word-chips");
+  box.innerHTML = "";
+  const lines = $("transcript").value.split("\n");
+  lines.forEach((line, lineIndex) => {
+    line
+      .split(/\s+/)
+      .filter(Boolean)
+      .forEach((word, wordIndex) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "word";
+        btn.textContent = word;
+        btn.dataset.line = lineIndex;
+        btn.dataset.word = wordIndex;
+        box.appendChild(btn);
+      });
+    if (lineIndex < lines.length - 1) box.appendChild(document.createElement("br"));
+  });
 }
 
-$("photo-input").addEventListener("change", (e) => {
-  handlePhoto(e.target.files[0]);
-  e.target.value = "";
-});
-$("photo-retake").addEventListener("change", (e) => {
-  handlePhoto(e.target.files[0]);
-  e.target.value = "";
+function setEditMode(mode) {
+  const typing = mode === "type";
+  $("word-chips").hidden = typing;
+  $("transcript").hidden = !typing;
+  $("btn-edit-mode").textContent = typing ? "Back to tap-a-word" : "Type it all instead";
+  if (!typing) renderWordChips();
+}
+
+$("word-chips").addEventListener("click", (event) => {
+  const btn = event.target.closest(".word");
+  if (!btn) return;
+  editingWord = { line: Number(btn.dataset.line), word: Number(btn.dataset.word) };
+  $("word-input").value = btn.textContent;
+  $("word-dialog").showModal();
+  $("word-input").select();
 });
 
-$("btn-rotate").addEventListener("click", async () => {
-  if (!state.scanDataUrl) return;
-  state.scanDataUrl = await rotate90(state.scanDataUrl);
-  $("scan-image").src = state.scanDataUrl;
-});
+function saveWord() {
+  if (!editingWord) return;
+  const lines = $("transcript").value.split("\n");
+  const words = lines[editingWord.line].split(/\s+/).filter(Boolean);
+  const replacement = $("word-input").value.trim();
+  if (replacement) words[editingWord.word] = replacement;
+  else words.splice(editingWord.word, 1);
+  lines[editingWord.line] = words.join(" ");
+  $("transcript").value = lines.join("\n");
+  editingWord = null;
+  $("word-dialog").close();
+  renderWordChips();
+}
 
-// ---- review -> feedback ----------------------------------------------------
+$("btn-word-save").addEventListener("click", saveWord);
+$("word-input").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    saveWord();
+  }
+});
+$("btn-word-cancel").addEventListener("click", () => {
+  editingWord = null;
+  $("word-dialog").close();
+});
+$("btn-edit-mode").addEventListener("click", () => setEditMode($("transcript").hidden ? "type" : "tap"));
+
+// ---- step 2: checked transcript -> feedback --------------------------------
 
 $("btn-confirm").addEventListener("click", async () => {
-  const edited = $("transcript").value.trim();
-  if (!edited) {
-    showError("The typing box is empty. If the photo was too hard to read, try taking it again.");
+  const transcript = $("transcript").value.trim();
+  if (!transcript) {
+    showError("The typing box is empty. If the photo was too hard to read, try taking it again, or type your writing in.");
     return;
   }
   try {
-    if (edited !== state.originalTranscript.trim()) {
-      setLoading(true, "Updating your feedback…");
-      state.feedback = await regenerateFeedback({
-        transcript: edited,
-        yearLevel: state.yearLevel,
-        genre: state.genre,
-      });
-    }
+    setLoading(true, "Your sidekick is thinking about your writing…");
+    state.feedback = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
     renderFeedback();
     show("screen-feedback");
   } catch (error) {
@@ -169,50 +296,119 @@ function renderBoost() {
   }
 }
 
+function labelledLine(label, value, tag) {
+  const p = document.createElement("p");
+  p.className = "power-line";
+  const span = document.createElement("span");
+  span.className = "power-label";
+  span.textContent = label;
+  const el = document.createElement(tag);
+  el.textContent = value;
+  p.append(span, " ", el);
+  return p;
+}
+
+// Each power-up: the skill, why it matters here, the child's own line, that line done well,
+// and a tiny task to do now. The first one also fills the sidekick's speech bubble.
+function renderPowerUps(powerUps) {
+  const box = $("power-ups");
+  box.innerHTML = "";
+  powerUps.forEach((p, index) => {
+    const card = document.createElement("section");
+    card.className = "power-card";
+    const title = document.createElement("p");
+    title.className = "power-title";
+    title.textContent = `⚡ Power-up ${index + 1}: ${p.skill}`;
+    const why = document.createElement("p");
+    why.className = "power-why";
+    why.textContent = p.why;
+    card.append(title, why);
+    if (p.yourLine) card.appendChild(labelledLine("Your line:", p.yourLine, "q"));
+    card.appendChild(labelledLine("Try this:", p.tryThis, "strong"));
+    if (p.nowYou) {
+      const task = document.createElement("p");
+      task.className = "power-task";
+      task.textContent = `✍️ Now you: ${p.nowYou}`;
+      card.appendChild(task);
+    }
+    box.appendChild(card);
+  });
+}
+
 function renderFeedback() {
-  const { stars, wish, detail } = state.feedback;
+  const { stars, powerUps, detail } = state.feedback;
   renderPractice();
   renderBoost();
-  // Pre-build the share image so the save tap can use it instantly
-  // (Safari only allows sharing right after a tap).
-  state.shareBlob = null;
-  buildFeedbackImage({
-    scanDataUrl: state.scanDataUrl,
-    feedback: state.feedback,
-    yearLevel: state.yearLevel,
-  })
-    .then((blob) => {
-      state.shareBlob = blob;
-    })
-    .catch(() => {});
+  const showDetail = loadSettings().showDetail;
+  $("save-detail-row").hidden = !showDetail;
+  $("save-brief").checked = true;
+  $("save-detail").checked = showDetail;
+  rebuildShareImage();
   const starsBox = $("stars");
   starsBox.innerHTML = "";
   for (const star of stars) {
     const div = document.createElement("div");
     div.className = "star-item";
-    div.textContent = star;
+    if (star.quote) {
+      const q = document.createElement("q");
+      q.textContent = star.quote;
+      div.append(q, " ");
+    }
+    div.append(star.skill);
     starsBox.appendChild(div);
   }
-  $("wish").textContent = wish;
+  const top = powerUps[0];
+  $("wish").textContent = `${top.skill}. ${top.why}`;
+  renderPowerUps(powerUps);
   $("detail-ideas").textContent = detail.ideas;
   $("detail-structure").textContent = detail.structure;
   $("detail-vocabulary").textContent = detail.vocabulary;
   $("detail-spelling").textContent = detail.spelling;
   $("detail-box").open = false;
-  $("detail-box").style.display = loadSettings().showDetail ? "" : "none";
+  $("detail-box").style.display = showDetail ? "" : "none";
 }
 
 // ---- save picture / print / restart ---------------------------------------
 
-$("btn-save-pic").addEventListener("click", async () => {
+// The picture is pre-built for the ticked options so the save tap can share it instantly
+// (Safari only allows sharing right after a tap).
+let shareCache = { key: "", blob: null };
+
+function shareOptions() {
+  const detailAllowed = loadSettings().showDetail;
+  return { brief: $("save-brief").checked, detail: detailAllowed && $("save-detail").checked };
+}
+
+function shareImageInputs(include) {
+  return { pages: state.pages, feedback: state.feedback, yearLevel: state.yearLevel, include };
+}
+
+function rebuildShareImage() {
+  if (!state.feedback) return;
+  const include = shareOptions();
+  const key = `${include.brief}|${include.detail}`;
+  shareCache = { key, blob: null };
+  $("btn-save-go").disabled = !include.brief && !include.detail;
+  if (!include.brief && !include.detail) return;
+  buildFeedbackImage(shareImageInputs(include))
+    .then((blob) => {
+      if (shareCache.key === key) shareCache.blob = blob;
+    })
+    .catch(() => {});
+}
+
+$("save-brief").addEventListener("change", rebuildShareImage);
+$("save-detail").addEventListener("change", rebuildShareImage);
+$("btn-save-pic").addEventListener("click", () => $("save-dialog").showModal());
+$("btn-save-cancel").addEventListener("click", () => $("save-dialog").close());
+
+$("btn-save-go").addEventListener("click", async () => {
+  const include = shareOptions();
+  if (!include.brief && !include.detail) return;
+  $("save-dialog").close();
   try {
-    const blob =
-      state.shareBlob ||
-      (await buildFeedbackImage({
-        scanDataUrl: state.scanDataUrl,
-        feedback: state.feedback,
-        yearLevel: state.yearLevel,
-      }));
+    const key = `${include.brief}|${include.detail}`;
+    const blob = (shareCache.key === key && shareCache.blob) || (await buildFeedbackImage(shareImageInputs(include)));
     await saveFeedbackImage(blob);
   } catch {
     showError("Hmm, the picture didn't save. You can use Print instead, or try again.");
@@ -220,20 +416,39 @@ $("btn-save-pic").addEventListener("click", async () => {
 });
 
 $("btn-print").addEventListener("click", () => {
-  const { stars, wish, detail } = state.feedback;
+  const { stars, powerUps, detail } = state.feedback;
   $("print-date").textContent = new Date().toLocaleDateString("en-AU", {
     day: "numeric", month: "long", year: "numeric",
   });
-  $("print-scan").src = state.scanDataUrl || "";
+  const pagesBox = $("print-pages");
+  pagesBox.innerHTML = "";
+  state.pages.forEach((dataUrl, index) => {
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = `Page ${index + 1}`;
+    pagesBox.appendChild(img);
+  });
   $("print-transcript").textContent = $("transcript").value;
   const ul = $("print-stars");
   ul.innerHTML = "";
   for (const star of stars) {
     const li = document.createElement("li");
-    li.textContent = star;
+    li.textContent = star.quote ? `"${star.quote}" ${star.skill}` : star.skill;
     ul.appendChild(li);
   }
-  $("print-wish").textContent = wish;
+  const powerBox = $("print-powerups");
+  powerBox.innerHTML = "";
+  powerUps.forEach((p, index) => {
+    const h = document.createElement("h3");
+    h.textContent = `Power-up ${index + 1}: ${p.skill}`;
+    powerBox.appendChild(h);
+    for (const line of [p.why, p.yourLine && `Your line: ${p.yourLine}`, `Try this: ${p.tryThis}`, p.nowYou && `Now you: ${p.nowYou}`]) {
+      if (!line) continue;
+      const para = document.createElement("p");
+      para.textContent = line;
+      powerBox.appendChild(para);
+    }
+  });
   const practiceBox = $("print-practice");
   practiceBox.innerHTML = "";
   const practiceWords = state.feedback.practiceWords || [];
@@ -310,11 +525,12 @@ $("btn-restart").addEventListener("click", () => {
     return;
   }
   disarmRestart();
-  state.scanDataUrl = null;
-  state.originalTranscript = "";
+  state.pages = [];
   state.feedback = null;
+  shareCache = { key: "", blob: null };
   $("transcript").value = "";
-  $("scan-image").src = "";
+  $("review-pages").innerHTML = "";
+  renderPages();
   show("screen-start");
 });
 
@@ -356,3 +572,4 @@ function applyDefaultYear() {
 }
 
 applyDefaultYear();
+renderPages();

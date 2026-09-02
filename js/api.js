@@ -1,6 +1,7 @@
-const TIMEOUT_MS = 90_000;
+const TIMEOUT_MS = 120_000;
 const FRIENDLY_FAIL = "Something went wrong. Please check the internet is on, then try again.";
-// GitHub Pages only serves files, so from there the feedback function is called on Vercel.
+
+// On GitHub Pages the site is static, so the feedback function lives on Vercel.
 const API_BASE = location.hostname.endsWith("github.io") ? "https://writing-sidekick.vercel.app" : "";
 
 async function post(body) {
@@ -29,10 +30,12 @@ async function post(body) {
   return data;
 }
 
-export function getFeedback({ imageDataUrl, yearLevel, genre }) {
-  return post({ image: imageDataUrl, yearLevel, genre });
+// Step 1: photos of the pages (in order) -> { transcript }
+export function transcribePages({ images, yearLevel }) {
+  return post({ images, yearLevel });
 }
 
-export function regenerateFeedback({ transcript, yearLevel, genre }) {
+// Step 2: the child's checked transcript -> full feedback
+export function getFeedback({ transcript, yearLevel, genre }) {
   return post({ transcript, yearLevel, genre });
 }

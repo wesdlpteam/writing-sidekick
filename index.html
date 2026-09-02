@@ -24,7 +24,7 @@
       <button id="btn-settings" class="gear" aria-label="Teacher settings">&#9881;</button>
       <div class="title-lockup">
         <h1><span class="emblem" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M32 3 L59 13 V34 C59 48 47 58 32 62 C17 58 5 48 5 34 V13 Z" fill="#ffc233" stroke="#131a30" stroke-width="3" stroke-linejoin="round"/><path d="M32 10 L52 18 V34 C52 44 43 52 32 55 C21 52 12 44 12 34 V18 Z" fill="#4f2759" stroke="#131a30" stroke-width="2" stroke-linejoin="round"/><text x="20" y="42" font-family="Bangers, Impact, sans-serif" font-size="21" fill="#ffc233" stroke="#131a30" stroke-width="0.8" text-anchor="middle">W</text><text x="44" y="42" font-family="Bangers, Impact, sans-serif" font-size="21" fill="#ffc233" stroke="#131a30" stroke-width="0.8" text-anchor="middle">S</text><rect x="29" y="14" width="6" height="4" rx="1" fill="#e8434a" stroke="#131a30" stroke-width="1.2"/><rect x="29" y="18" width="6" height="22" fill="#ffc233" stroke="#131a30" stroke-width="1.2"/><path d="M29 40 L35 40 L32 48 Z" fill="#f6d7b0" stroke="#131a30" stroke-width="1.2" stroke-linejoin="round"/><path d="M31 45 L32 48 L33 45 Z" fill="#131a30"/></svg></span>The Writing Sidekick</h1>
-        <svg class="title-pencil" viewBox="0 0 420 44" aria-hidden="true"><defs><radialGradient id="tip-glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#c77dff" stop-opacity="0.95"/><stop offset="0.5" stop-color="#c77dff" stop-opacity="0.35"/><stop offset="1" stop-color="#c77dff" stop-opacity="0"/></radialGradient></defs><circle cx="396" cy="22" r="22" fill="url(#tip-glow)"/><rect x="2" y="9" width="34" height="26" rx="9" fill="#f57fb5" stroke="#131a30" stroke-width="3"/><rect x="30" y="7" width="26" height="30" rx="3" fill="#ffc233" stroke="#131a30" stroke-width="3"/><path d="M38 7 V37 M48 7 V37" stroke="#131a30" stroke-width="2"/><rect x="54" y="8" width="290" height="28" fill="#4f2759" stroke="#131a30" stroke-width="3"/><path d="M54 14 H344" stroke="#7a4a8c" stroke-width="3"/><path d="M344 8 L344 36 L386 22 Z" fill="#f6d7b0" stroke="#131a30" stroke-width="3" stroke-linejoin="round"/><path d="M372 17 L372 27 L388 22 Z" fill="#c77dff" stroke="#131a30" stroke-width="2" stroke-linejoin="round"/><path d="M392 10 L400 4 M398 22 L412 22 M392 34 L400 40" stroke="#c77dff" stroke-width="3" stroke-linecap="round"/></svg>
+        <img class="hero-art" src="art/hero.png" alt="The Writing Sidekick, a young superhero in purple and gold holding a giant glowing pencil">
         <p class="tagline">Write your own destiny!</p>
       </div>
       <p class="lead">Every hero needs a sidekick. Finished your writing? Let's take a look together.</p>
@@ -57,28 +57,37 @@
           <li>&#x1F91A; Cover your name with your hand or a card</li>
           <li>&#x1F4C4; Lay the page flat</li>
           <li>&#x1F4A1; Find good light, no shadows</li>
+          <li>&#x1F4DA; More than one page? Snap them one at a time, in order</li>
         </ul>
       </div>
-      <label class="primary big file-btn">
+      <label id="first-photo" class="primary big file-btn">
         Take the photo
         <input id="photo-input" type="file" accept="image/*" capture="environment">
       </label>
+      <div id="pages-box" class="pages-box" hidden>
+        <p id="pages-title" class="pages-title">Your page</p>
+        <ul id="pages-list" class="pages-list"></ul>
+        <div class="btn-row pages-actions">
+          <label id="add-page" class="ghost file-btn">+ Add another page<input id="photo-add" type="file" accept="image/*" capture="environment"></label>
+          <button id="btn-read" class="primary big" type="button">Read my writing &#8594;</button>
+        </div>
+      </div>
       <button id="btn-back-start" class="ghost">&#8592; Back</button>
     </section>
 
     <section id="screen-review" class="screen">
       <h1><span class="h-emoji">&#x1F50D; </span>Check the typing</h1>
-      <p class="lead">Here is your writing. Fix any words the app got wrong, then keep going.</p>
+      <p class="lead">Here is your writing. Tap any word the app got wrong to fix it, then keep going.</p>
       <button id="btn-back-camera" class="ghost small">&#8592; Back to the camera</button>
       <div class="review-grid">
         <figure class="scan-box">
-          <img id="scan-image" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="Photo of your writing">
-          <div class="scan-tools">
-            <button id="btn-rotate" class="ghost small">&#8635; Rotate</button>
-            <label class="ghost small file-btn">Retake<input id="photo-retake" type="file" accept="image/*" capture="environment"></label>
-          </div>
+          <div id="review-pages" class="review-pages"></div>
         </figure>
-        <textarea id="transcript" aria-label="Your writing as typed text" spellcheck="false"></textarea>
+        <div class="typed-box">
+          <div id="word-chips" class="word-chips" aria-label="Your writing, one word at a time. Tap a word to fix it."></div>
+          <textarea id="transcript" aria-label="Your writing as typed text" spellcheck="false" placeholder="Type your writing here" hidden></textarea>
+          <button id="btn-edit-mode" class="ghost small" type="button">Type it all instead</button>
+        </div>
       </div>
       <button id="btn-confirm" class="primary big">Looks right, show my feedback &#8594;</button>
     </section>
@@ -87,9 +96,11 @@
       <h1><span class="h-emoji">&#x1F31F; </span>Sidekick says</h1>
       <div id="stars" class="stars"></div>
       <div class="wish-card">
-        <p class="wish-title"><span class="h-emoji">&#x1FA84; </span>A wish for next time</p>
+        <p class="wish-title"><span class="h-emoji">&#x26A1; </span>Your biggest power-up</p>
         <p id="wish"></p>
       </div>
+      <img class="hero-bust" src="art/hero-bust.png" alt="">
+      <div id="power-ups" class="power-ups"></div>
       <div id="practice-card" class="practice-card" hidden>
         <p class="practice-title"><span class="h-emoji">&#x1F4DD; </span>Spelling to practise</p>
         <ul id="practice-words"></ul>
@@ -147,18 +158,39 @@
       <button id="btn-settings-done" class="primary">Done</button>
     </dialog>
 
+    <dialog id="word-dialog">
+      <h2>Fix this word</h2>
+      <p class="lead">Retype the word. Leave it empty to remove it.</p>
+      <input id="word-input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="The word">
+      <div class="btn-row">
+        <button id="btn-word-cancel" class="ghost" type="button">Cancel</button>
+        <button id="btn-word-save" class="primary" type="button">Save word</button>
+      </div>
+    </dialog>
+
+    <dialog id="save-dialog">
+      <h2>Save a picture</h2>
+      <p class="lead">Tick what goes in the picture.</p>
+      <label class="check-row"><input id="save-brief" type="checkbox" checked> Stars and power-ups, with spelling and word power</label>
+      <label class="check-row" id="save-detail-row"><input id="save-detail" type="checkbox" checked> More detail</label>
+      <div class="btn-row">
+        <button id="btn-save-cancel" class="ghost" type="button">Cancel</button>
+        <button id="btn-save-go" class="primary" type="button">Save picture</button>
+      </div>
+    </dialog>
+
   </main>
 
   <div id="print-doc" aria-hidden="true">
     <h1>Writing Sidekick</h1>
     <p id="print-date"></p>
-    <img id="print-scan" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="">
+    <div id="print-pages"></div>
     <h2>My writing</h2>
     <pre id="print-transcript"></pre>
     <h2>Stars</h2>
     <ul id="print-stars"></ul>
-    <h2>A wish for next time</h2>
-    <p id="print-wish"></p>
+    <h2>Power-ups</h2>
+    <div id="print-powerups"></div>
     <div id="print-practice"></div>
     <div id="print-boost"></div>
     <div id="print-detail"></div>

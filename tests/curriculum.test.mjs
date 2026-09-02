@@ -34,6 +34,8 @@ test("known genres return guidance, unknown returns empty string", () => {
 
 test("feedback rules cover the non-negotiables", () => {
   assert.match(FEEDBACK_RULES, /never.*name/i);
-  assert.match(FEEDBACK_RULES, /exactly.*(wrote|written)|transcribe/i);
-  assert.match(FEEDBACK_RULES, /wish/i);
+  assert.match(FEEDBACK_RULES, /power-ups/i);
+  assert.match(FEEDBACK_RULES, /generic praise .* banned|banned/i);
+  assert.match(FEEDBACK_RULES, /year level/i);
+  assert.match(FEEDBACK_RULES, /improvement comes first/i);
 });

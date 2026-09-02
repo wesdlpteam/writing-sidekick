@@ -10,8 +10,9 @@ const GOLD = "#ffc233";
 const VIOLET = "#c77dff";
 const SKY_MUTED = "#aab6da";
 const GREEN = "#b8ecc7";
-const BLUE = "#bcdcff";
+const BLUE = "#e6d4f0";
 const YELLOW = "#ffe9a8";
+const DETAIL = "#f4f0fa";
 const MUTED = "#4a5570";
 
 function wrapText(ctx, text, maxWidth) {
@@ -76,7 +77,8 @@ async function loadImage(src) {
   return img;
 }
 
-export async function buildFeedbackImage({ scanDataUrl, feedback, yearLevel }) {
+// include.brief = stars, wish, spelling and word power; include.detail = the four "More detail" notes.
+export async function buildFeedbackImage({ pages = [], feedback, yearLevel, include = { brief: true, detail: false } }) {
   const bodyFont = `30px Nunito, sans-serif`;
   const boldFont = `800 30px Nunito, sans-serif`;
   const titleFont = `800 34px Nunito, sans-serif`;
@@ -86,37 +88,59 @@ export async function buildFeedbackImage({ scanDataUrl, feedback, yearLevel }) {
   const sections = [];
 
   measure.font = bodyFont;
-  for (const star of feedback.stars) {
-    sections.push({ fill: GREEN, title: "", lines: wrapText(measure, `⭐ ${star}`, INNER - 56) });
-  }
-  sections.push({ fill: BLUE, title: "A wish for next time", lines: wrapText(measure, feedback.wish, INNER - 56) });
-  if (feedback.practiceWords?.length) {
-    const wordsText = feedback.practiceWords.map((w) => `${w.correct} (you wrote: ${w.wrote})`).join("   ");
-    const lines = wrapText(measure, wordsText, INNER - 56);
-    if (feedback.spellingTip) lines.push(...wrapText(measure, `Tip: ${feedback.spellingTip}`, INNER - 56));
-    sections.push({ fill: YELLOW, title: "Spelling to practise", lines });
-  }
-  if (feedback.wordBoost) {
-    const lines = feedback.wordBoost.swaps.map((s) => `${s.from} → ${s.to.join(", ")}`);
-    if (feedback.wordBoost.before && feedback.wordBoost.after) {
-      lines.push(...wrapText(measure, `Your sentence: ${feedback.wordBoost.before}`, INNER - 56));
-      lines.push(...wrapText(measure, `With word power: ${feedback.wordBoost.after}`, INNER - 56));
+  if (include.brief) {
+    for (const star of feedback.stars) {
+      const starText = star.quote ? `⭐ "${star.quote}" ${star.skill}` : `⭐ ${star.skill}`;
+      sections.push({ fill: GREEN, title: "", lines: wrapText(measure, starText, INNER - 56) });
     }
-    sections.push({ fill: "#ffffff", title: "Word power", lines });
+    feedback.powerUps.forEach((p, index) => {
+      const lines = wrapText(measure, p.why, INNER - 56);
+      if (p.yourLine) lines.push(...wrapText(measure, `Your line: ${p.yourLine}`, INNER - 56));
+      lines.push(...wrapText(measure, `Try this: ${p.tryThis}`, INNER - 56));
+      if (p.nowYou) lines.push(...wrapText(measure, `Now you: ${p.nowYou}`, INNER - 56));
+      sections.push({ fill: BLUE, title: `⚡ Power-up ${index + 1}: ${p.skill}`, lines });
+    });
+    if (feedback.practiceWords?.length) {
+      const wordsText = feedback.practiceWords.map((w) => `${w.correct} (you wrote: ${w.wrote})`).join("   ");
+      const lines = wrapText(measure, wordsText, INNER - 56);
+      if (feedback.spellingTip) lines.push(...wrapText(measure, `Tip: ${feedback.spellingTip}`, INNER - 56));
+      sections.push({ fill: YELLOW, title: "Spelling to practise", lines });
+    }
+    if (feedback.wordBoost) {
+      const lines = feedback.wordBoost.swaps.map((s) => `${s.from} → ${s.to.join(", ")}`);
+      if (feedback.wordBoost.before && feedback.wordBoost.after) {
+        lines.push(...wrapText(measure, `Your sentence: ${feedback.wordBoost.before}`, INNER - 56));
+        lines.push(...wrapText(measure, `With word power: ${feedback.wordBoost.after}`, INNER - 56));
+      }
+      sections.push({ fill: "#ffffff", title: "Word power", lines });
+    }
+  }
+  if (include.detail && feedback.detail) {
+    for (const [title, text] of [
+      ["Ideas", feedback.detail.ideas],
+      ["Structure", feedback.detail.structure],
+      ["Words", feedback.detail.vocabulary],
+      ["Spelling and punctuation", feedback.detail.spelling],
+    ]) {
+      sections.push({ fill: DETAIL, title, lines: wrapText(measure, text, INNER - 56) });
+    }
   }
 
-  let scanImg = null;
-  let scanHeight = 0;
-  if (scanDataUrl) {
-    scanImg = await loadImage(scanDataUrl);
-    scanHeight = Math.min(560, Math.round((scanImg.height / scanImg.width) * INNER));
-  }
+  // Every page is shown at full width; tall pages are cropped at the bottom rather than squashed.
+  const pageImages = [];
+  for (const src of pages) pageImages.push(await loadImage(src));
+  const pageMaxHeight = pageImages.length > 1 ? 400 : 560;
+  const pageBoxes = pageImages.map((img) => {
+    const natural = Math.round((img.height / img.width) * INNER);
+    return { img, natural, height: Math.min(pageMaxHeight, natural) };
+  });
+  const pagesHeight = pageBoxes.reduce((sum, p) => sum + p.height + 40, 0);
 
   const sectionsHeight = sections.reduce(
     (sum, s) => sum + (s.title ? lineHeight + 8 : 0) + s.lines.length * lineHeight + 44 + 28,
     0,
   );
-  const height = 170 + (scanHeight ? scanHeight + 40 : 0) + sectionsHeight + 90;
+  const height = 170 + pagesHeight + sectionsHeight + 90;
 
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -142,16 +166,16 @@ export async function buildFeedbackImage({ scanDataUrl, feedback, yearLevel }) {
   ctx.fillText(`Year ${yearLevel} · ${dateText}`, PAD, 118);
 
   let y = 170;
-  if (scanImg) {
-    roundedRect(ctx, PAD, y, INNER, scanHeight, 14);
+  for (const page of pageBoxes) {
+    roundedRect(ctx, PAD, y, INNER, page.height, 14);
     ctx.save();
     ctx.clip();
-    ctx.drawImage(scanImg, PAD, y, INNER, scanHeight);
+    ctx.drawImage(page.img, PAD, y, INNER, page.natural);
     ctx.restore();
     ctx.lineWidth = 4;
     ctx.strokeStyle = INK;
     ctx.stroke();
-    y += scanHeight + 40;
+    y += page.height + 40;
   }
 
   for (const section of sections) {
