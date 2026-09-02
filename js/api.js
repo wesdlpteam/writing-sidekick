@@ -1,12 +1,14 @@
 const TIMEOUT_MS = 90_000;
 const FRIENDLY_FAIL = "Something went wrong. Please check the internet is on, then try again.";
+// GitHub Pages only serves files, so from there the feedback function is called on Vercel.
+const API_BASE = location.hostname.endsWith("github.io") ? "https://writing-sidekick.vercel.app" : "";
 
 async function post(body) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let response;
   try {
-    response = await fetch("/api/feedback", {
+    response = await fetch(`${API_BASE}/api/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
