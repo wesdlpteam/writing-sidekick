@@ -1,0 +1,11 @@
+{
+  "name": "writing-sidekick",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Writing Sidekick: iPad web app giving ACARA-anchored feedback on handwritten student writing",
+  "scripts": {
+    "test": "node --test",
+    "dev": "node dev-server.mjs"
+  }
+}

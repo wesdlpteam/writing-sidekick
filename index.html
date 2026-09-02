@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Writing Sidekick</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Sidekick">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%8F%EF%B8%8F%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <main id="app">
+
+    <section id="screen-start" class="screen active">
+      <button id="btn-settings" class="gear" aria-label="Teacher settings">&#9881;</button>
+      <h1><span class="h-emoji">&#x270F;&#xFE0F; </span>Sidekick</h1>
+      <p class="lead">Finished your writing? Your sidekick's ready to have a look.</p>
+      <h2>What year are you in?</h2>
+      <div id="year-buttons" class="year-grid" role="group" aria-label="Choose your year level">
+        <button class="year-btn" data-year="1">Year 1</button>
+        <button class="year-btn" data-year="2">Year 2</button>
+        <button class="year-btn" data-year="3">Year 3</button>
+        <button class="year-btn" data-year="4">Year 4</button>
+        <button class="year-btn" data-year="5">Year 5</button>
+        <button class="year-btn" data-year="6">Year 6</button>
+      </div>
+      <h2>What kind of writing is it?</h2>
+      <div id="genre-chips" class="chip-row" role="group" aria-label="Choose the kind of writing">
+        <button class="chip" data-genre="narrative">Story</button>
+        <button class="chip" data-genre="recount">Recount</button>
+        <button class="chip" data-genre="persuasive">Persuasive</button>
+        <button class="chip" data-genre="report">Information report</button>
+        <button class="chip" data-genre="poetry">Poem</button>
+        <button class="chip selected" data-genre="">Not sure</button>
+      </div>
+      <button id="btn-start" class="primary big" disabled>Let's go &#8594;</button>
+    </section>
+
+    <section id="screen-camera" class="screen">
+      <h1><span class="h-emoji">&#x1F4F8; </span>Photo time</h1>
+      <div class="reminder">
+        <p class="reminder-title">Before you snap:</p>
+        <ul>
+          <li>&#x1F91A; Cover your name with your hand or a card</li>
+          <li>&#x1F4C4; Lay the page flat</li>
+          <li>&#x1F4A1; Find good light, no shadows</li>
+        </ul>
+      </div>
+      <label class="primary big file-btn">
+        Take the photo
+        <input id="photo-input" type="file" accept="image/*" capture="environment">
+      </label>
+      <button id="btn-back-start" class="ghost">&#8592; Back</button>
+    </section>
+
+    <section id="screen-review" class="screen">
+      <h1><span class="h-emoji">&#x1F50D; </span>Check the typing</h1>
+      <p class="lead">Here is your writing. Fix any words the app got wrong, then keep going.</p>
+      <button id="btn-back-camera" class="ghost small">&#8592; Back to the camera</button>
+      <div class="review-grid">
+        <figure class="scan-box">
+          <img id="scan-image" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="Photo of your writing">
+          <div class="scan-tools">
+            <button id="btn-rotate" class="ghost small">&#8635; Rotate</button>
+            <label class="ghost small file-btn">Retake<input id="photo-retake" type="file" accept="image/*" capture="environment"></label>
+          </div>
+        </figure>
+        <textarea id="transcript" aria-label="Your writing as typed text" spellcheck="false"></textarea>
+      </div>
+      <button id="btn-confirm" class="primary big">Looks right, show my feedback &#8594;</button>
+    </section>
+
+    <section id="screen-feedback" class="screen">
+      <h1><span class="h-emoji">&#x1F31F; </span>Your feedback</h1>
+      <div id="stars" class="stars"></div>
+      <div class="wish-card">
+        <p class="wish-title"><span class="h-emoji">&#x1FA84; </span>A wish for next time</p>
+        <p id="wish"></p>
+      </div>
+      <div id="practice-card" class="practice-card" hidden>
+        <p class="practice-title"><span class="h-emoji">&#x1F4DD; </span>Spelling to practise</p>
+        <ul id="practice-words"></ul>
+        <p id="practice-tip" class="practice-tip" hidden></p>
+      </div>
+      <div id="boost-card" class="practice-card boost-card" hidden>
+        <p class="practice-title"><span class="h-emoji">&#x1F4AA; </span>Word power</p>
+        <ul id="boost-swaps"></ul>
+        <div id="boost-example" hidden>
+          <p class="boost-line"><span class="boost-label">Your sentence:</span> <span id="boost-before"></span></p>
+          <p class="boost-line"><span class="boost-label">With word power:</span> <strong id="boost-after"></strong></p>
+        </div>
+      </div>
+      <details id="detail-box">
+        <summary>More detail</summary>
+        <dl>
+          <dt>Ideas</dt><dd id="detail-ideas"></dd>
+          <dt>Structure</dt><dd id="detail-structure"></dd>
+          <dt>Words</dt><dd id="detail-vocabulary"></dd>
+          <dt>Spelling and punctuation</dt><dd id="detail-spelling"></dd>
+        </dl>
+      </details>
+      <div class="btn-row">
+        <button id="btn-save-pic" class="secondary"><span class="h-emoji">&#x1F4F8; </span>Save picture</button>
+        <button id="btn-print" class="secondary"><span class="h-emoji">&#x1F5A8;&#xFE0F; </span>Print</button>
+        <button id="btn-restart" class="primary">Start again</button>
+      </div>
+      <p class="privacy-note">When you leave this page, your photo and feedback disappear. Nothing is saved.</p>
+    </section>
+
+    <div id="loading" class="overlay" role="status" aria-live="polite" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="loading-msg">Reading your writing&#8230;</p>
+    </div>
+
+    <div id="error-banner" class="error" role="alert" hidden>
+      <p id="error-msg"></p>
+      <button id="btn-error-close" class="ghost small">OK</button>
+    </div>
+
+    <dialog id="settings-dialog">
+      <h2>Teacher settings</h2>
+      <p class="lead">This bit is for teachers.</p>
+      <label class="setting-row">Default year level
+        <select id="setting-year">
+          <option value="">None (students choose)</option>
+          <option value="1">Year 1</option><option value="2">Year 2</option>
+          <option value="3">Year 3</option><option value="4">Year 4</option>
+          <option value="5">Year 5</option><option value="6">Year 6</option>
+        </select>
+      </label>
+      <label class="setting-row">Show "More detail" to students
+        <input id="setting-detail" type="checkbox" checked>
+      </label>
+      <button id="btn-settings-done" class="primary">Done</button>
+    </dialog>
+
+  </main>
+
+  <div id="print-doc" aria-hidden="true">
+    <h1>Writing Sidekick</h1>
+    <p id="print-date"></p>
+    <img id="print-scan" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="">
+    <h2>My writing</h2>
+    <pre id="print-transcript"></pre>
+    <h2>Stars</h2>
+    <ul id="print-stars"></ul>
+    <h2>A wish for next time</h2>
+    <p id="print-wish"></p>
+    <div id="print-practice"></div>
+    <div id="print-boost"></div>
+    <div id="print-detail"></div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
