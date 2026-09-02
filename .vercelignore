@@ -1,0 +1,8 @@
+# Never ship secrets or local-only files. Git deploys and CLI deploys both honour this.
+.env*
+docs
+tests
+curriculum
+.impeccable
+dev-server.mjs
+start-app.bat
