@@ -66,7 +66,7 @@ async function handlePhoto(file) {
     setLoading(true, "Tidying up your photo…");
     const { dataUrl } = await prepareScan(file);
     state.scanDataUrl = dataUrl;
-    setLoading(true, "Reading your writing…");
+    setLoading(true, "Your sidekick is reading your writing…");
     const feedback = await getFeedback({
       imageDataUrl: dataUrl,
       yearLevel: state.yearLevel,
