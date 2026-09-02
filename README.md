@@ -18,10 +18,14 @@ the feedback is a canned example, but every screen works.
 
 ## The live site
 
-The app is live at https://writing-sidekick.vercel.app. It is hosted on Vercel and
-connected to the GitHub repo (wesdlpteam/writing-sidekick): every push to `main`
-redeploys the site automatically within about a minute.
+Share this link: https://wesdlpteam.github.io/writing-sidekick/
 
+The page is hosted by GitHub Pages straight from the `main` branch of this repo, so
+every push to `main` updates the live site within a minute or two.
+
+GitHub Pages only serves files, so the one server function (`api/feedback.js`, the part
+that talks to OpenAI) runs on Vercel at https://writing-sidekick.vercel.app and accepts
+browser calls only from the GitHub Pages address. Vercel also redeploys on every push.
 The OpenAI key and model name live as environment variables in the Vercel project
 settings, using the same variable names as `.env.example`. They are never in the repo.
 
