@@ -33,12 +33,12 @@ Home Screen so it looks like a normal app.
 
 ## Where things live
 
-- `index.html`, `css/`, `js/` — the app the student sees
-- `api/feedback.js` — the server function that talks to OpenAI
-- `api/_curriculum.js` — per-year writing expectations, distilled from
+- `index.html`, `css/`, `js/`: the app the student sees
+- `api/feedback.js`: the server function that talks to OpenAI
+- `api/_curriculum.js`: per-year writing expectations, distilled from
   `curriculum/english-curriculum-f-6-v9.md` (ACARA v9, © ACARA 2022)
-- `tests/` — run with `npm test`
-- `docs/superpowers/` — design and build plan documents
+- `tests/`: run with `npm test`
+- `docs/superpowers/`: design and build plan documents
 
 ## Cost
 
