@@ -151,9 +151,9 @@ $("btn-read").addEventListener("click", async () => {
     );
     const { transcript } = await transcribePages({ images: state.pages, yearLevel: state.yearLevel });
     $("transcript").value = transcript;
-    setEditMode(transcript.trim() ? "tap" : "type");
     renderReviewPages();
     show("screen-review");
+    autosizeTranscript();
   } catch (error) {
     showError(error.message);
   } finally {
@@ -161,76 +161,15 @@ $("btn-read").addEventListener("click", async () => {
   }
 });
 
-// ---- tap-a-word editing ----------------------------------------------------
-// Tapping inside a word on a tablet snaps the cursor to a word edge, so every word is a
-// button instead: tap it, retype it, save. The textarea stays the source of truth.
+// ---- the typed copy: one document-style box that grows with the writing --------------
 
-let editingWord = null; // { line, word } indexes into the transcript
-
-function renderWordChips() {
-  const box = $("word-chips");
-  box.innerHTML = "";
-  const lines = $("transcript").value.split("\n");
-  lines.forEach((line, lineIndex) => {
-    line
-      .split(/\s+/)
-      .filter(Boolean)
-      .forEach((word, wordIndex) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "word";
-        btn.textContent = word;
-        btn.dataset.line = lineIndex;
-        btn.dataset.word = wordIndex;
-        box.appendChild(btn);
-      });
-    if (lineIndex < lines.length - 1) box.appendChild(document.createElement("br"));
-  });
+function autosizeTranscript() {
+  const box = $("transcript");
+  box.style.height = "auto";
+  box.style.height = `${Math.max(320, box.scrollHeight + 4)}px`;
 }
 
-function setEditMode(mode) {
-  const typing = mode === "type";
-  $("word-chips").hidden = typing;
-  $("transcript").hidden = !typing;
-  $("btn-edit-mode").textContent = typing ? "Back to tap-a-word" : "Type it all instead";
-  if (!typing) renderWordChips();
-}
-
-$("word-chips").addEventListener("click", (event) => {
-  const btn = event.target.closest(".word");
-  if (!btn) return;
-  editingWord = { line: Number(btn.dataset.line), word: Number(btn.dataset.word) };
-  $("word-input").value = btn.textContent;
-  $("word-dialog").showModal();
-  $("word-input").select();
-});
-
-function saveWord() {
-  if (!editingWord) return;
-  const lines = $("transcript").value.split("\n");
-  const words = lines[editingWord.line].split(/\s+/).filter(Boolean);
-  const replacement = $("word-input").value.trim();
-  if (replacement) words[editingWord.word] = replacement;
-  else words.splice(editingWord.word, 1);
-  lines[editingWord.line] = words.join(" ");
-  $("transcript").value = lines.join("\n");
-  editingWord = null;
-  $("word-dialog").close();
-  renderWordChips();
-}
-
-$("btn-word-save").addEventListener("click", saveWord);
-$("word-input").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    saveWord();
-  }
-});
-$("btn-word-cancel").addEventListener("click", () => {
-  editingWord = null;
-  $("word-dialog").close();
-});
-$("btn-edit-mode").addEventListener("click", () => setEditMode($("transcript").hidden ? "type" : "tap"));
+$("transcript").addEventListener("input", autosizeTranscript);
 
 // ---- step 2: checked transcript -> feedback --------------------------------
 

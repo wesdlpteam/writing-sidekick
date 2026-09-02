@@ -77,16 +77,15 @@
 
     <section id="screen-review" class="screen">
       <h1><span class="h-emoji">&#x1F50D; </span>Check the typing</h1>
-      <p class="lead">Here is your writing. Tap any word the app got wrong to fix it, then keep going.</p>
+      <p class="lead">Here is your writing. Fix any words the app got wrong, then keep going.</p>
       <button id="btn-back-camera" class="ghost small">&#8592; Back to the camera</button>
       <div class="review-grid">
         <figure class="scan-box">
           <div id="review-pages" class="review-pages"></div>
         </figure>
         <div class="typed-box">
-          <div id="word-chips" class="word-chips" aria-label="Your writing, one word at a time. Tap a word to fix it."></div>
-          <textarea id="transcript" aria-label="Your writing as typed text" spellcheck="false" placeholder="Type your writing here" hidden></textarea>
-          <button id="btn-edit-mode" class="ghost small" type="button">Type it all instead</button>
+          <textarea id="transcript" aria-label="Your writing as typed text" spellcheck="false" placeholder="Type your writing here"></textarea>
+          <p class="edit-hint">Tap to put the cursor where you want it. Double-tap a word to select it, then type the fix.</p>
         </div>
       </div>
       <button id="btn-confirm" class="primary big">Looks right, show my feedback &#8594;</button>
@@ -156,16 +155,6 @@
         <input id="setting-detail" type="checkbox" checked>
       </label>
       <button id="btn-settings-done" class="primary">Done</button>
-    </dialog>
-
-    <dialog id="word-dialog">
-      <h2>Fix this word</h2>
-      <p class="lead">Retype the word. Leave it empty to remove it.</p>
-      <input id="word-input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="The word">
-      <div class="btn-row">
-        <button id="btn-word-cancel" class="ghost" type="button">Cancel</button>
-        <button id="btn-word-save" class="primary" type="button">Save word</button>
-      </div>
     </dialog>
 
     <dialog id="save-dialog">
