@@ -4,7 +4,11 @@ const W = 1080;
 const PAD = 56;
 const INNER = W - PAD * 2;
 
-const INK = "#1d2540";
+const INK = "#131a30";
+const NIGHT = "#141433";
+const GOLD = "#ffc233";
+const VIOLET = "#c77dff";
+const SKY_MUTED = "#aab6da";
 const GREEN = "#b8ecc7";
 const BLUE = "#bcdcff";
 const YELLOW = "#ffe9a8";
@@ -122,13 +126,20 @@ export async function buildFeedbackImage({ scanDataUrl, feedback, yearLevel }) {
   ctx.fillRect(0, 0, W, height);
   ctx.textBaseline = "middle";
 
+  // Night-sky header band, matching the app's Neo City look.
+  ctx.fillStyle = NIGHT;
+  ctx.fillRect(0, 0, W, 150);
+  ctx.fillStyle = VIOLET;
+  ctx.fillRect(0, 146, W, 6);
+  ctx.font = `64px Bangers, Impact, sans-serif`;
   ctx.fillStyle = INK;
-  ctx.font = `900 54px Nunito, sans-serif`;
-  ctx.fillText("Writing Sidekick", PAD, 78);
+  ctx.fillText("The Writing Sidekick", PAD + 3, 71);
+  ctx.fillStyle = GOLD;
+  ctx.fillText("The Writing Sidekick", PAD, 68);
   ctx.font = `28px Nunito, sans-serif`;
-  ctx.fillStyle = MUTED;
+  ctx.fillStyle = SKY_MUTED;
   const dateText = new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
-  ctx.fillText(`Year ${yearLevel} · ${dateText}`, PAD, 126);
+  ctx.fillText(`Year ${yearLevel} · ${dateText}`, PAD, 118);
 
   let y = 170;
   if (scanImg) {
