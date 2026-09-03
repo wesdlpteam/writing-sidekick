@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Writing Sidekick voice test</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; padding: 24px; font: 18px/1.5 "Nunito", "Segoe UI", system-ui, sans-serif; color: #131a30; background: #f6f2fb; }
+    main { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin: 0 0 6px; color: #4f2759; }
+    p { margin: 8px 0; }
+    .note { background: #fff; border: 2px solid #d9cbe6; border-radius: 12px; padding: 12px 16px; margin: 16px 0; font-size: 0.95rem; }
+    textarea { width: 100%; min-height: 120px; font: inherit; padding: 12px; border: 2px solid #4f2759; border-radius: 12px; box-sizing: border-box; }
+    label { display: block; font-weight: 700; margin-top: 18px; }
+    input[type="range"] { width: 100%; }
+    h2 { font-size: 1.15rem; margin: 22px 0 8px; color: #4f2759; }
+    .voices { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    button { font: inherit; font-weight: 700; padding: 12px 14px; border-radius: 12px; border: 2px solid #131a30; background: #fff; cursor: pointer; text-align: left; min-height: 44px; }
+    button.play { background: #ffe9a8; }
+    button.play.speaking { background: #b8ecc7; }
+    button.stop { background: #e6d4f0; margin-top: 12px; }
+    .meta { display: block; font-weight: 400; font-size: 0.85rem; color: #4a5570; }
+    .empty { color: #4a5570; font-style: italic; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Voice test</h1>
+    <p>Tap a voice to hear it read a sample power-up using the voices already on this device. Nothing here is saved.</p>
+
+    <div class="note">
+      <strong>On an iPad:</strong> for the best built-in voice, go to Settings, Accessibility, Spoken Content, Voices, English, then choose Karen or Lee (Australia) and download the Enhanced or Premium version. Reload this page afterwards.<br>
+      <strong>On a Windows computer:</strong> open this page in Microsoft Edge. Its "Online (Natural)" voices such as Natasha and William are the same Microsoft voices we would use for the paid option. Online voices send the text to Microsoft to be spoken; this sample text contains no student work.
+    </div>
+
+    <label for="sample">What to read</label>
+    <textarea id="sample">Power-up 1: Add what you could see and hear. Your beach has waves but no picture of the place yet. One sight and one sound put your reader on the sand with you. Try this: Under a blazing sun, the huge waves roared and dumped me in the foam! Now you: find your first sentence and add one thing you could see at the beach.</textarea>
+
+    <label for="rate">Speed: <span id="rate-label">0.95</span></label>
+    <input id="rate" type="range" min="0.7" max="1.2" step="0.05" value="0.95">
+
+    <h2>Australian English voices</h2>
+    <div id="au" class="voices"><p class="empty">Looking for voices…</p></div>
+
+    <h2>Other English voices</h2>
+    <div id="other" class="voices"></div>
+
+    <button id="stop" class="stop" type="button">Stop</button>
+  </main>
+
+  <script>
+    const synth = window.speechSynthesis;
+    const $ = (id) => document.getElementById(id);
+    let current = null;
+
+    $("rate").addEventListener("input", () => { $("rate-label").textContent = $("rate").value; });
+    $("stop").addEventListener("click", () => synth.cancel());
+
+    function speak(voice, button) {
+      synth.cancel();
+      const utter = new SpeechSynthesisUtterance($("sample").value);
+      utter.voice = voice;
+      utter.lang = voice.lang;
+      utter.rate = Number($("rate").value);
+      utter.onstart = () => { document.querySelectorAll(".speaking").forEach((b) => b.classList.remove("speaking")); button.classList.add("speaking"); };
+      utter.onend = utter.onerror = () => button.classList.remove("speaking");
+      current = utter; // keep a reference so Safari does not drop it mid-sentence
+      synth.speak(utter);
+    }
+
+    function voiceButton(voice) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "play";
+      const tags = [voice.lang, voice.localService ? "on device" : "online"];
+      b.innerHTML = `▶ ${voice.name}<span class="meta">${tags.join(" · ")}</span>`;
+      b.addEventListener("click", () => speak(voice, b));
+      return b;
+    }
+
+    function render() {
+      const voices = synth.getVoices();
+      if (!voices.length) return false;
+      const au = voices.filter((v) => /^en[-_]AU/i.test(v.lang));
+      const other = voices.filter((v) => /^en/i.test(v.lang) && !/^en[-_]AU/i.test(v.lang));
+      const fill = (id, list, emptyText) => {
+        const box = $(id);
+        box.innerHTML = "";
+        if (!list.length) { box.innerHTML = `<p class="empty">${emptyText}</p>`; return; }
+        list.sort((a, b) => a.name.localeCompare(b.name)).forEach((v) => box.appendChild(voiceButton(v)));
+      };
+      fill("au", au, "No Australian voice installed on this device yet. See the note above.");
+      fill("other", other, "None found.");
+      return true;
+    }
+
+    if (!synth) {
+      $("au").innerHTML = '<p class="empty">This browser cannot speak. Try Safari on the iPad or Edge on Windows.</p>';
+    } else {
+      if (!render()) {
+        synth.addEventListener("voiceschanged", render);
+        setTimeout(render, 800); // Safari sometimes loads voices without firing the event
+      }
+    }
+  </script>
+</body>
+</html>
