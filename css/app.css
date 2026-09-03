@@ -601,7 +601,7 @@ body.senior .practice-tip::before { content: ""; }
   white-space: nowrap;
 }
 .power-why { margin: 0 0 10px; font-size: 1.05rem; line-height: 1.5; }
-.sentence-type {
+.move-note {
   margin: 12px 0 0;
   padding: 10px 14px;
   background: #f4f0fa;
@@ -610,7 +610,9 @@ body.senior .practice-tip::before { content: ""; }
   font-size: 1rem;
   line-height: 1.5;
 }
-.sentence-type p { margin: 0; }
+.move-note p { margin: 0; }
+#edit-section[hidden] { display: none; }
+#edit-section .practice-card { margin-top: 0; }
 .st-title { font-weight: 700; color: var(--purple); }
 .st-rule { margin-top: 2px; }
 .st-example { margin-top: 2px; color: var(--muted); }

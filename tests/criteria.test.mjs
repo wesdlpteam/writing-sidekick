@@ -1,14 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  CRITERIA,
-  criteriaFor,
-  criteriaPrompt,
-  SENTENCE_TYPES,
-  sentenceTypesFor,
-  sentenceTypesPrompt,
-  describeSentenceType,
-} from "../api/_criteria.js";
+import { CRITERIA, criteriaFor, criteriaPrompt, MOVES, movesFor, movesPrompt, describeMove } from "../api/_criteria.js";
 
 const SHARED = ["audience", "text_structure", "ideas", "vocabulary", "cohesion", "paragraphing", "sentence_structure", "punctuation", "spelling"];
 
@@ -48,28 +40,38 @@ test("no kind chosen (or an unknown kind) offers both genre areas as a choice", 
   assert.match(criteriaPrompt("narrative"), /"next_step": missing or weak/);
 });
 
-test("twelve sentence types, each explained with a primary-age example", () => {
-  assert.equal(Object.keys(SENTENCE_TYPES).length, 12);
-  for (const [key, t] of Object.entries(SENTENCE_TYPES)) {
-    assert.ok(t.name && t.rule.length > 30 && t.example.length > 8, key);
-    assert.ok(t.minYear >= 1 && t.minYear <= 6, key);
+test("the writing moves are named in full, explained, and staged by year", () => {
+  assert.equal(Object.keys(MOVES).length, 13);
+  for (const [key, m] of Object.entries(MOVES)) {
+    assert.ok(m.name && m.rule.length > 30 && m.example.length > 8, key);
+    assert.ok(m.minYear >= 1 && m.minYear <= 6, key);
+    assert.doesNotMatch(m.name, /\b(T\.S\.|C\.S\.|SPO|MPO|GST|TSG)\b/, `${key}: no classroom shorthand`);
   }
-  assert.equal(sentenceTypesFor(6).length, 12);
-  const year1 = sentenceTypesFor(1).map((t) => t.key);
-  assert.deepEqual(year1, ["simple", "very_short"]);
-  assert.ok(!sentenceTypesFor(4).some((t) => t.key === "semicolon"));
-  assert.match(sentenceTypesPrompt(3), /- w_start: W-start sentence/);
-  assert.doesNotMatch(sentenceTypesPrompt(3), /em_dash/);
+  assert.deepEqual(movesFor(1).map((m) => m.key), ["sentence_types", "fragment_fix", "because_but_so"]);
+  assert.ok(movesFor(3).some((m) => m.key === "sentence_combining"));
+  assert.ok(!movesFor(3).some((m) => m.key === "appositive"), "appositives wait until Year 4");
+  assert.ok(!movesFor(4).some((m) => m.key === "general_to_specific_intro"), "introductions wait until Year 5");
+  assert.equal(movesFor(6).length, 13);
 });
 
-test("describeSentenceType respects the year and rejects unknown keys", () => {
-  assert.equal(describeSentenceType("nope", 6), null);
-  assert.equal(describeSentenceType(null, 6), null);
-  assert.equal(describeSentenceType("ed_start", 3), null);
-  assert.deepEqual(describeSentenceType("very_short", 1), {
-    key: "very_short",
-    name: "Very short sentence",
-    rule: "Five words or fewer. It grabs attention, especially after a long sentence.",
-    example: "Nobody moved.",
+test("the moves prompt lists only the moves for the year and says revise before edit", () => {
+  const year3 = movesPrompt(3);
+  assert.match(year3, /- sentence_expansion: Sentence expansion\./);
+  assert.match(year3, /- because_but_so: Because, but, so\./);
+  assert.doesNotMatch(year3, /appositive/);
+  assert.match(year3, /Revising comes before editing/);
+  assert.match(year3, /"now_you"/);
+  assert.match(movesPrompt(5), /- appositive: Appositive\./);
+});
+
+test("describeMove respects the year and rejects unknown keys", () => {
+  assert.equal(describeMove("nope", 6), null);
+  assert.equal(describeMove(null, 6), null);
+  assert.equal(describeMove("appositive", 3), null);
+  assert.deepEqual(describeMove("because_but_so", 1), {
+    key: "because_but_so",
+    name: "Because, but, so",
+    rule: "Finish a thin sentence with because (the reason), but (a change of direction) or so (what happened next). Each one pushes you to say more.",
+    example: "The dog barked because a possum was on the fence.",
   });
 });

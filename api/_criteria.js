@@ -1,8 +1,9 @@
 // The ten areas writing markers look at (the categories used in Australia's national writing
 // assessment), described here in our own words for the model and for the child. Story-style
 // pieces judge "Characters and setting"; persuasive pieces judge "Persuasive devices"; reports
-// and poems use the nine shared areas. Also: the twelve sentence types the feedback can name
-// when it rewrites one of the child's sentences, each with a plain explanation and an example.
+// and poems use the nine shared areas. Also: the writing moves the school teaches (The Writing
+// Revolution approach), which the feedback names when a power-up shows one, each with a plain
+// explanation and an example of our own.
 
 export const CRITERIA = {
   audience: {
@@ -45,19 +46,19 @@ export const CRITERIA = {
     label: "Cohesion",
     sub: "how your ideas link up",
     guide:
-      "Does the writing flow as one piece? Pronouns that clearly refer back, linking words (then, later, meanwhile, however, because), word families and synonyms instead of repeating the same noun, and tense that stays steady.",
+      "Does the writing flow as one piece? Pronouns that clearly refer back, transition words (then, later, meanwhile, however, because, for example), word families and synonyms instead of repeating the same noun, and tense that stays steady.",
   },
   paragraphing: {
     label: "Paragraphing",
     sub: "chunking your ideas",
     guide:
-      "Is the text chunked so the reader can follow it? A new paragraph for a new time, place, person or idea in a story; one paragraph per reason, with a topic sentence, in persuasive writing; verses in a poem. One block of text is the normal starting point for the youngest writers, so judge by year level.",
+      "Is the text chunked so the reader can follow it? A new paragraph for a new time, place, person or idea in a story; one paragraph per reason in persuasive writing, opening with a topic sentence and closing with a concluding sentence; verses in a poem. One block of text is the normal starting point for the youngest writers, so judge by year level.",
   },
   sentence_structure: {
     label: "Sentence structure",
     sub: "building good sentences",
     guide:
-      "Are sentences complete and correct, and is there variety? Look for a mix of short and long sentences, simple, compound and complex sentences, different sentence openers, and no run-on sentences joined with and, and, and.",
+      "Are sentences complete and correct (no fragments), and is there variety? Look for a mix of short and long sentences, simple, compound and complex sentences, different sentence openers such as subordinating conjunctions, expanded sentences that say when, where, why and how, and no run-on sentences joined with and, and, and.",
   },
   punctuation: {
     label: "Punctuation",
@@ -116,99 +117,107 @@ For every area give a status, judged against THIS year level (a Year 1 writer is
 Be honest: a typical piece has two to four strengths, several steady areas and two or three next steps. Never mark everything as a strength.`;
 }
 
-// The sentence types the feedback may name when a power-up rewrites one of the child's sentences.
-// Names follow the "12 ways to write a sentence" set many classrooms use; the explanations and
-// examples are our own, written for primary readers. minYear keeps the type realistic for the year.
-export const SENTENCE_TYPES = {
-  simple: {
-    name: "Simple sentence",
+// The writing moves the school teaches, following The Writing Revolution approach (sentences
+// first, then paragraphs; revise before you edit). Names are the ones children hear in class,
+// written out in full; the explanations and examples are our own. minYear follows the usual
+// order the moves are introduced, so a Year 2 is never handed an appositive.
+export const MOVES = {
+  sentence_types: {
+    name: "Sentence types",
     minYear: 1,
-    rule: "Starts with who or what it is about, then says what happens. One clear idea.",
-    example: "The puppy chased the ball.",
+    rule: "Say an idea as a statement, a question, a command or an exclamation. Swapping one in changes the pace and wakes the reader up.",
+    example: "What a monster wave that was!",
   },
-  very_short: {
-    name: "Very short sentence",
+  fragment_fix: {
+    name: "Sentences and fragments",
     minYear: 1,
-    rule: "Five words or fewer. It grabs attention, especially after a long sentence.",
-    example: "Nobody moved.",
+    rule: "A fragment is only a piece of a sentence, like 'Because it was raining.' Add the missing who and what to make it a whole sentence.",
+    example: "We stayed inside because it was raining.",
   },
-  power: {
-    name: "Power sentence",
-    minYear: 3,
-    rule: "Twelve words or fewer and straight to the point. Great for the first sentence of a paragraph.",
-    example: "Our school needs a bigger playground.",
+  because_but_so: {
+    name: "Because, but, so",
+    minYear: 1,
+    rule: "Finish a thin sentence with because (the reason), but (a change of direction) or so (what happened next). Each one pushes you to say more.",
+    example: "The dog barked because a possum was on the fence.",
   },
-  red_white_blue: {
-    name: "Red, white and blue sentence",
+  sentence_expansion: {
+    name: "Sentence expansion",
     minYear: 2,
-    rule: "Lists three things, with commas between them and 'and' before the last one.",
-    example: "We packed towels, snacks and a big umbrella.",
+    rule: "Start with a bare kernel sentence like 'The surfer paddled out.' and add when, where, why or how. The when usually goes at the front, followed by a comma.",
+    example: "At sunrise, the surfer paddled out past the break to catch the first wave.",
   },
-  adverb_start: {
-    name: "Adverb start",
+  subordinating_conjunction: {
+    name: "Subordinating conjunction start",
     minYear: 2,
-    rule: "Begins with an -ly word like Suddenly, Quietly or Luckily, then a comma, then the rest.",
-    example: "Suddenly, the lights went out.",
-  },
-  preposition_start: {
-    name: "Preposition start",
-    minYear: 2,
-    rule: "Begins with a little place or time word (In, Under, After, Behind, At) and a short phrase, then a comma.",
-    example: "Under the old bridge, a troll was snoring.",
-  },
-  ing_start: {
-    name: "-ing start",
-    minYear: 3,
-    rule: "Begins with an -ing word phrase (Gripping the rope, Hoping to win), then a comma, then who did it and what happened.",
-    example: "Gripping the rope, I stepped onto the wobbly bridge.",
-  },
-  ed_start: {
-    name: "-ed start",
-    minYear: 4,
-    rule: "Begins with an -ed word (Exhausted, Delighted, Frozen) or a short -ed phrase, then a comma, then the rest.",
-    example: "Exhausted, the runners collapsed on the grass.",
-  },
-  semicolon: {
-    name: "Semi-colon sentence",
-    minYear: 5,
-    rule: "Two mini sentences that belong together, joined with a semi-colon (;) instead of 'and' or 'but'.",
-    example: "The tent was tiny; the storm was enormous.",
-  },
-  em_dash: {
-    name: "Dash sentence",
-    minYear: 5,
-    rule: "Drops a surprising extra phrase into the middle of a sentence, between two dashes.",
-    example: "My brother — the world's slowest eater — finished last again.",
-  },
-  w_start: {
-    name: "W-start sentence",
-    minYear: 2,
-    rule: "Begins with a W word (When, While, Where, Who, What, With), then a comma after the first part, then the rest.",
+    rule: "Begin with a joining word like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
     example: "When the bell rang, we sprinted to the oval.",
   },
-  explore_subject: {
-    name: "Explore-the-subject sentence",
+  transition: {
+    name: "Transition word",
+    minYear: 2,
+    rule: "A signpost word at the start of a sentence that links it to the one before: First, Next, Later or Finally for time; For example to illustrate; However or On the other hand to change direction; Therefore or In the end to conclude.",
+    example: "Later, the rain finally stopped.",
+  },
+  vary_vocabulary: {
+    name: "Vary vocabulary",
+    minYear: 2,
+    rule: "Swap a plain or repeated word for one that says exactly what you mean: went becomes trudged, big becomes towering, said becomes whispered.",
+    example: "The exhausted hikers trudged up the final hill.",
+  },
+  sentence_combining: {
+    name: "Sentence combining",
+    minYear: 3,
+    rule: "Join two or three short sentences into one using and, but, because or so, a pronoun, or a describing phrase, so the writing stops sounding choppy.",
+    example: "The tent was tiny and wet, so nobody slept.",
+  },
+  topic_sentence: {
+    name: "Topic sentence",
+    minYear: 3,
+    rule: "The first sentence of a paragraph, telling the reader what the whole paragraph is about.",
+    example: "Our school needs a bigger playground for three reasons.",
+  },
+  concluding_sentence: {
+    name: "Concluding sentence",
+    minYear: 3,
+    rule: "The last sentence of a paragraph, saying the topic sentence's idea again in a new way so the paragraph feels finished.",
+    example: "That is why a bigger playground would make every lunchtime better.",
+  },
+  appositive: {
+    name: "Appositive",
     minYear: 4,
-    rule: "Names the subject, adds a comma and an interesting fact about it, adds another comma, then finishes the sentence.",
-    example: "Our teacher, who never misses a footy game, wore her team scarf to school.",
+    rule: "A short description tucked in straight after a person or thing, between commas. Take it out and the sentence still works.",
+    example: "Our teacher, a huge footy fan, wore her scarf to school.",
+  },
+  general_to_specific_intro: {
+    name: "General to specific introduction",
+    minYear: 5,
+    rule: "Open with a broad statement about the topic, narrow to a specific one, then state your position or main idea as the last sentence of the introduction.",
+    example: "Every school has a playground. Ours is the smallest in the district. It is time we built a bigger one.",
+  },
+  specific_to_general_conclusion: {
+    name: "Specific to general conclusion",
+    minYear: 5,
+    rule: "Do the introduction in reverse: restate your position, sum up your specific points, then finish with a broad closing thought.",
+    example: "A bigger playground is worth every cent. It would ease the crowding and give every class room to run. Good schools give children space to play.",
   },
 };
 
-export function sentenceTypesFor(yearLevel) {
-  return Object.entries(SENTENCE_TYPES)
-    .filter(([, t]) => t.minYear <= yearLevel)
-    .map(([key, t]) => ({ key, ...t }));
+export function movesFor(yearLevel) {
+  return Object.entries(MOVES)
+    .filter(([, m]) => m.minYear <= yearLevel)
+    .map(([key, m]) => ({ key, ...m }));
 }
 
-export function sentenceTypesPrompt(yearLevel) {
-  const lines = sentenceTypesFor(yearLevel).map((t) => `- ${t.key}: ${t.name}. ${t.rule}`);
-  return `Sentence types you may name (use the exact key) when a power-up's "try_this" is a whole rewritten sentence that clearly matches one of these; otherwise use null:
-${lines.join("\n")}`;
+export function movesPrompt(yearLevel) {
+  const lines = movesFor(yearLevel).map((m) => `- ${m.key}: ${m.name}. ${m.rule}`);
+  return `Writing moves the school teaches (the child practises these in class, so build power-ups on them wherever they fit, and phrase "now_you" as a task that uses the move on their own writing, for example "Find your sentence about the waves and expand it: add when and where"). When a power-up's "try_this" clearly shows one of these moves, name it with the exact key in "move"; otherwise use null:
+${lines.join("\n")}
+Revising comes before editing: power-ups are revising moves. Spelling and punctuation are editing and belong in practice_words and the spelling and punctuation areas.`;
 }
 
 // The explanation shown to the child, or null if the key is unknown or too advanced for the year.
-export function describeSentenceType(key, yearLevel) {
-  const t = SENTENCE_TYPES[key];
-  if (!t || t.minYear > yearLevel) return null;
-  return { key, name: t.name, rule: t.rule, example: t.example };
+export function describeMove(key, yearLevel) {
+  const m = MOVES[key];
+  if (!m || m.minYear > yearLevel) return null;
+  return { key, name: m.name, rule: m.rule, example: m.example };
 }

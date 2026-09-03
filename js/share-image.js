@@ -114,27 +114,27 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
   if (include.brief) {
     addCard(BLUE, "First, the big picture", [feedback.headline]);
     feedback.powerUps.forEach((p, index) => {
-      const st = p.sentenceType;
+      const m = p.move;
       addCard("#ffffff", `⚡ Power-up ${index + 1}: ${p.skill}`, [
         p.why,
         p.yourLine && `Your line: ${p.yourLine}`,
         `Try this: ${p.tryThis}`,
-        st && `This is a ${st.name}. ${st.rule} Another one: ${st.example}`,
+        m && `Writing move: ${m.name}. ${m.rule} Another one: ${m.example}`,
         p.nowYou && `Now you: ${p.nowYou}`,
       ]);
     });
-    if (feedback.practiceWords?.length) {
-      addCard(YELLOW, "Spelling to practise", [
-        feedback.practiceWords.map((w) => `${w.correct} (you wrote: ${w.wrote})`).join("   "),
-        feedback.spellingTip && `Tip: ${feedback.spellingTip}`,
-      ]);
-    }
     if (feedback.wordBoost) {
       const boost = feedback.wordBoost;
       addCard(DETAIL, "Word power", [
         ...boost.swaps.map((s) => `${s.from} → ${s.to.join(", ")}`),
         boost.before && boost.after && `Your sentence: ${boost.before}`,
         boost.before && boost.after && `With word power: ${boost.after}`,
+      ]);
+    }
+    if (feedback.practiceWords?.length) {
+      addCard(YELLOW, "Then edit: spelling to practise", [
+        feedback.practiceWords.map((w) => `${w.correct} (you wrote: ${w.wrote})`).join("   "),
+        feedback.spellingTip && `Tip: ${feedback.spellingTip}`,
       ]);
     }
   }

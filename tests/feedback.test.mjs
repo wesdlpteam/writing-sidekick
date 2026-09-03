@@ -23,11 +23,11 @@ const GOOD_PAYLOAD = {
   power_ups: [
     {
       area: "sentence_structure",
-      skill: "Start with a W word",
-      why: "Both of your sentences start with 'The' and 'It'. A W-start makes the reader lean in.",
+      skill: "Start with a subordinating conjunction",
+      why: "Both of your sentences start with 'The' and 'It'. A When or While start makes the reader lean in.",
       your_line: "The dog ran fast.",
       try_this: "When the gate swung open, the dog ran fast.",
-      sentence_type: "w_start",
+      move: "subordinating_conjunction",
       now_you: "Find your other sentence and start it with 'While' or 'When'.",
     },
     {
@@ -36,7 +36,7 @@ const GOOD_PAYLOAD = {
       why: "'ran fast' tells us; a strong verb shows us.",
       your_line: "The dog ran fast.",
       try_this: "The dog zoomed across the grass.",
-      sentence_type: null,
+      move: null,
       now_you: "Find 'ran fast' and swap it for one strong verb.",
     },
   ],
@@ -177,7 +177,7 @@ test("garbled transcription output -> 502 child-safe error", async () => {
 
 // ---- step 2: checked transcript -> feedback --------------------------------
 
-test("feedback prompt: year guide, rules, the ten areas, skill bank, sentence types, output spec", async () => {
+test("feedback prompt: year guide, rules, the ten areas, skill bank, writing moves, output spec", async () => {
   const capture = {};
   const r = await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 3, genre: "narrative" }, capture);
   assert.equal(r.status, 200);
@@ -188,19 +188,22 @@ test("feedback prompt: year guide, rules, the ten areas, skill bank, sentence ty
   assert.match(sys, /generic praise .* banned|banned/i);
   assert.match(sys, /where to next/i, "feedback principles are in the prompt");
   assert.match(sys, /sensory details/i);
-  assert.match(sys, /sentence openers/i);
+  assert.match(sys, /Because, but, so/);
+  assert.match(sys, /Sentence expansion/);
+  assert.match(sys, /Sentence combining/);
   assert.match(sys, /show, don't tell/i);
   for (const key of ["audience", "text_structure", "ideas", "character_setting", "vocabulary", "cohesion", "paragraphing", "sentence_structure", "punctuation", "spelling"]) {
     assert.match(sys, new RegExp(`- ${key} \\(`), `area ${key} is described`);
   }
   assert.doesNotMatch(sys, /persuasive_devices/, "a story is not judged on persuasive devices");
   assert.match(sys, /"strength": done well/);
-  assert.match(sys, /w_start: W-start sentence/);
-  assert.match(sys, /ing_start/);
-  assert.doesNotMatch(sys, /semicolon:/, "semi-colons are not offered to Year 3");
+  assert.match(sys, /- subordinating_conjunction: Subordinating conjunction start/);
+  assert.match(sys, /- sentence_expansion: Sentence expansion/);
+  assert.doesNotMatch(sys, /- appositive:/, "appositives are not offered to Year 3");
+  assert.match(sys, /Revising comes before editing/);
   assert.match(sys, /"areas"/);
   assert.match(sys, /power_ups/);
-  assert.match(sys, /sentence_type/);
+  assert.match(sys, /"move"/);
   assert.match(sys, /now_you/);
   assert.match(sys, /never use a power-up for spelling/i);
   assert.match(sys, /different line/i);
@@ -215,7 +218,7 @@ test("feedback prompt: year guide, rules, the ten areas, skill bank, sentence ty
   assert.ok(userParts.some((p) => p.type === "text" && p.text.includes(TEXT)));
 });
 
-test("feedback response is normalised: headline, ten areas in marker order, power-ups with sentence types", async () => {
+test("feedback response is normalised: headline, ten areas in marker order, power-ups with named moves", async () => {
   const r = await feedbackFor(GOOD_PAYLOAD);
   assert.equal(r.status, 200);
   assert.equal(r.payload.transcript, TEXT);
@@ -240,19 +243,19 @@ test("feedback response is normalised: headline, ten areas in marker order, powe
   assert.deepEqual(r.payload.powerUps[0], {
     area: "sentence_structure",
     areaLabel: "Sentence structure",
-    skill: "Start with a W word",
-    why: "Both of your sentences start with 'The' and 'It'. A W-start makes the reader lean in.",
+    skill: "Start with a subordinating conjunction",
+    why: "Both of your sentences start with 'The' and 'It'. A When or While start makes the reader lean in.",
     yourLine: "The dog ran fast.",
     tryThis: "When the gate swung open, the dog ran fast.",
-    sentenceType: {
-      key: "w_start",
-      name: "W-start sentence",
-      rule: "Begins with a W word (When, While, Where, Who, What, With), then a comma after the first part, then the rest.",
+    move: {
+      key: "subordinating_conjunction",
+      name: "Subordinating conjunction start",
+      rule: "Begin with a joining word like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
       example: "When the bell rang, we sprinted to the oval.",
     },
     nowYou: "Find your other sentence and start it with 'While' or 'When'.",
   });
-  assert.equal(r.payload.powerUps[1].sentenceType, null);
+  assert.equal(r.payload.powerUps[1].move, null);
   assert.equal(r.payload.stars, undefined, "old shape is gone");
   assert.equal(r.payload.detail, undefined);
 });
@@ -269,7 +272,8 @@ test("persuasive writing swaps characters and setting for persuasive devices", a
   assert.ok(!keys.includes("character_setting"));
   assert.match(capture.body.messages[0].content, /- persuasive_devices \(/);
   assert.doesNotMatch(capture.body.messages[0].content, /- character_setting \(/);
-  assert.match(capture.body.messages[0].content, /semicolon: Semi-colon sentence/, "Year 5 may be offered semi-colons");
+  assert.match(capture.body.messages[0].content, /- appositive: Appositive/, "Year 5 may be offered appositives");
+  assert.match(capture.body.messages[0].content, /general_to_specific_intro/);
 });
 
 test("reports and poems use the nine shared areas", async () => {
@@ -321,21 +325,21 @@ test("areas: one missing is tolerated, most missing -> 502, unknown status becom
   assert.ok(!r3.payload.criteria.some((c) => c.key === "paragraphing"), "an area with no text at all is dropped");
 });
 
-test("sentence types: unknown or too advanced for the year -> null", async () => {
+test("moves: unknown or too advanced for the year -> null", async () => {
   const withOdd = {
     ...GOOD_PAYLOAD,
     power_ups: [
-      { ...GOOD_PAYLOAD.power_ups[0], sentence_type: "haiku" },
-      { ...GOOD_PAYLOAD.power_ups[1], sentence_type: "semicolon" },
+      { ...GOOD_PAYLOAD.power_ups[0], move: "haiku" },
+      { ...GOOD_PAYLOAD.power_ups[1], move: "appositive" },
     ],
   };
   const r = await feedbackFor(withOdd, { transcript: TEXT, yearLevel: 2, genre: "narrative" });
   assert.equal(r.status, 200);
-  assert.equal(r.payload.powerUps[0].sentenceType, null);
-  assert.equal(r.payload.powerUps[1].sentenceType, null, "semi-colons are not explained to a Year 2");
+  assert.equal(r.payload.powerUps[0].move, null);
+  assert.equal(r.payload.powerUps[1].move, null, "appositives are not explained to a Year 2");
 
   const r6 = await feedbackFor(withOdd, { transcript: TEXT, yearLevel: 6, genre: "narrative" });
-  assert.equal(r6.payload.powerUps[1].sentenceType.name, "Semi-colon sentence");
+  assert.equal(r6.payload.powerUps[1].move.name, "Appositive");
 });
 
 test("power-ups: unknown area kept unlinked, junk dropped, capped at three, none -> 502", async () => {
@@ -369,7 +373,7 @@ test("missing headline falls back to the first power-up", async () => {
   delete bare.headline;
   const r = await feedbackFor(bare);
   assert.equal(r.status, 200);
-  assert.equal(r.payload.headline, "Start with a W word. Both of your sentences start with 'The' and 'It'. A W-start makes the reader lean in.");
+  assert.equal(r.payload.headline, "Start with a subordinating conjunction. Both of your sentences start with 'The' and 'It'. A When or While start makes the reader lean in.");
 });
 
 test("feedback defaults to gpt-5.4 when no model configured", async () => {

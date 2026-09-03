@@ -11,11 +11,13 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
   piece and the one change that would lift it most.
 - Two or three power-ups: the areas with the biggest payoff for this piece, each with the
   child's own line, that line rewritten to show the skill, and a tiny "now you" task that
-  sends them back into their own writing. When the rewrite is a whole sentence it is named
-  as one of twelve sentence types (simple, very short, power, red white and blue, adverb
-  start, preposition start, -ing start, -ed start, semi-colon, dash, W-start,
-  explore-the-subject) with a plain explanation and a fresh example, so the child can
-  recognise the move and use it again. Types are only offered from the year they suit.
+  sends them back into their own writing. The rewrite is named as one of the writing moves
+  the school teaches (because/but/so, subordinating conjunction start, sentence expansion,
+  sentence combining, transition words, appositives, topic and concluding sentences, sentence
+  types, vary vocabulary, and for older years general-to-specific introductions and their
+  mirror conclusions), with a plain explanation and a fresh example. Moves are only offered
+  from the year they suit. Revising comes first; spelling is labelled as editing and comes
+  after.
 - The writing check-up: the ten areas writing markers look at (audience, text structure,
   ideas, characters and setting or persuasive devices, vocabulary, cohesion, paragraphing,
   sentence structure, punctuation, spelling), each with a status (strength, on track, next
@@ -27,7 +29,10 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
 
 The area names follow the national writing assessment criteria; the descriptions used in
 the prompt and the app are written in our own words (the marking guides themselves are
-not reproduced here).
+not reproduced here). The writing moves follow the approach of The Writing Revolution (the
+Hochman Method), which the school uses for writing instruction; the names are theirs, the
+explanations and examples are ours, and none of their materials are reproduced. See
+`docs/research/writing-revolution-brief.md`.
 
 The approach follows what the feedback research says works: answer "where to next?",
 stay specific to the task, show the improvement rather than just naming it, and leave

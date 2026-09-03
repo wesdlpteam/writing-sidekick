@@ -208,6 +208,7 @@ function renderPractice() {
   const tip = state.feedback.spellingTip || "";
   const card = $("practice-card");
   card.hidden = words.length === 0;
+  $("edit-section").hidden = words.length === 0;
   if (!words.length) return;
   const list = $("practice-words");
   list.innerHTML = "";
@@ -272,18 +273,20 @@ function el(tag, className, text) {
   return node;
 }
 
-// A named sentence type: what it is called, the rule, and a fresh example, so the child can
-// recognise the move and use it again.
-function sentenceTypeNote(type) {
-  const box = el("div", "sentence-type");
+// A named writing move (the ones the school teaches): its name, the rule, and a fresh example,
+// so the child can recognise the move and use it again.
+function moveNote(move) {
+  const box = el("div", "move-note");
   const title = el("p", "st-title");
-  title.append(emoji("✨"), "This is a ", el("strong", "", type.name), ".");
-  const rule = el("p", "st-rule", type.rule);
+  title.append(emoji("✨"), "Writing move: ", el("strong", "", move.name));
+  const rule = el("p", "st-rule", move.rule);
   const example = el("p", "st-example");
-  example.append("Another one: ", el("em", "", type.example));
+  example.append("Another one: ", el("em", "", move.example));
   box.append(title, rule, example);
   return box;
 }
+
+const moveSpeech = (move) => (move ? `Writing move: ${move.name}. ${move.rule} Another one: ${move.example}` : "");
 
 // Emoji live in a span so the senior look (Years 5 and 6) can hide them.
 function emoji(char) {
@@ -302,7 +305,6 @@ function renderPowerUps(powerUps) {
     head.appendChild(el("p", "power-title", `Power-up ${index + 1}: ${p.skill}`));
     if (p.areaLabel) head.appendChild(el("span", "power-area", p.areaLabel));
     if (readAloud) {
-      const st = p.sentenceType;
       head.appendChild(
         listenButton(() =>
           [
@@ -310,7 +312,7 @@ function renderPowerUps(powerUps) {
             p.why,
             p.yourLine && `Your line: ${p.yourLine}`,
             `Try this: ${p.tryThis}`,
-            st && `This is a ${st.name}. ${st.rule} Another one: ${st.example}`,
+            moveSpeech(p.move),
             p.nowYou && `Now you: ${p.nowYou}`,
           ]
             .filter(Boolean)
@@ -321,7 +323,7 @@ function renderPowerUps(powerUps) {
     card.append(head, el("p", "power-why", p.why));
     if (p.yourLine) card.appendChild(labelledLine("Your line:", p.yourLine, "q"));
     card.appendChild(labelledLine("Try this:", p.tryThis, "strong"));
-    if (p.sentenceType) card.appendChild(sentenceTypeNote(p.sentenceType));
+    if (p.move) card.appendChild(moveNote(p.move));
     if (p.nowYou) {
       const task = el("p", "power-task");
       task.append(emoji("✍️"), el("strong", "", "Now you: "), p.nowYou);
@@ -462,12 +464,11 @@ $("btn-print").addEventListener("click", () => {
     const h = document.createElement("h3");
     h.textContent = `Power-up ${index + 1}: ${p.skill}${p.areaLabel ? ` (${p.areaLabel})` : ""}`;
     powerBox.appendChild(h);
-    const st = p.sentenceType;
     for (const line of [
       p.why,
       p.yourLine && `Your line: ${p.yourLine}`,
       `Try this: ${p.tryThis}`,
-      st && `This is a ${st.name}. ${st.rule} Another one: ${st.example}`,
+      moveSpeech(p.move),
       p.nowYou && `Now you: ${p.nowYou}`,
     ]) {
       if (!line) continue;

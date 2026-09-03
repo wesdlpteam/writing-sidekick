@@ -1,5 +1,5 @@
 import { getYearGuide, getGenreGuide, FEEDBACK_RULES } from "./_curriculum.js";
-import { criteriaFor, criteriaPrompt, sentenceTypesPrompt, describeSentenceType, STATUSES } from "./_criteria.js";
+import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, STATUSES } from "./_criteria.js";
 import { handlePreamble } from "./_cors.js";
 
 // The AI work happens in two steps so each call has one job:
@@ -32,17 +32,21 @@ If nothing on the page can be read at all, use { "transcript": "" }.`;
 // child something to do. The skill bank keeps the advice concrete and age-appropriate.
 const FEEDBACK_PRINCIPLES = `What good feedback looks like (follow this): it answers "where to next?", it is specific to this piece of writing, it shows the improvement done well rather than just naming it, and it leaves the child with something small to do straight away.
 
-Skill bank to choose power-ups from (pick only what fits this piece, year and genre; never list them all):
-- Sentence openers: start with a time word, a where phrase, an -ing word or a feeling instead of "I" or "Then" every time.
-- Sentence variety: mix a short punchy sentence with a longer one; join two short sentences with because, but, so, when or although.
+Skill bank to choose power-ups from (pick only what fits this piece, year and genre; never list them all). The school teaches writing one sentence at a time with these moves, so reach for them first:
+- Because, but, so: finish a thin sentence with a reason, a turn or a result.
+- Subordinating conjunction start: Although, When, Since, After, Before, If, Even though, then a comma, then the rest.
+- Sentence expansion: take a bare kernel sentence and add when, where, why or how (the when usually at the front with a comma).
+- Sentence combining: join choppy short sentences with and, but, because, so, a pronoun or a describing phrase.
+- Transition words between sentences and paragraphs: time (First, Later, Finally), illustration (For example), change of direction (However), conclusion (Therefore, In the end).
+- Appositives (Year 4 and up): a describing phrase between commas straight after a person or thing.
+- Topic sentence first and concluding sentence last in a paragraph (Year 3 and up); a new paragraph for each new time, place, idea or reason.
+- Sentence types: swap in a question, a command or an exclamation for effect.
+- Vary vocabulary: exact verbs and nouns instead of went, got, big, nice, said.
+Other craft that still matters:
 - Show, don't tell: replace "I was scared" with what your body did or what you saw.
 - Sensory details: what you saw, heard, smelt, felt or tasted at the exact moment.
-- Strong verbs and precise nouns: "went" -> "sprinted", "thing" -> "rusty gate".
-- Expanded noun groups and precise adjectives, not just "big" and "nice".
 - Dialogue with speech marks, and how it was said (Year 3 and up).
-- Paragraphs: a new one for a new time, place, person or idea (Year 3 and up); topic sentence first in information and persuasive texts.
 - Openings that hook (a question, a sound, action, dialogue) and endings that resolve or reflect.
-- Cohesion: time and sequence words (first, later, meanwhile), pronouns instead of repeating a name.
 - Figurative language: simile, metaphor, personification (Year 3 and up); onomatopoeia and alliteration (Years 1 and 2).
 - Persuasive: a clear position, reasons with evidence or examples, emotive and modal words, talking to the reader.
 - Information: heading, facts, technical words, present tense, general nouns.
@@ -68,7 +72,7 @@ const OUTPUT_SPEC = `The child has already checked the typed copy of their writi
       "why": "one or two sentences on why this will lift THIS piece, pointing at their writing",
       "your_line": "one exact sentence or phrase copied from the child's writing where this skill belongs",
       "try_this": "that same line rewritten to show the skill done well, keeping the child's ideas, voice and year level",
-      "sentence_type": "a key from the sentence types list when try_this is a whole rewritten sentence that clearly matches that type, otherwise null",
+      "move": "a key from the writing moves list when try_this clearly shows that move, otherwise null",
       "now_you": "a tiny task the child can do right now on their own writing, e.g. 'Find your sentence about the waves and add one sound you heard.'"
     }
   ],
@@ -81,7 +85,7 @@ const OUTPUT_SPEC = `The child has already checked the typed copy of their writi
   }
 }
 Rules for areas: include an entry for every area key listed above (and only those keys). "strength" quotes the child's actual words and names the skill (for example "You used a time word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
-Rules for power_ups: 2 or 3, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "try_this" must keep the child's meaning, be correct natural English a teacher would accept, and be something a child of this year level could realistically write; where it helps, shape it as one of the sentence types listed and name that type in "sentence_type". "now_you" must be one short, concrete task on their own writing (often: find the other places in your writing where this move fits and use it there too), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in practice_words and the spelling and punctuation areas.
+Rules for power_ups: 2 or 3, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "try_this" must keep the child's meaning, be correct natural English a teacher would accept, and be something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task on their own writing that uses the move (often: find the other places in your writing where this move fits and use it there too), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in practice_words and the spelling and punctuation areas.
 Rules for practice_words: only genuinely misspelt words the child actually wrote (never punctuation or grammar slips); at most 5, choosing the words most worth learning at this year level (everyday high-frequency words first); "correct" is the right spelling, "wrote" is exactly what the child wrote. Use [] if spelling is all correct.
 Rules for spelling_tip: one child-friendly spelling generalisation only if it genuinely fits two or more of the practice words (for example "When you add -ing to a word ending in e, drop the e: make -> making", or "Say tricky words in syllables: fam-i-ly"). Word it so a child of this year level can read it. Use "" if no pattern fits.
 Rules for word_boost: pick 1-3 plain words the child actually wrote that could be stronger; for each, suggest 1-3 richer but year-appropriate alternatives. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". Use null if their word choices are already strong.
@@ -126,7 +130,7 @@ function validateFeedback(data, { areas, yearLevel }) {
         why: text(p.why),
         yourLine: text(p.your_line),
         tryThis: text(p.try_this),
-        sentenceType: describeSentenceType(p.sentence_type, yearLevel),
+        move: describeMove(p.move, yearLevel),
         nowYou: text(p.now_you),
       };
     })
@@ -260,7 +264,7 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
     getGenreGuide(kind),
     criteriaPrompt(kind),
     FEEDBACK_PRINCIPLES,
-    sentenceTypesPrompt(yearLevel),
+    movesPrompt(yearLevel),
     OUTPUT_SPEC,
   ]
     .filter(Boolean)
