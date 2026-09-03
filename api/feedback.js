@@ -2,6 +2,7 @@ import { getYearGuide, getGenreGuide, FEEDBACK_RULES } from "./_curriculum.js";
 import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, STATUSES, MOVES } from "./_criteria.js";
 import { handlePreamble } from "./_cors.js";
 import { apiUrl, fetchWithTimeout } from "./_provider.js";
+import { assessSafety, minimiseContactDetails, safetyPayload } from "./_safety.js";
 
 // The AI work happens in two steps so each call has one job:
 //   1. photos -> transcript      (vision model, image detail "original", strict copy rules)
@@ -487,6 +488,8 @@ export async function handleFeedback(body, { fetchImpl, env }) {
     if (!env?.OPENAI_API_KEY) {
       return { status: 500, payload: { error: "The app isn't set up yet. Please tell your teacher." } };
     }
+    const safety = await assessSafety(revise.attempt, { fetchImpl, env });
+    if (safety.level !== "ordinary") return { status: 200, payload: safetyPayload(safety.level) };
     return checkRevision({ revise, yearLevel, env, fetchImpl });
   }
 
@@ -520,7 +523,12 @@ export async function handleFeedback(body, { fetchImpl, env }) {
   }
 
   if (images.length) return transcribePages({ images, env, fetchImpl });
-  return feedbackForTranscript({ transcript, yearLevel, genre: body?.genre, env, fetchImpl });
+
+  // Safeguarding comes before any writing advice: a disclosure gets the trusted-adult route
+  // and the feedback model is never asked about it.
+  const safety = await assessSafety(transcript, { fetchImpl, env });
+  if (safety.level !== "ordinary") return { status: 200, payload: safetyPayload(safety.level) };
+  return feedbackForTranscript({ transcript: minimiseContactDetails(transcript), yearLevel, genre: body?.genre, env, fetchImpl });
 }
 
 export default async function handler(req, res) {

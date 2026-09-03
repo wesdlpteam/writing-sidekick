@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleFeedback } from "./api/feedback.js";
 import { handleSpeak } from "./api/speak.js";
+import { localSafetyScan, safetyPayload } from "./api/_safety.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.argv.find((a) => a.startsWith("--port="))?.slice(7)) || 4173;
@@ -180,6 +181,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (MOCK) {
       await new Promise((r) => setTimeout(r, 1200)); // simulate thinking time
+      // Practice mode runs the local safeguarding rules too, so the adult screen can be tried.
+      const checked = body.revise ? body.revise.attempt : body.transcript;
+      const level = localSafetyScan(typeof checked === "string" ? checked : "");
+      if (level !== "ordinary" && (body.revise || !body.images)) {
+        res.writeHead(200).end(JSON.stringify(safetyPayload(level)));
+        return;
+      }
       if (body.revise) {
         const attempt = typeof body.revise.attempt === "string" ? body.revise.attempt.trim() : "";
         if (!attempt) {
