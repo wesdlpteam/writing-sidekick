@@ -502,10 +502,10 @@ function renderFeedback() {
 // ---- feedback slides: one part at a time -----------------------------------
 
 const SLIDES = [
-  { key: "picture", label: "Big picture" },
+  { key: "picture", label: "Mission brief" },
   { key: "power", label: "Power-ups" },
-  { key: "words", label: "Words" },
-  { key: "checkup", label: "Check-up" },
+  { key: "words", label: "Word lab" },
+  { key: "checkup", label: "Hero scan" },
 ];
 let slideIndex = 0;
 
@@ -630,7 +630,7 @@ $("btn-print").addEventListener("click", () => {
   checkupBox.innerHTML = "";
   {
     const h = document.createElement("h2");
-    h.textContent = "Writing check-up";
+    h.textContent = "Hero scan: writing check-up";
     const ul = document.createElement("ul");
     for (const c of criteria) {
       const li = document.createElement("li");

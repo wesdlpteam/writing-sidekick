@@ -7,8 +7,11 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
 
 ## What the feedback looks like
 
-- The big picture: one or two sentences from the sidekick naming the best thing in the
-  piece and the one change that would lift it most.
+The feedback comes as four slides, named to fit the superhero theme: Mission brief, Power-ups,
+Word lab and Hero scan.
+
+- The mission brief (the big picture): one or two sentences from the sidekick naming the best
+  thing in the piece and the one change that would lift it most.
 - Two or three power-ups: the areas with the biggest payoff for this piece, each with the
   child's own line, that line rewritten to show the skill, and a tiny "now you" task that
   sends them back into their own writing. The rewrite is named as one of the writing moves
@@ -19,7 +22,9 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
   and a fresh example. Moves are only offered
   from the year they suit. Revising comes first; spelling is labelled as editing and comes
   after.
-- The writing check-up: the ten areas writing markers look at (audience, text structure,
+- The word lab: word power (stronger words for plain ones, with the child's sentence rewritten)
+  and spelling to practise.
+- The hero scan (the writing check-up): the ten areas writing markers look at (audience, text structure,
   ideas, characters and setting or persuasive devices, vocabulary, cohesion, paragraphing,
   sentence structure, punctuation, spelling), each with a status (strength, on track, next
   step), what the child did well, and a next step. Reports and poems use the nine shared

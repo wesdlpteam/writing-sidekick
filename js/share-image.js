@@ -112,7 +112,7 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
     });
 
   if (include.brief) {
-    addCard(BLUE, "First, the big picture", [feedback.headline]);
+    addCard(BLUE, "Your mission brief", [feedback.headline]);
     feedback.powerUps.forEach((p, index) => {
       const m = p.move;
       addCard("#ffffff", `⚡ Power-up ${index + 1}: ${p.skill}`, [
@@ -132,7 +132,7 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
       ]);
     }
     if (feedback.practiceWords?.length) {
-      addCard(YELLOW, "Then edit: spelling to practise", [
+      addCard(YELLOW, "Word lab: spelling to practise", [
         feedback.practiceWords.map((w) => `${w.correct} (you wrote: ${w.wrote})`).join("   "),
         feedback.spellingTip && `Tip: ${feedback.spellingTip}`,
       ]);
