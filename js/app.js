@@ -485,15 +485,13 @@ function renderCriteria(criteria) {
 }
 
 function renderFeedback() {
-  const { headline, criteria, powerUps } = state.feedback;
+  const { criteria, powerUps } = state.feedback;
   clearSpeechCache();
-  mountListen($("headline-actions"), headline);
   renderPractice();
   renderBoost();
   $("save-brief").checked = true;
   $("save-detail").checked = true;
   rebuildShareImage();
-  $("headline").textContent = headline;
   renderPowerUps(powerUps);
   renderCriteria(criteria);
   showSlide(0);
@@ -501,8 +499,8 @@ function renderFeedback() {
 
 // ---- feedback slides: one part at a time -----------------------------------
 
+// The server's one-line headline is not shown: Nathan found it doubled up on the rest.
 const SLIDES = [
-  { key: "picture", label: "Mission brief" },
   { key: "power", label: "Power-ups" },
   { key: "words", label: "Word lab" },
   { key: "checkup", label: "Hero scan" },
@@ -611,7 +609,7 @@ $("btn-save-go").addEventListener("click", async () => {
 });
 
 $("btn-print").addEventListener("click", () => {
-  const { headline, criteria, powerUps } = state.feedback;
+  const { criteria, powerUps } = state.feedback;
   $("print-date").textContent = new Date().toLocaleDateString("en-AU", {
     day: "numeric", month: "long", year: "numeric",
   });
@@ -624,7 +622,6 @@ $("btn-print").addEventListener("click", () => {
     pagesBox.appendChild(img);
   });
   $("print-transcript").textContent = fullTranscript();
-  $("print-headline").textContent = headline;
   const powerBox = $("print-powerups");
   powerBox.innerHTML = "";
   powerUps.forEach((p, index) => {

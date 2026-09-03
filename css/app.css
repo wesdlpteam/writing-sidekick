@@ -155,8 +155,6 @@ h2 {
   margin: 6px auto 0;
   filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 20px rgba(199, 125, 255, 0.35));
 }
-/* On the feedback screen the same hero stands above the speech bubble. */
-.hero-art-feedback { margin: 0 auto; }
 .tagline {
   font-family: var(--font-display);
   font-size: 1.5rem;
@@ -414,49 +412,11 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 }
 #transcript::placeholder { color: var(--muted); }
 
-/* The sidekick's speech bubble, sitting under the hero art with its tail pointing up. */
-.wish-card {
-  position: relative;
-  background: var(--purple-soft);
-  color: var(--ink);
-  border: var(--border);
-  border-radius: 16px;
-  padding: 22px 20px 18px;
-  box-shadow: var(--pop-shadow);
-  margin-top: 22px;
-}
-.wish-card::before {
-  content: "";
-  position: absolute;
-  top: -15px;
-  left: calc(50% - 12px);
-  width: 24px;
-  height: 24px;
-  background: var(--purple-soft);
-  border-left: 3px solid var(--ink);
-  border-top: 3px solid var(--ink);
-  transform: rotate(45deg);
-}
-.wish-title {
-  font-family: var(--font-hand);
-  font-size: 1.4rem;
-  font-weight: 400;
-  margin: 0 0 6px;
-  color: var(--red);
-}
-.wish-card p { margin: 0; }
-#headline {
-  font-family: var(--font-hand);
-  font-size: 1.45rem;
-  line-height: 1.5;
-}
-
-/* Celebration beat: the bubble lands first, then the power-ups one by one. */
-.screen.active .wish-card { animation: settle 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s backwards; }
+/* Celebration beat: the power-ups land one by one. */
 .screen.active .power-card { animation: settle 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
-.screen.active .power-card:nth-child(1) { animation-delay: 0.6s; }
-.screen.active .power-card:nth-child(2) { animation-delay: 0.9s; }
-.screen.active .power-card:nth-child(3) { animation-delay: 1.2s; }
+.screen.active .power-card:nth-child(1) { animation-delay: 0.2s; }
+.screen.active .power-card:nth-child(2) { animation-delay: 0.5s; }
+.screen.active .power-card:nth-child(3) { animation-delay: 0.8s; }
 @keyframes settle {
   from { opacity: 0; transform: translateY(18px) scale(0.96); }
 }
@@ -536,8 +496,6 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .listen[data-state="loading"] { opacity: 0.7; }
 .listen[data-state="playing"] { background: var(--gold); }
 .listen.compact { padding: 4px 12px; font-size: 0.85rem; margin-top: 10px; }
-.wish-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
-.wish-actions:empty { display: none; }
 .title-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .title-row .practice-title { margin: 0; }
 .title-row + ul { margin-top: 10px; }
@@ -843,13 +801,6 @@ body.senior .h-emoji { display: none; }
 body.senior h1::after { content: ""; }
 body.senior .title-lockup h1,
 body.senior .tagline { transform: none; }
-body.senior .wish-title {
-  font-family: var(--font-body);
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--ink);
-}
-body.senior #headline { font-family: var(--font-body); font-size: 1.1rem; line-height: 1.6; }
 body.senior .reminder-title { font-family: var(--font-body); font-size: 1.1rem; font-weight: 800; color: var(--ink); }
 body.senior .reminder::before { display: none; }
 body.senior .privacy-note { font-family: var(--font-body); font-size: 0.95rem; }
@@ -857,7 +808,7 @@ body.senior .year-btn.selected::after { content: ""; }
 
 @media (prefers-reduced-motion: reduce) {
   .screen.active { animation: none; }
-  .screen.active .power-card, .screen.active .wish-card { animation: none; }
+  .screen.active .power-card { animation: none; }
   .spinner { animation-duration: 2s; }
   .primary:active, .secondary:active { transform: none; }
 }

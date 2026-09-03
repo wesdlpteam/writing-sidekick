@@ -91,7 +91,7 @@ async function loadImage(src) {
   return img;
 }
 
-// include.brief = the sidekick's message, power-ups, spelling and word power;
+// include.brief = the power-ups, word power and spelling;
 // include.detail = the writing check-up (one card per area).
 export async function buildFeedbackImage({ pages = [], feedback, yearLevel, include = { brief: true, detail: false } }) {
   const bodyFont = `30px Nunito, sans-serif`;
@@ -112,7 +112,6 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
     });
 
   if (include.brief) {
-    addCard(BLUE, "Your mission brief", [feedback.headline]);
     feedback.powerUps.forEach((p, index) => {
       const m = p.move;
       addCard("#ffffff", `⚡ Power-up ${index + 1}: ${p.skill}`, [

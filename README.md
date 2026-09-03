@@ -7,11 +7,9 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
 
 ## What the feedback looks like
 
-The feedback comes as four slides, named to fit the superhero theme: Mission brief, Power-ups,
-Word lab and Hero scan.
+The feedback comes as three slides, named to fit the superhero theme: Power-ups, Word lab and
+Hero scan.
 
-- The mission brief (the big picture): one or two sentences from the sidekick naming the best
-  thing in the piece and the one change that would lift it most.
 - Two or three power-ups: the areas with the biggest payoff for this piece, each with the
   child's own line, that line rewritten to show the skill, and a tiny "now you" task that
   sends them back into their own writing. The rewrite is named as one of the writing moves

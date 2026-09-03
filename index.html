@@ -94,15 +94,6 @@
       <h1><span class="h-emoji">&#x1F31F; </span>Sidekick says</h1>
       <nav id="fb-steps" class="fb-steps" aria-label="Feedback steps"></nav>
 
-      <section class="fb-slide" data-slide="picture">
-        <img class="hero-art hero-art-feedback" src="art/hero.png" alt="The Writing Sidekick, a young superhero in purple and gold holding a giant glowing pencil">
-        <div class="wish-card">
-          <p class="wish-title">Your mission brief</p>
-          <p id="headline"></p>
-          <div id="headline-actions" class="wish-actions"></div>
-        </div>
-      </section>
-
       <section class="fb-slide" data-slide="power">
         <div class="stage stage-power">
           <video class="stage-video" muted playsinline preload="none" poster="art/powerup.jpg" aria-label="The Writing Sidekick powering up, glowing gold with lightning">
@@ -157,7 +148,7 @@
 
       <div class="btn-row step-actions slide-nav">
         <button id="btn-slide-back" class="ghost" type="button" hidden>&#8592; Back</button>
-        <button id="btn-slide-next" class="primary big" type="button">Next: Power-ups &#8594;</button>
+        <button id="btn-slide-next" class="primary big" type="button">Next: Word lab &#8594;</button>
       </div>
     </section>
 
@@ -174,7 +165,7 @@
     <dialog id="save-dialog">
       <h2>Save a picture</h2>
       <p class="lead">Tick what goes in the picture.</p>
-      <label class="check-row"><input id="save-brief" type="checkbox" checked> Sidekick's message and power-ups, with spelling and word power</label>
+      <label class="check-row"><input id="save-brief" type="checkbox" checked> Power-ups, with word power and spelling</label>
       <label class="check-row" id="save-detail-row"><input id="save-detail" type="checkbox" checked> Full hero scan (all ten areas)</label>
       <div class="btn-row">
         <button id="btn-save-cancel" class="ghost" type="button">Cancel</button>
@@ -191,7 +182,6 @@
     <h2>My writing</h2>
     <pre id="print-transcript"></pre>
     <h2>Sidekick says</h2>
-    <p id="print-headline"></p>
     <h2>Power-ups</h2>
     <div id="print-powerups"></div>
     <div id="print-checkup"></div>
