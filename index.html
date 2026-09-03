@@ -21,7 +21,6 @@
   <main id="app">
 
     <section id="screen-start" class="screen active">
-      <button id="btn-settings" class="gear" aria-label="Teacher settings">&#9881;</button>
       <div class="title-lockup">
         <h1><span class="emblem" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M32 3 L59 13 V34 C59 48 47 58 32 62 C17 58 5 48 5 34 V13 Z" fill="#ffc233" stroke="#131a30" stroke-width="3" stroke-linejoin="round"/><path d="M32 10 L52 18 V34 C52 44 43 52 32 55 C21 52 12 44 12 34 V18 Z" fill="#4f2759" stroke="#131a30" stroke-width="2" stroke-linejoin="round"/><text x="20" y="42" font-family="Bangers, Impact, sans-serif" font-size="21" fill="#ffc233" stroke="#131a30" stroke-width="0.8" text-anchor="middle">W</text><text x="44" y="42" font-family="Bangers, Impact, sans-serif" font-size="21" fill="#ffc233" stroke="#131a30" stroke-width="0.8" text-anchor="middle">S</text><rect x="29" y="14" width="6" height="4" rx="1" fill="#e8434a" stroke="#131a30" stroke-width="1.2"/><rect x="29" y="18" width="6" height="22" fill="#ffc233" stroke="#131a30" stroke-width="1.2"/><path d="M29 40 L35 40 L32 48 Z" fill="#f6d7b0" stroke="#131a30" stroke-width="1.2" stroke-linejoin="round"/><path d="M31 45 L32 48 L33 45 Z" fill="#131a30"/></svg></span>The Writing Sidekick</h1>
         <img class="hero-art" src="art/hero.png" alt="The Writing Sidekick, a young superhero in purple and gold holding a giant glowing pencil">
@@ -147,26 +146,6 @@
       <p id="error-msg"></p>
       <button id="btn-error-close" class="ghost small">OK</button>
     </div>
-
-    <dialog id="settings-dialog">
-      <h2>Teacher settings</h2>
-      <p class="lead">This bit is for teachers.</p>
-      <label class="setting-row">Default year level
-        <select id="setting-year">
-          <option value="">None (students choose)</option>
-          <option value="1">Year 1</option><option value="2">Year 2</option>
-          <option value="3">Year 3</option><option value="4">Year 4</option>
-          <option value="5">Year 5</option><option value="6">Year 6</option>
-        </select>
-      </label>
-      <label class="setting-row">Show the full writing check-up to students
-        <input id="setting-detail" type="checkbox" checked>
-      </label>
-      <label class="setting-row">Listen buttons (reads each card aloud)
-        <input id="setting-readaloud" type="checkbox" checked>
-      </label>
-      <button id="btn-settings-done" class="primary">Done</button>
-    </dialog>
 
     <dialog id="save-dialog">
       <h2>Save a picture</h2>

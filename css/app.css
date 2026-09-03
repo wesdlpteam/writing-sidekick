@@ -167,8 +167,6 @@ h2 {
   text-shadow: 2px 2px 0 var(--ink), 0 0 16px rgba(199, 125, 255, 0.65);
 }
 #screen-start .lead { text-align: center; margin-top: 18px; }
-/* Narrow screens: the title wraps to two lines, so start it below the settings gear. */
-@media (max-width: 640px) { .title-lockup { padding-top: 40px; } }
 
 button, .file-btn {
   font: inherit;
@@ -241,20 +239,6 @@ button:focus-visible, .file-btn:focus-within, #transcript:focus-visible {
 }
 .scan-box :focus-visible, .scan-box .file-btn:focus-within, .error :focus-visible, dialog :focus-visible {
   outline-color: var(--ink);
-}
-
-.gear {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 1;
-  background: transparent;
-  font-size: 1.7rem;
-  color: var(--sky-muted);
-  padding: 8px;
-  min-width: 44px;
-  min-height: 44px;
-  text-decoration: none;
 }
 
 .year-grid {
@@ -806,16 +790,6 @@ dialog {
 dialog h2 { margin-top: 0; color: var(--ink); text-shadow: none; font-family: var(--font-display); font-weight: 400; letter-spacing: 0.04em; font-size: 1.7rem; transform: none; }
 dialog .lead { color: var(--muted); }
 dialog::backdrop { background: rgba(10, 17, 40, 0.72); }
-.setting-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 18px 0; font-weight: 700; }
-.setting-row select {
-  font: inherit;
-  padding: 8px;
-  border-radius: 10px;
-  border: 2px solid var(--ink);
-  background: #fff;
-  color: var(--ink);
-}
-.setting-row input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--purple); }
 
 /* Years 5-6: same system, quieter voice. */
 body.senior .h-emoji { display: none; }

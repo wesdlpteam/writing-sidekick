@@ -23,14 +23,17 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
   ideas, characters and setting or persuasive devices, vocabulary, cohesion, paragraphing,
   sentence structure, punctuation, spelling), each with a status (strength, on track, next
   step), what the child did well, and a next step. Reports and poems use the nine shared
-  areas. Teachers can hide the check-up for younger students.
+  areas.
 - Spelling to practise and Word power.
 - Revise it: under each power-up the child types their own new version and taps "Check my
   sentence". The AI judges only whether the move is there (nailed it, nearly there, keep
   going), quotes what works, offers one tweak, and shows the move done well if needed.
   Spelling is ignored here, because this is revising, not editing.
 - A Listen button on every card reads it aloud in a warm, sincere voice (OpenAI's "marin"
-  voice), so younger readers can hear their feedback. Teachers can switch the buttons off.
+  voice), so younger readers can hear their feedback.
+
+The app is student-only for now: there is no teacher settings screen, students choose their
+own year level, and the check-up and Listen buttons are always on.
 
 The area names follow the national writing assessment criteria; the descriptions used in
 the prompt and the app are written in our own words (the marking guides themselves are

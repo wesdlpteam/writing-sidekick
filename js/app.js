@@ -1,6 +1,5 @@
 import { prepareScan, rotate90 } from "./scan.js";
 import { transcribePages, getFeedback, checkRevision } from "./api.js";
-import { loadSettings, saveSettings } from "./settings.js";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js";
 
@@ -21,8 +20,8 @@ function show(screenId) {
   window.scrollTo(0, 0);
 }
 
-// Read-aloud (teacher setting). Set for each feedback render; renderers call mountListen.
-let readAloud = true;
+// Read-aloud is always on (the app is student-only for now); renderers call mountListen.
+const readAloud = true;
 
 function mountListen(slot, text, options) {
   slot.innerHTML = "";
@@ -455,20 +454,16 @@ function renderCriteria(criteria) {
 
 function renderFeedback() {
   const { headline, criteria, powerUps } = state.feedback;
-  readAloud = loadSettings().readAloud;
   clearSpeechCache();
   mountListen($("headline-actions"), headline);
   renderPractice();
   renderBoost();
-  const showDetail = loadSettings().showDetail;
-  $("save-detail-row").hidden = !showDetail;
   $("save-brief").checked = true;
-  $("save-detail").checked = showDetail;
+  $("save-detail").checked = true;
   rebuildShareImage();
   $("headline").textContent = headline;
   renderPowerUps(powerUps);
   renderCriteria(criteria);
-  $("checkup").hidden = !showDetail;
 }
 
 // ---- save picture / print / restart ---------------------------------------
@@ -478,8 +473,7 @@ function renderFeedback() {
 let shareCache = { key: "", blob: null };
 
 function shareOptions() {
-  const detailAllowed = loadSettings().showDetail;
-  return { brief: $("save-brief").checked, detail: detailAllowed && $("save-detail").checked };
+  return { brief: $("save-brief").checked, detail: $("save-detail").checked };
 }
 
 function shareImageInputs(include) {
@@ -554,7 +548,7 @@ $("btn-print").addEventListener("click", () => {
   });
   const checkupBox = $("print-checkup");
   checkupBox.innerHTML = "";
-  if (loadSettings().showDetail) {
+  {
     const h = document.createElement("h2");
     h.textContent = "Writing check-up";
     const ul = document.createElement("ul");
@@ -645,38 +639,4 @@ $("btn-error-close").addEventListener("click", () => {
 
 document.addEventListener("speech-error", (event) => showError(event.detail));
 
-// ---- teacher settings ------------------------------------------------------
-
-$("btn-settings").addEventListener("click", () => {
-  const settings = loadSettings();
-  $("setting-year").value = settings.defaultYear ?? "";
-  $("setting-detail").checked = settings.showDetail;
-  $("setting-readaloud").checked = settings.readAloud;
-  $("settings-dialog").showModal();
-});
-
-$("btn-settings-done").addEventListener("click", () => {
-  const yearValue = $("setting-year").value;
-  saveSettings({
-    defaultYear: yearValue ? Number(yearValue) : null,
-    showDetail: $("setting-detail").checked,
-    readAloud: $("setting-readaloud").checked,
-  });
-  $("settings-dialog").close();
-  applyDefaultYear();
-});
-
-function applyDefaultYear() {
-  const { defaultYear } = loadSettings();
-  if (defaultYear && !state.yearLevel) {
-    state.yearLevel = defaultYear;
-    document.querySelectorAll(".year-btn").forEach((b) =>
-      b.classList.toggle("selected", Number(b.dataset.year) === defaultYear),
-    );
-    setSeniorLook();
-    refreshStartButton();
-  }
-}
-
-applyDefaultYear();
 renderPages();
