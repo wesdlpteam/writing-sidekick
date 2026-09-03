@@ -86,11 +86,30 @@ test("handler: preflight from the Pages site is allowed, other origins get nothi
   const other = fakeRes();
   await handler({ method: "OPTIONS", headers: { origin: "https://evil.example" } }, other);
   assert.equal(other.headers["access-control-allow-origin"], undefined);
+  assert.equal(other.statusCode, 403);
+});
+
+test("handler: no Origin -> 403 before anything else", async () => {
+  const res = fakeRes();
+  await handler({ method: "POST", headers: { "content-type": "application/json" }, body: { text: "Hi" } }, res);
+  assert.equal(res.statusCode, 403);
+});
+
+test("speech request carries a timeout signal and honours OPENAI_BASE_URL", async () => {
+  const seen = {};
+  const fetchImpl = async (url, options) => {
+    seen.url = url;
+    seen.signal = options.signal;
+    return { ok: true, status: 200, arrayBuffer: async () => AUDIO.buffer.slice(0) };
+  };
+  await handleSpeak({ text: "Hi" }, { fetchImpl, env: { ...ENV, OPENAI_BASE_URL: "https://au.example/v1/" } });
+  assert.equal(seen.url, "https://au.example/v1/audio/speech");
+  assert.ok(seen.signal instanceof AbortSignal, "an upstream timeout is set");
 });
 
 test("handler: bad request answers json with no-store and the allow-origin header", async () => {
   const res = fakeRes();
-  await handler({ method: "POST", headers: { origin: "https://wesdlpteam.github.io" }, body: { text: "" } }, res);
+  await handler({ method: "POST", headers: { origin: "https://wesdlpteam.github.io", "content-type": "application/json" }, body: { text: "" } }, res);
   assert.equal(res.statusCode, 400);
   assert.equal(res.headers["cache-control"], "no-store");
   assert.equal(res.headers["access-control-allow-origin"], "https://wesdlpteam.github.io");

@@ -1,6 +1,7 @@
 import { getYearGuide, getGenreGuide, FEEDBACK_RULES } from "./_curriculum.js";
 import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, STATUSES, MOVES } from "./_criteria.js";
 import { handlePreamble } from "./_cors.js";
+import { apiUrl, fetchWithTimeout } from "./_provider.js";
 
 // The AI work happens in two steps so each call has one job:
 //   1. photos -> transcript      (vision model, image detail "original", strict copy rules)
@@ -9,10 +10,13 @@ import { handlePreamble } from "./_cors.js";
 
 const MAX_PAGES = 4;
 const MAX_IMAGE_CHARS = 6_000_000; // ~4.4MB of base64 data per page
+const MAX_TOTAL_IMAGE_CHARS = 4_500_000; // the whole request must fit the host's 4.5MB limit
+const MAX_TRANSCRIPT_CHARS = 20_000;
+const UPSTREAM_TIMEOUT_MS = 60_000;
 const DEFAULT_FEEDBACK_MODEL = "gpt-5.4";
 const DEFAULT_TRANSCRIBE_MODEL = "gpt-5.4";
-const CHILD_SAFE_ERROR =
-  "Hmm, I had trouble reading that photo. Try taking it again with the page flat and in good light.";
+const PHOTO_ERROR = "Hmm, I had trouble reading that photo. Try taking it again with the page flat and in good light.";
+const FEEDBACK_ERROR = "Hmm, I couldn't put your feedback together that time. Please try again.";
 
 const TRANSCRIBE_RULES = `You are transcribing a primary-school child's handwriting from photos of their page or pages. Your only job is a faithful, letter-for-letter transcript. Never correct, tidy or improve anything. You are not giving feedback.
 Rules:
@@ -75,7 +79,7 @@ Other craft that still matters:
 - Years 1 and 2 basics: capital letters and full stops in the right places, joining words "and" and "because", describing words, sound words.
 - Years 5 and 6 stretch: complex sentences with the clause order changed for effect, modality, formal register, figurative language, paragraph cohesion, editing out repetition.`;
 
-const OUTPUT_SPEC = `The child has already checked the typed copy of their writing, so treat it as exactly what they wrote. Respond with ONLY a JSON object in exactly this shape:
+const outputSpec = (powerUpCount) => `The child has already checked the typed copy of their writing, so treat it as exactly what they wrote. Respond with ONLY a JSON object in exactly this shape:
 {
   "headline": "one or two friendly sentences from the sidekick: the single best thing about this piece (quote it) and the one change that would lift it most",
   "areas": {
@@ -105,7 +109,7 @@ const OUTPUT_SPEC = `The child has already checked the typed copy of their writi
   }
 }
 Rules for areas: include an entry for every area key listed above (and only those keys). "strength" quotes the child's actual words and names the skill (for example "You used a time word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
-Rules for power_ups: 2 or 3, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "try_this" must keep the child's meaning, be correct natural English a teacher would accept, and be something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task on their own writing that uses the move (often: find the other places in your writing where this move fits and use it there too), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in practice_words and the spelling and punctuation areas.
+Rules for power_ups: ${powerUpCount}, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "try_this" must keep the child's meaning, be correct natural English a teacher would accept, and be something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task on their own writing that uses the move (often: find the other places in your writing where this move fits and use it there too), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in practice_words and the spelling and punctuation areas.
 Rules for practice_words: only genuinely misspelt words the child actually wrote (never punctuation or grammar slips); at most 5, choosing the words most worth learning at this year level (everyday high-frequency words first); "correct" is the right spelling, "wrote" is exactly what the child wrote. Use [] if spelling is all correct.
 Rules for spelling_tip: one child-friendly spelling generalisation only if it genuinely fits two or more of the practice words (for example "When you add -ing to a word ending in e, drop the e: make -> making", or "Say tricky words in syllables: fam-i-ly"). Word it so a child of this year level can read it. Use "" if no pattern fits.
 Rules for word_boost: pick 1-3 plain words the child actually wrote that could be stronger; for each, suggest 1-3 richer but year-appropriate alternatives. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". Use null if their word choices are already strong.
@@ -131,13 +135,68 @@ const MAX_ATTEMPT_CHARS = 1200;
 
 const text = (value) => (typeof value === "string" ? value.trim() : "");
 
+// Evidence checks: nothing shown to the child may be invented. Matching forgives only
+// whitespace, letter case and curly-versus-straight quote marks; spelling is never "fixed".
+const normalise = (value) =>
+  text(value)
+    .replace(/[‘’‚′]/g, "'")
+    .replace(/[“”„″]/g, '"')
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+const wordsOf = (value) =>
+  normalise(value)
+    .replace(/[^\p{L}\p{N}'\- ]/gu, " ")
+    .split(" ")
+    .map((w) => w.replace(/^['-]+|['-]+$/g, ""))
+    .filter(Boolean);
+const hasWord = (transcript, word) => {
+  const target = wordsOf(word);
+  return target.length === 1 && wordsOf(transcript).includes(target[0]);
+};
+
+// A quoted line must come from the transcript. The same words with different punctuation or
+// quote marks snap to the child's real line; anything else is dropped rather than shown.
+export function quoteFromTranscript(quote, transcript) {
+  const wanted = normalise(quote);
+  if (!wanted) return "";
+  if (normalise(transcript).includes(wanted)) return text(quote);
+  const wantedWords = new Set(wordsOf(quote));
+  if (!wantedWords.size) return "";
+  let best = "";
+  let bestScore = 0;
+  for (const line of String(transcript).split(/\n+|(?<=[.!?])\s+/)) {
+    const words = wordsOf(line);
+    if (!words.length) continue;
+    const overlap = words.filter((w) => wantedWords.has(w)).length;
+    const score = overlap / Math.max(wantedWords.size, words.length);
+    if (score > bestScore) {
+      bestScore = score;
+      best = line.trim();
+    }
+  }
+  return bestScore >= 0.75 ? best : "";
+}
+
+// The data URL must hold a real JPEG, PNG or WebP (the app always sends JPEG). The first few
+// bytes say which, without decoding the whole image.
+function looksLikeImage(dataUrl) {
+  const comma = dataUrl.indexOf(",");
+  if (comma === -1 || !dataUrl.slice(0, comma).includes(";base64")) return false;
+  const head = Buffer.from(dataUrl.slice(comma + 1, comma + 25), "base64");
+  if (head.length < 4) return false;
+  const jpeg = head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
+  const png = head[0] === 0x89 && head.toString("latin1", 1, 4) === "PNG";
+  const webp = head.length >= 12 && head.toString("latin1", 0, 4) === "RIFF" && head.toString("latin1", 8, 12) === "WEBP";
+  return jpeg || png || webp;
+}
+
 // Fewer valid areas than this means the model did not really do the job.
 const MIN_AREAS = 7;
 
 // Turns the model's JSON into the shape the app renders, or null when it is unusable.
 // `areas` is the list from criteriaFor(genre); the genre slot may offer two keys, of which
 // the first one present is kept.
-function validateFeedback(data, { areas, yearLevel }) {
+function validateFeedback(data, { areas, yearLevel, transcript }) {
   if (!data || typeof data !== "object") return null;
 
   const raw = data.areas && typeof data.areas === "object" ? data.areas : {};
@@ -157,23 +216,24 @@ function validateFeedback(data, { areas, yearLevel }) {
   if (criteria.length < MIN_AREAS) return null;
 
   const knownKeys = new Set(criteria.map((c) => c.key));
-  const powerUps = (Array.isArray(data.power_ups) ? data.power_ups : [])
-    .map((p) => {
-      if (!p || typeof p !== "object") return null;
-      const area = knownKeys.has(p.area) ? p.area : "";
-      return {
-        area,
-        areaLabel: area ? criteria.find((c) => c.key === area).label : "",
-        skill: text(p.skill),
-        why: text(p.why),
-        yourLine: text(p.your_line),
-        tryThis: text(p.try_this),
-        move: describeMove(p.move, yearLevel),
-        nowYou: text(p.now_you),
-      };
-    })
-    .filter((p) => p && p.skill && p.why && p.tryThis)
-    .slice(0, 3);
+  const powerUps = [];
+  for (const p of Array.isArray(data.power_ups) ? data.power_ups : []) {
+    if (!p || typeof p !== "object" || !text(p.skill) || !text(p.why) || !text(p.try_this)) continue;
+    // Spelling is editing, never a power-up; each area carries at most one power-up.
+    if (p.area === "spelling" || powerUps.some((q) => q.area && q.area === p.area)) continue;
+    const area = knownKeys.has(p.area) ? p.area : "";
+    powerUps.push({
+      area,
+      areaLabel: area ? criteria.find((c) => c.key === area).label : "",
+      skill: text(p.skill),
+      why: text(p.why),
+      yourLine: quoteFromTranscript(p.your_line, transcript),
+      tryThis: text(p.try_this),
+      move: describeMove(p.move, yearLevel),
+      nowYou: text(p.now_you),
+    });
+    if (powerUps.length === 3) break;
+  }
   if (powerUps.length < 1) return null;
   powerUps.forEach((p, index) => {
     const c = p.area && criteria.find((x) => x.key === p.area);
@@ -182,10 +242,12 @@ function validateFeedback(data, { areas, yearLevel }) {
 
   const headline = text(data.headline) || `${powerUps[0].skill}. ${powerUps[0].why}`;
 
+  // Only words the child actually wrote, and only when they really are misspelt.
   const practiceWords = (Array.isArray(data.practice_words) ? data.practice_words : [])
     .filter((w) => w && typeof w === "object" && text(w.correct) && text(w.wrote))
-    .slice(0, 5)
-    .map((w) => ({ correct: text(w.correct), wrote: text(w.wrote) }));
+    .map((w) => ({ correct: text(w.correct), wrote: text(w.wrote) }))
+    .filter((w) => hasWord(transcript, w.wrote) && normalise(w.wrote) !== normalise(w.correct))
+    .slice(0, 5);
 
   let wordBoost = null;
   const boost = data.word_boost;
@@ -193,10 +255,12 @@ function validateFeedback(data, { areas, yearLevel }) {
     const swaps = (Array.isArray(boost.swaps) ? boost.swaps : [])
       .filter((s) => s && typeof s === "object" && text(s.from) && Array.isArray(s.to))
       .map((s) => ({ from: text(s.from), to: s.to.map(text).filter(Boolean).slice(0, 3) }))
-      .filter((s) => s.to.length > 0)
+      .filter((s) => s.to.length > 0 && hasWord(transcript, s.from))
       .slice(0, 3);
     if (swaps.length) {
-      wordBoost = { swaps, before: text(boost.before), after: text(boost.after) };
+      // The "before" sentence must be the child's own; without it there is no "after" either.
+      const before = quoteFromTranscript(boost.before, transcript);
+      wordBoost = { swaps, before, after: before ? text(boost.after) : "" };
     }
   }
 
@@ -229,19 +293,24 @@ function extractJson(content) {
 // Calls the model and returns the message content, or null on any failure.
 // `fallback`, if given, is tried once when the first request is rejected as a bad request,
 // which is what an older model returns for settings it does not know.
-async function callModel({ fetchImpl, apiKey, body, fallback }) {
+async function callModel({ fetchImpl, env, body, fallback }) {
   let response;
   try {
-    response = await fetchImpl("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-    });
+    response = await fetchWithTimeout(
+      fetchImpl,
+      apiUrl(env, "chat/completions"),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+        body: JSON.stringify(body),
+      },
+      UPSTREAM_TIMEOUT_MS,
+    );
   } catch {
     return null;
   }
   if (!response.ok) {
-    if (response.status === 400 && fallback) return callModel({ fetchImpl, apiKey, body: fallback });
+    if (response.status === 400 && fallback) return callModel({ fetchImpl, env, body: fallback });
     return null;
   }
   try {
@@ -282,13 +351,13 @@ async function transcribePages({ images, env, fetchImpl }) {
 
   const content = await callModel({
     fetchImpl,
-    apiKey: env.OPENAI_API_KEY,
+    env,
     body: buildBody("original", true),
     fallback: buildBody("high", false),
   });
   const data = extractJson(content);
   if (!data || typeof data.transcript !== "string") {
-    return { status: 502, payload: { error: CHILD_SAFE_ERROR } };
+    return { status: 502, payload: { error: PHOTO_ERROR } };
   }
   return { status: 200, payload: { transcript: dropCrossedOut(data.transcript).trim() } };
 }
@@ -303,14 +372,17 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
     criteriaPrompt(kind),
     FEEDBACK_PRINCIPLES,
     movesPrompt(yearLevel),
-    OUTPUT_SPEC,
+    yearLevel <= 2
+      ? `This writer is in Year ${yearLevel}: keep every sentence you write under 12 words, use everyday words only, and keep the whole feedback short.`
+      : "",
+    outputSpec(yearLevel <= 2 ? "1 or 2" : "2 or 3"),
   ]
     .filter(Boolean)
     .join("\n\n");
 
   const content = await callModel({
     fetchImpl,
-    apiKey: env.OPENAI_API_KEY,
+    env,
     body: {
       model: env.OPENAI_MODEL || DEFAULT_FEEDBACK_MODEL,
       messages: [
@@ -330,9 +402,9 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
     },
   });
 
-  const payload = validateFeedback(extractJson(content), { areas, yearLevel });
+  const payload = validateFeedback(extractJson(content), { areas, yearLevel, transcript });
   if (!payload) {
-    return { status: 502, payload: { error: CHILD_SAFE_ERROR } };
+    return { status: 502, payload: { error: FEEDBACK_ERROR } };
   }
   return { status: 200, payload: { transcript, ...payload } };
 }
@@ -387,7 +459,7 @@ async function checkRevision({ revise, yearLevel, env, fetchImpl }) {
 
   const content = await callModel({
     fetchImpl,
-    apiKey: env.OPENAI_API_KEY,
+    env,
     body: {
       model: env.OPENAI_MODEL || DEFAULT_FEEDBACK_MODEL,
       messages: [
@@ -426,13 +498,21 @@ export async function handleFeedback(body, { fetchImpl, env }) {
   if (images.length > MAX_PAGES) {
     return { status: 400, payload: { error: "You can send up to four pages at a time." } };
   }
+  const BAD_PHOTO = { status: 400, payload: { error: "That photo didn't come through properly. Please try again." } };
+  let totalChars = 0;
   for (const image of images) {
-    if (typeof image !== "string" || !image.startsWith("data:image/")) {
-      return { status: 400, payload: { error: "That photo didn't come through properly. Please try again." } };
-    }
+    if (typeof image !== "string" || !image.startsWith("data:image/")) return BAD_PHOTO;
     if (image.length > MAX_IMAGE_CHARS) {
       return { status: 413, payload: { error: "That photo is too big. Please try taking it again." } };
     }
+    totalChars += image.length;
+  }
+  if (totalChars > MAX_TOTAL_IMAGE_CHARS) {
+    return { status: 413, payload: { error: "Those photos are too big to send together. Please try one page at a time." } };
+  }
+  if (!images.every(looksLikeImage)) return BAD_PHOTO;
+  if (transcript.length > MAX_TRANSCRIPT_CHARS) {
+    return { status: 400, payload: { error: "That is a lot of writing for one go. Please send up to four pages at a time." } };
   }
 
   if (!env?.OPENAI_API_KEY) {

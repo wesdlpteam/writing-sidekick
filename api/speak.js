@@ -1,4 +1,5 @@
 import { handlePreamble } from "./_cors.js";
+import { apiUrl, fetchWithTimeout } from "./_provider.js";
 
 // Read-aloud: turns one card of feedback into speech. The text is the feedback the app already
 // produced (never the photo), and nothing is stored.
@@ -6,6 +7,7 @@ import { handlePreamble } from "./_cors.js";
 const DEFAULT_TTS_MODEL = "gpt-4o-mini-tts";
 const DEFAULT_VOICE = "marin"; // Nathan picked "marin" in its sincere style (2026-09-03)
 const MAX_CHARS = 1500;
+const UPSTREAM_TIMEOUT_MS = 30_000;
 const CHILD_SAFE_ERROR = "Hmm, the voice didn't come through. Please try again.";
 
 const VOICE_STYLE = `You are the Writing Sidekick, reading feedback aloud to a primary-school child aged six to twelve. Sound sincere, warm and calm, like a kind teacher sitting beside them: unhurried, clear and encouraging, never sing-song and never rushed. Pause briefly at full stops. When you read words quoted from the child's own writing, say them a little more gently, as if pointing at them on the page. Use Australian English pronunciations.`;
@@ -28,17 +30,22 @@ export async function handleSpeak(body, { fetchImpl, env }) {
 
   let response;
   try {
-    response = await fetchImpl("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
-      body: JSON.stringify({
-        model: env.OPENAI_TTS_MODEL || DEFAULT_TTS_MODEL,
-        voice: env.OPENAI_TTS_VOICE || DEFAULT_VOICE,
-        input: text,
-        instructions: VOICE_STYLE,
-        response_format: "mp3",
-      }),
-    });
+    response = await fetchWithTimeout(
+      fetchImpl,
+      apiUrl(env, "audio/speech"),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+        body: JSON.stringify({
+          model: env.OPENAI_TTS_MODEL || DEFAULT_TTS_MODEL,
+          voice: env.OPENAI_TTS_VOICE || DEFAULT_VOICE,
+          input: text,
+          instructions: VOICE_STYLE,
+          response_format: "mp3",
+        }),
+      },
+      UPSTREAM_TIMEOUT_MS,
+    );
   } catch {
     return { status: 502, payload: { error: CHILD_SAFE_ERROR } };
   }

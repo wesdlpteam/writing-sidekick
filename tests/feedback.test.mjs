@@ -52,7 +52,8 @@ const GOOD_PAYLOAD = {
   },
 };
 
-const TEXT = "The dog ran fast.\nIt was a sunny day.";
+// The fixture's practice words (famly, becos) must really be in the child's writing.
+const TEXT = "The dog ran fast.\nIt was a sunny day.\nMy famly came becos it was fun.";
 
 function mockFetch(modelContent, { capture } = {}) {
   return async (url, options) => {
@@ -91,6 +92,31 @@ test("rejects oversized image", async () => {
   const big = "data:image/jpeg;base64," + "A".repeat(6_100_000);
   const r = await handleFeedback({ images: [IMG, big], yearLevel: 3 }, { fetchImpl: mockFetch("{}"), env: ENV });
   assert.equal(r.status, 413);
+});
+
+test("photos: a total over the request ceiling -> 413, a fake image -> 400, a huge transcript -> 400", async () => {
+  const big = "data:image/jpeg;base64,/9j/" + "A".repeat(2_400_000);
+  const total = await handleFeedback({ images: [big, big], yearLevel: 3 }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(total.status, 413);
+  const fake = await handleFeedback({ images: ["data:image/jpeg;base64,QUJDRA=="], yearLevel: 3 }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(fake.status, 400);
+  assert.doesNotMatch(fake.payload.error, /magic|bytes|signature/i);
+  const png = await handleFeedback({ images: ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=="], yearLevel: 3 }, { fetchImpl: mockFetch(JSON.stringify({ transcript: "x" })), env: ENV });
+  assert.equal(png.status, 200, "real PNG bytes are fine");
+  const long = await handleFeedback({ transcript: "a".repeat(20_001), yearLevel: 3 }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(long.status, 400);
+});
+
+test("provider calls carry a timeout signal and follow OPENAI_BASE_URL", async () => {
+  const seen = [];
+  const fetchImpl = async (url, options) => {
+    seen.push({ url, signal: options.signal });
+    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(GOOD_PAYLOAD) } }] }) };
+  };
+  const r = await handleFeedback({ transcript: TEXT, yearLevel: 3 }, { fetchImpl, env: { ...ENV, OPENAI_BASE_URL: "https://au.example/v1/" } });
+  assert.equal(r.status, 200);
+  assert.equal(seen.at(-1).url, "https://au.example/v1/chat/completions");
+  assert.ok(seen.every((s) => s.signal instanceof AbortSignal), "every upstream call can time out");
 });
 
 test("rejects more than four pages", async () => {
@@ -232,6 +258,90 @@ test("feedback prompt: year guide, rules, the ten areas, skill bank, writing mov
   const userParts = capture.body.messages[1].content;
   assert.ok(!userParts.some((p) => p.type === "image_url"));
   assert.ok(userParts.some((p) => p.type === "text" && p.text.includes(TEXT)));
+});
+
+test("the prompt does not force a spread of strengths and next steps; Years 1 and 2 get fewer, shorter power-ups", async () => {
+  const c1 = {};
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 1, genre: "recount" }, c1);
+  const sys1 = c1.body.messages[0].content;
+  assert.doesNotMatch(sys1, /typical piece has/);
+  assert.match(sys1, /Rules for power_ups: 1 or 2/);
+  assert.match(sys1, /under 12 words/);
+  const c4 = {};
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 4, genre: "narrative" }, c4);
+  const sys4 = c4.body.messages[0].content;
+  assert.match(sys4, /Rules for power_ups: 2 or 3/);
+  assert.doesNotMatch(sys4, /under 12 words/);
+});
+
+// ---- evidence fidelity: nothing shown to the child may be invented ---------
+
+test("a misspelling the child never wrote is dropped, and a correctly spelt word is never flagged", async () => {
+  const fixture = {
+    ...GOOD_PAYLOAD,
+    practice_words: [
+      { correct: "favourite", wrote: "favorite" }, // the child wrote "favourite"
+      { correct: "family", wrote: "famly" },
+      { correct: "sunny", wrote: "sunny" }, // not a misspelling at all
+      { correct: "because", wrote: "Becos" }, // case and trailing punctuation are harmless
+    ],
+  };
+  const r = await feedbackFor(fixture, { transcript: `${TEXT}\nMy favourite colour is blue.`, yearLevel: 3, genre: "narrative" });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.payload.practiceWords, [
+    { correct: "family", wrote: "famly" },
+    { correct: "because", wrote: "Becos" },
+  ]);
+});
+
+test("word power only swaps words the child used, and its sentence must be theirs", async () => {
+  const fixture = {
+    ...GOOD_PAYLOAD,
+    word_boost: { swaps: [{ from: "good", to: ["great"] }, { from: "fast", to: ["speedy"] }], before: "The cat sat on the mat.", after: "The cat perched on the mat." },
+  };
+  const r = await feedbackFor(fixture);
+  assert.deepEqual(r.payload.wordBoost, { swaps: [{ from: "fast", to: ["speedy"] }], before: "", after: "" });
+  const none = await feedbackFor({ ...GOOD_PAYLOAD, word_boost: { swaps: [{ from: "good", to: ["great"] }], before: "The dog ran fast.", after: "The dog sprinted." } });
+  assert.equal(none.payload.wordBoost, null, "no real swaps means no word power");
+});
+
+test("a power-up quoting a line the child never wrote loses the quote, or snaps to the closest real line", async () => {
+  const fixture = {
+    ...GOOD_PAYLOAD,
+    power_ups: [
+      { ...GOOD_PAYLOAD.power_ups[0], your_line: "The dog ran fast!" }, // same words, changed punctuation
+      { ...GOOD_PAYLOAD.power_ups[1], your_line: "“It was a sunny day.”" }, // curly quotes around a real line
+      { area: "ideas", skill: "Add a twist", why: "Because.", your_line: "The elephant danced all night.", try_this: "x", now_you: "y" },
+    ],
+  };
+  const r = await feedbackFor(fixture);
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.powerUps[0].yourLine, "The dog ran fast.");
+  assert.equal(r.payload.powerUps[1].yourLine, "It was a sunny day.", "snaps to the child's own line without the added quote marks");
+  assert.equal(r.payload.powerUps[2].yourLine, "", "an invented quote is never shown");
+  assert.equal(r.payload.powerUps[2].skill, "Add a twist", "the advice itself survives");
+});
+
+test("power-ups: one per area, and never for spelling", async () => {
+  const fixture = {
+    ...GOOD_PAYLOAD,
+    power_ups: [
+      GOOD_PAYLOAD.power_ups[0],
+      { ...GOOD_PAYLOAD.power_ups[1], area: "sentence_structure" },
+      { ...GOOD_PAYLOAD.power_ups[1], area: "spelling", skill: "Fix your spelling" },
+      GOOD_PAYLOAD.power_ups[1],
+    ],
+  };
+  const r = await feedbackFor(fixture);
+  assert.deepEqual(r.payload.powerUps.map((p) => p.area), ["sentence_structure", "vocabulary"]);
+  assert.ok(!r.payload.powerUps.some((p) => /spelling/i.test(p.skill)));
+});
+
+test("a malformed feedback reply blames the feedback, not the photo", async () => {
+  const r = await handleFeedback({ transcript: TEXT, yearLevel: 2 }, { fetchImpl: mockFetch("sorry no"), env: ENV });
+  assert.equal(r.status, 502);
+  assert.doesNotMatch(r.payload.error, /photo/i);
+  assert.match(r.payload.error, /feedback/i);
 });
 
 test("feedback response is normalised: headline, ten areas in marker order, power-ups with named moves", async () => {
@@ -440,7 +550,7 @@ test("practice words capped at 5, junk entries filtered", async () => {
       "not-an-object",
     ],
   };
-  const r = await feedbackFor(many);
+  const r = await feedbackFor(many, { transcript: `${TEXT}\nwun too thre for fiv siks`, yearLevel: 3, genre: "narrative" });
   assert.equal(r.status, 200);
   assert.equal(r.payload.practiceWords.length, 5);
   assert.ok(r.payload.practiceWords.every((w) => w.correct && w.wrote));
@@ -483,7 +593,7 @@ test("word boost junk filtered: caps, bad entries, missing -> null", async () =>
       after: "It was enormous.",
     },
   };
-  const r1 = await feedbackFor(messy);
+  const r1 = await feedbackFor(messy, { transcript: `${TEXT}\nIt was big and nice and good and bad, ok.`, yearLevel: 3, genre: "narrative" });
   assert.equal(r1.status, 200);
   assert.equal(r1.payload.wordBoost.swaps.length, 3);
   assert.equal(r1.payload.wordBoost.swaps[0].to.length, 3);

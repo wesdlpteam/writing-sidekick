@@ -114,7 +114,7 @@ For every area give a status, judged against THIS year level (a Year 1 writer is
 - "strength": done well for this year and worth naming, so the child can do it again on purpose
 - "steady": there and mostly working; one specific tweak would lift it
 - "next_step": missing or weak for this year; these are the best candidates for a power-up
-Be honest: a typical piece has two to four strengths, several steady areas and two or three next steps. Never mark everything as a strength.`;
+Be honest and judge only what is on the page. Strong work can have mostly strengths, and a very short piece may not show enough to judge some areas: then use "steady" with a next step rather than inventing a weakness. Never mark everything as a strength when the writing has not earned it.`;
 }
 
 // The writing moves the school teaches, following The Writing Revolution approach (sentences
