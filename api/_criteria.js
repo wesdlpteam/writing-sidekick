@@ -164,6 +164,12 @@ export const MOVES = {
     rule: "Swap a plain or repeated word for one that says exactly what you mean: went becomes trudged, big becomes towering, said becomes whispered.",
     example: "The exhausted hikers trudged up the final hill.",
   },
+  elaborate: {
+    name: "Elaborate",
+    minYear: 2,
+    rule: "Add a whole new sentence after a thin one that gives a detail, an example or what happened next, so the reader can see the moment.",
+    example: "The monkey grabbed the hat. It held it high above its head and screeched at us.",
+  },
   sentence_combining: {
     name: "Sentence combining",
     minYear: 3,
@@ -212,6 +218,7 @@ export function movesPrompt(yearLevel) {
   const lines = movesFor(yearLevel).map((m) => `- ${m.key}: ${m.name}. ${m.rule}`);
   return `Writing moves the school teaches (the child practises these in class, so build power-ups on them wherever they fit, and phrase "now_you" as a task that uses the move on their own writing, for example "Find your sentence about the waves and expand it: add when and where"). When a power-up's "try_this" clearly shows one of these moves, name it with the exact key in "move"; otherwise use null:
 ${lines.join("\n")}
+Name a move only when "try_this" really does it: sentence_expansion adds when, where, why or how inside ONE sentence; sentence_combining joins two or more of the child's sentences into fewer sentences; elaborate adds a NEW sentence of detail after one of theirs; because_but_so extends a sentence with because, but or so. If none fits exactly, use null.
 Revising comes before editing: power-ups are revising moves. Spelling and punctuation are editing and belong in practice_words and the spelling and punctuation areas.`;
 }
 

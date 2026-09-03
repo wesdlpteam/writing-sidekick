@@ -13,9 +13,10 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
   child's own line, that line rewritten to show the skill, and a tiny "now you" task that
   sends them back into their own writing. The rewrite is named as one of the writing moves
   the school teaches (because/but/so, subordinating conjunction start, sentence expansion,
-  sentence combining, transition words, appositives, topic and concluding sentences, sentence
-  types, vary vocabulary, and for older years general-to-specific introductions and their
-  mirror conclusions), with a plain explanation and a fresh example. Moves are only offered
+  sentence combining, elaborating with a detail sentence, transition words, appositives, topic
+  and concluding sentences, sentence types, vary vocabulary, and for older years
+  general-to-specific introductions and their mirror conclusions), with a plain explanation
+  and a fresh example. Moves are only offered
   from the year they suit. Revising comes first; spelling is labelled as editing and comes
   after.
 - The writing check-up: the ten areas writing markers look at (audience, text structure,

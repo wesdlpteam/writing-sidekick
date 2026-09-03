@@ -41,7 +41,7 @@ test("no kind chosen (or an unknown kind) offers both genre areas as a choice", 
 });
 
 test("the writing moves are named in full, explained, and staged by year", () => {
-  assert.equal(Object.keys(MOVES).length, 13);
+  assert.equal(Object.keys(MOVES).length, 14);
   for (const [key, m] of Object.entries(MOVES)) {
     assert.ok(m.name && m.rule.length > 30 && m.example.length > 8, key);
     assert.ok(m.minYear >= 1 && m.minYear <= 6, key);
@@ -51,7 +51,8 @@ test("the writing moves are named in full, explained, and staged by year", () =>
   assert.ok(movesFor(3).some((m) => m.key === "sentence_combining"));
   assert.ok(!movesFor(3).some((m) => m.key === "appositive"), "appositives wait until Year 4");
   assert.ok(!movesFor(4).some((m) => m.key === "general_to_specific_intro"), "introductions wait until Year 5");
-  assert.equal(movesFor(6).length, 13);
+  assert.equal(movesFor(6).length, 14);
+  assert.ok(movesFor(2).some((m) => m.key === "elaborate"));
 });
 
 test("the moves prompt lists only the moves for the year and says revise before edit", () => {
@@ -60,6 +61,8 @@ test("the moves prompt lists only the moves for the year and says revise before 
   assert.match(year3, /- because_but_so: Because, but, so\./);
   assert.doesNotMatch(year3, /appositive/);
   assert.match(year3, /Revising comes before editing/);
+  assert.match(year3, /sentence_combining joins two or more/);
+  assert.match(year3, /elaborate adds a NEW sentence/);
   assert.match(year3, /"now_you"/);
   assert.match(movesPrompt(5), /- appositive: Appositive\./);
 });
