@@ -7,14 +7,25 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
 
 ## What the feedback looks like
 
-- Two stars: a quote from the child's writing and the skill it shows, named so they can
-  do it again on purpose.
-- Two or three power-ups: the skills with the biggest payoff for this piece, each with
-  the child's own line, that line rewritten to show the skill, and a tiny "now you" task.
-  They are chosen from a skill bank (sentence openers, sentence variety, show don't tell,
-  sensory details, strong verbs, dialogue, paragraphs, hooks and endings, and so on),
-  matched to the year level and genre.
-- Spelling to practise and Word power, plus a More detail section teachers can switch on.
+- The big picture: one or two sentences from the sidekick naming the best thing in the
+  piece and the one change that would lift it most.
+- Two or three power-ups: the areas with the biggest payoff for this piece, each with the
+  child's own line, that line rewritten to show the skill, and a tiny "now you" task that
+  sends them back into their own writing. When the rewrite is a whole sentence it is named
+  as one of twelve sentence types (simple, very short, power, red white and blue, adverb
+  start, preposition start, -ing start, -ed start, semi-colon, dash, W-start,
+  explore-the-subject) with a plain explanation and a fresh example, so the child can
+  recognise the move and use it again. Types are only offered from the year they suit.
+- The writing check-up: the ten areas writing markers look at (audience, text structure,
+  ideas, characters and setting or persuasive devices, vocabulary, cohesion, paragraphing,
+  sentence structure, punctuation, spelling), each with a status (strength, on track, next
+  step), what the child did well, and a next step. Reports and poems use the nine shared
+  areas. Teachers can hide the check-up for younger students.
+- Spelling to practise and Word power.
+
+The area names follow the national writing assessment criteria; the descriptions used in
+the prompt and the app are written in our own words (the marking guides themselves are
+not reproduced here).
 
 The approach follows what the feedback research says works: answer "where to next?",
 stay specific to the task, show the improvement rather than just naming it, and leave

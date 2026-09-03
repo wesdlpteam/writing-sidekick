@@ -247,35 +247,98 @@ function labelledLine(label, value, tag) {
   return p;
 }
 
-// Each power-up: the skill, why it matters here, the child's own line, that line done well,
-// and a tiny task to do now. The first one also fills the sidekick's speech bubble.
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// A named sentence type: what it is called, the rule, and a fresh example, so the child can
+// recognise the move and use it again.
+function sentenceTypeNote(type) {
+  const box = el("div", "sentence-type");
+  const title = el("p", "st-title");
+  title.append(emoji("✨"), "This is a ", el("strong", "", type.name), ".");
+  const rule = el("p", "st-rule", type.rule);
+  const example = el("p", "st-example");
+  example.append("Another one: ", el("em", "", type.example));
+  box.append(title, rule, example);
+  return box;
+}
+
+// Emoji live in a span so the senior look (Years 5 and 6) can hide them.
+function emoji(char) {
+  return el("span", "h-emoji", `${char} `);
+}
+
+// Each power-up: the skill, why it matters here, the child's own line, that line done well
+// (named as a sentence type when it is one), and a tiny task to do now.
 function renderPowerUps(powerUps) {
   const box = $("power-ups");
   box.innerHTML = "";
   powerUps.forEach((p, index) => {
-    const card = document.createElement("section");
-    card.className = "power-card";
-    const title = document.createElement("p");
-    title.className = "power-title";
-    title.textContent = `⚡ Power-up ${index + 1}: ${p.skill}`;
-    const why = document.createElement("p");
-    why.className = "power-why";
-    why.textContent = p.why;
-    card.append(title, why);
+    const card = el("section", "power-card");
+    card.id = `power-up-${index + 1}`;
+    const head = el("div", "power-head");
+    head.appendChild(el("p", "power-title", `Power-up ${index + 1}: ${p.skill}`));
+    if (p.areaLabel) head.appendChild(el("span", "power-area", p.areaLabel));
+    card.append(head, el("p", "power-why", p.why));
     if (p.yourLine) card.appendChild(labelledLine("Your line:", p.yourLine, "q"));
     card.appendChild(labelledLine("Try this:", p.tryThis, "strong"));
+    if (p.sentenceType) card.appendChild(sentenceTypeNote(p.sentenceType));
     if (p.nowYou) {
-      const task = document.createElement("p");
-      task.className = "power-task";
-      task.textContent = `✍️ Now you: ${p.nowYou}`;
+      const task = el("p", "power-task");
+      task.append(emoji("✍️"), el("strong", "", "Now you: "), p.nowYou);
       card.appendChild(task);
     }
     box.appendChild(card);
   });
 }
 
+const STATUS = {
+  strength: { emoji: "⭐", label: "Strength", css: "is-strength" },
+  steady: { emoji: "👍", label: "On track", css: "is-steady" },
+  next_step: { emoji: "🚀", label: "Next step", css: "is-next" },
+};
+
+// The check-up: one compact card per area writing markers look at, with a status, what the
+// child did well and the next step (or a pointer to the power-up that covers it).
+function renderCriteria(criteria) {
+  const grid = $("criteria");
+  grid.innerHTML = "";
+  for (const c of criteria) {
+    const status = STATUS[c.status] || STATUS.steady;
+    const card = el("article", `crit-card ${status.css}`);
+    const head = el("div", "crit-head");
+    const names = el("div");
+    names.append(el("p", "crit-label", c.label), el("p", "crit-sub", c.sub));
+    const badge = el("span", "crit-status");
+    badge.append(emoji(status.emoji), status.label);
+    head.append(names, badge);
+    card.appendChild(head);
+    if (c.strength) {
+      const line = el("p", "crit-line crit-strength");
+      line.append(emoji("✅"), c.strength);
+      card.appendChild(line);
+    }
+    if (c.powerUp) {
+      const link = el("button", "crit-link");
+      link.type = "button";
+      link.append(emoji("⚡"), `See Power-up ${c.powerUp}`);
+      link.addEventListener("click", () => $(`power-up-${c.powerUp}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      card.appendChild(link);
+    } else if (c.nextStep) {
+      const line = el("p", "crit-line crit-next");
+      line.append(emoji("➡️"), c.nextStep);
+      card.appendChild(line);
+    }
+    grid.appendChild(card);
+  }
+}
+
 function renderFeedback() {
-  const { stars, powerUps, detail } = state.feedback;
+  const { headline, criteria, powerUps } = state.feedback;
   renderPractice();
   renderBoost();
   const showDetail = loadSettings().showDetail;
@@ -283,28 +346,10 @@ function renderFeedback() {
   $("save-brief").checked = true;
   $("save-detail").checked = showDetail;
   rebuildShareImage();
-  const starsBox = $("stars");
-  starsBox.innerHTML = "";
-  for (const star of stars) {
-    const div = document.createElement("div");
-    div.className = "star-item";
-    if (star.quote) {
-      const q = document.createElement("q");
-      q.textContent = star.quote;
-      div.append(q, " ");
-    }
-    div.append(star.skill);
-    starsBox.appendChild(div);
-  }
-  const top = powerUps[0];
-  $("wish").textContent = `${top.skill}. ${top.why}`;
+  $("headline").textContent = headline;
   renderPowerUps(powerUps);
-  $("detail-ideas").textContent = detail.ideas;
-  $("detail-structure").textContent = detail.structure;
-  $("detail-vocabulary").textContent = detail.vocabulary;
-  $("detail-spelling").textContent = detail.spelling;
-  $("detail-box").open = false;
-  $("detail-box").style.display = showDetail ? "" : "none";
+  renderCriteria(criteria);
+  $("checkup").hidden = !showDetail;
 }
 
 // ---- save picture / print / restart ---------------------------------------
@@ -355,7 +400,7 @@ $("btn-save-go").addEventListener("click", async () => {
 });
 
 $("btn-print").addEventListener("click", () => {
-  const { stars, powerUps, detail } = state.feedback;
+  const { headline, criteria, powerUps } = state.feedback;
   $("print-date").textContent = new Date().toLocaleDateString("en-AU", {
     day: "numeric", month: "long", year: "numeric",
   });
@@ -368,26 +413,42 @@ $("btn-print").addEventListener("click", () => {
     pagesBox.appendChild(img);
   });
   $("print-transcript").textContent = $("transcript").value;
-  const ul = $("print-stars");
-  ul.innerHTML = "";
-  for (const star of stars) {
-    const li = document.createElement("li");
-    li.textContent = star.quote ? `"${star.quote}" ${star.skill}` : star.skill;
-    ul.appendChild(li);
-  }
+  $("print-headline").textContent = headline;
   const powerBox = $("print-powerups");
   powerBox.innerHTML = "";
   powerUps.forEach((p, index) => {
     const h = document.createElement("h3");
-    h.textContent = `Power-up ${index + 1}: ${p.skill}`;
+    h.textContent = `Power-up ${index + 1}: ${p.skill}${p.areaLabel ? ` (${p.areaLabel})` : ""}`;
     powerBox.appendChild(h);
-    for (const line of [p.why, p.yourLine && `Your line: ${p.yourLine}`, `Try this: ${p.tryThis}`, p.nowYou && `Now you: ${p.nowYou}`]) {
+    const st = p.sentenceType;
+    for (const line of [
+      p.why,
+      p.yourLine && `Your line: ${p.yourLine}`,
+      `Try this: ${p.tryThis}`,
+      st && `This is a ${st.name}. ${st.rule} Another one: ${st.example}`,
+      p.nowYou && `Now you: ${p.nowYou}`,
+    ]) {
       if (!line) continue;
       const para = document.createElement("p");
       para.textContent = line;
       powerBox.appendChild(para);
     }
   });
+  const checkupBox = $("print-checkup");
+  checkupBox.innerHTML = "";
+  if (loadSettings().showDetail) {
+    const h = document.createElement("h2");
+    h.textContent = "Writing check-up";
+    const ul = document.createElement("ul");
+    for (const c of criteria) {
+      const li = document.createElement("li");
+      const status = (STATUS[c.status] || STATUS.steady).label;
+      const next = c.powerUp ? `See Power-up ${c.powerUp}.` : c.nextStep;
+      li.textContent = `${c.label} (${status}): ${[c.strength, next].filter(Boolean).join(" ")}`;
+      ul.appendChild(li);
+    }
+    checkupBox.append(h, ul);
+  }
   const practiceBox = $("print-practice");
   practiceBox.innerHTML = "";
   const practiceWords = state.feedback.practiceWords || [];
@@ -425,22 +486,6 @@ $("btn-print").addEventListener("click", () => {
       const p = document.createElement("p");
       p.textContent = `Your sentence: ${boost.before} With word power: ${boost.after}`;
       boostBox.appendChild(p);
-    }
-  }
-  const detailBox = $("print-detail");
-  detailBox.innerHTML = "";
-  if (loadSettings().showDetail) {
-    for (const [label, text] of [
-      ["Ideas", detail.ideas],
-      ["Structure", detail.structure],
-      ["Words", detail.vocabulary],
-      ["Spelling and punctuation", detail.spelling],
-    ]) {
-      const h = document.createElement("h2");
-      h.textContent = label;
-      const p = document.createElement("p");
-      p.textContent = text;
-      detailBox.append(h, p);
     }
   }
   window.print();

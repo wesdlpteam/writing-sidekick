@@ -77,7 +77,11 @@ async function loadImage(src) {
   return img;
 }
 
-// include.brief = stars, wish, spelling and word power; include.detail = the four "More detail" notes.
+const STATUS_LABEL = { strength: "Strength", steady: "On track", next_step: "Next step" };
+const STATUS_FILL = { strength: GREEN, steady: YELLOW, next_step: BLUE };
+
+// include.brief = the sidekick's message, power-ups, spelling and word power;
+// include.detail = the writing check-up (one card per area).
 export async function buildFeedbackImage({ pages = [], feedback, yearLevel, include = { brief: true, detail: false } }) {
   const bodyFont = `30px Nunito, sans-serif`;
   const boldFont = `800 30px Nunito, sans-serif`;
@@ -89,16 +93,17 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
 
   measure.font = bodyFont;
   if (include.brief) {
-    for (const star of feedback.stars) {
-      const starText = star.quote ? `⭐ "${star.quote}" ${star.skill}` : `⭐ ${star.skill}`;
-      sections.push({ fill: GREEN, title: "", lines: wrapText(measure, starText, INNER - 56) });
-    }
+    sections.push({ fill: BLUE, title: "First, the big picture", lines: wrapText(measure, feedback.headline, INNER - 56) });
     feedback.powerUps.forEach((p, index) => {
       const lines = wrapText(measure, p.why, INNER - 56);
       if (p.yourLine) lines.push(...wrapText(measure, `Your line: ${p.yourLine}`, INNER - 56));
       lines.push(...wrapText(measure, `Try this: ${p.tryThis}`, INNER - 56));
+      if (p.sentenceType) {
+        const st = p.sentenceType;
+        lines.push(...wrapText(measure, `This is a ${st.name}. ${st.rule} Another one: ${st.example}`, INNER - 56));
+      }
       if (p.nowYou) lines.push(...wrapText(measure, `Now you: ${p.nowYou}`, INNER - 56));
-      sections.push({ fill: BLUE, title: `⚡ Power-up ${index + 1}: ${p.skill}`, lines });
+      sections.push({ fill: "#ffffff", title: `⚡ Power-up ${index + 1}: ${p.skill}`, lines });
     });
     if (feedback.practiceWords?.length) {
       const wordsText = feedback.practiceWords.map((w) => `${w.correct} (you wrote: ${w.wrote})`).join("   ");
@@ -112,17 +117,20 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
         lines.push(...wrapText(measure, `Your sentence: ${feedback.wordBoost.before}`, INNER - 56));
         lines.push(...wrapText(measure, `With word power: ${feedback.wordBoost.after}`, INNER - 56));
       }
-      sections.push({ fill: "#ffffff", title: "Word power", lines });
+      sections.push({ fill: DETAIL, title: "Word power", lines });
     }
   }
-  if (include.detail && feedback.detail) {
-    for (const [title, text] of [
-      ["Ideas", feedback.detail.ideas],
-      ["Structure", feedback.detail.structure],
-      ["Words", feedback.detail.vocabulary],
-      ["Spelling and punctuation", feedback.detail.spelling],
-    ]) {
-      sections.push({ fill: DETAIL, title, lines: wrapText(measure, text, INNER - 56) });
+  if (include.detail && Array.isArray(feedback.criteria)) {
+    for (const c of feedback.criteria) {
+      const lines = [];
+      if (c.strength) lines.push(...wrapText(measure, `✅ ${c.strength}`, INNER - 56));
+      const next = c.powerUp ? `See Power-up ${c.powerUp}.` : c.nextStep;
+      if (next) lines.push(...wrapText(measure, `➡️ ${next}`, INNER - 56));
+      sections.push({
+        fill: STATUS_FILL[c.status] || YELLOW,
+        title: `${c.label}: ${STATUS_LABEL[c.status] || STATUS_LABEL.steady}`,
+        lines,
+      });
     }
   }
 
