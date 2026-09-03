@@ -4,7 +4,7 @@ import { speak } from "./api.js";
 // iPad Safari only lets sound start inside a tap, but a context resumed in a tap stays usable
 // once the audio has downloaded. Audio for each card is kept in memory so a second tap is instant.
 
-const LABELS = { idle: "Listen", loading: "Loading…", playing: "Stop" };
+const LABELS = { idle: "Listen", loading: "Stop", playing: "Stop" };
 
 let context = null;
 let playing = null; // { source, button }
@@ -63,11 +63,15 @@ export function listenButton(text, { compact = false } = {}) {
   setState(button, "idle");
 
   button.addEventListener("click", async () => {
+    // Same button again: stop (or cancel while still loading). The label says "Stop" meanwhile.
     if (playing && playing.button === button) {
       stopSpeaking();
       return;
     }
-    if (button.dataset.state === "loading") return;
+    if (button.dataset.state === "loading") {
+      setState(button, "idle");
+      return;
+    }
     stopSpeaking();
     const ctx = getContext();
     ctx.resume().catch(() => {});
