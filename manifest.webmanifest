@@ -1,7 +1,7 @@
 {
   "name": "Writing Sidekick",
   "short_name": "Sidekick",
-  "description": "Snap a photo of your writing and get stars, a wish, and spelling to practise.",
+  "description": "Snap a photo of your writing and get power-ups, a writing check-up and spelling to practise.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#141433",
