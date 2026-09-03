@@ -1,5 +1,5 @@
 import { prepareScan, rotate90 } from "./scan.js";
-import { transcribePages, getFeedback, checkRevision } from "./api.js";
+import { transcribePage, getFeedback, checkRevision } from "./api.js";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js";
 
@@ -76,8 +76,8 @@ async function addPage(file) {
   if (!file || state.pages.length >= MAX_PAGES) return;
   try {
     setLoading(true, "Tidying up your photo…");
-    // Later pages are kept a little smaller so four pages still fit in one request.
-    const { dataUrl } = await prepareScan(file, { maxEdge: state.pages.length < 2 ? 2000 : 1600 });
+    // Every page keeps full size: each one is sent in its own request (see btn-read below).
+    const { dataUrl } = await prepareScan(file);
     state.pages.push(dataUrl);
     renderPages();
   } catch {
@@ -160,8 +160,13 @@ $("btn-read").addEventListener("click", async () => {
         ? "Your sidekick is reading your writing…"
         : `Your sidekick is reading all ${state.pages.length} pages…`,
     );
-    const { transcript } = await transcribePages({ images: state.pages, yearLevel: state.yearLevel });
-    $("transcript").value = transcript;
+    // One request per page, read side by side, then joined in page order with a blank line
+    // between pages. One big request for all pages used to trip the server's upload limit.
+    const pages = await Promise.all(state.pages.map((image) => transcribePage({ image, yearLevel: state.yearLevel })));
+    $("transcript").value = pages
+      .map((page) => page.transcript.trim())
+      .filter(Boolean)
+      .join("\n\n");
     renderReviewPages();
     show("screen-review");
     autosizeTranscript();

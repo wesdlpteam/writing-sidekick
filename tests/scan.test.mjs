@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { estimateBackground, scanCurve, flattenToScan } from "../js/scan.js";
+import { estimateBackground, scanCurve, flattenToScan, nextEdge, MAX_PAGE_CHARS } from "../js/scan.js";
 
 // A "photographed page": brightness falls from 235 on the left to 120 on the right (a shadow),
 // with a few dark 2px-wide strokes drawn across it.
@@ -52,6 +52,15 @@ test("flattenToScan whitens a shadowed page and keeps the writing dark", () => {
   for (const [x, y] of [[20, 30], [100, 30], [60, 50]]) {
     assert.ok(out[y * w + x] <= 60, `ink at ${x},${y} was ${out[y * w + x]}`);
   }
+});
+
+test("an oversized page steps down in size and stops at the floor", () => {
+  assert.equal(nextEdge(2000), 1600);
+  assert.equal(nextEdge(1600), 1280);
+  assert.equal(nextEdge(1100), 1000);
+  assert.equal(nextEdge(1000), 1000, "never below the floor");
+  // One page per request must stay under Vercel's 4.5MB request limit with room for the JSON.
+  assert.ok(MAX_PAGE_CHARS <= 4_000_000 && MAX_PAGE_CHARS >= 2_500_000);
 });
 
 test("flattenToScan leaves a blank page blank", () => {

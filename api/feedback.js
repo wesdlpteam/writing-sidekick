@@ -18,14 +18,34 @@ const TRANSCRIBE_RULES = `You are transcribing a primary-school child's handwrit
 Rules:
 1. Copy every word exactly as written, including every misspelling. If the page says "famly", write "famly", never "family".
 2. Punctuation and capital letters: copy every mark the child made, exactly where they made it: apostrophes (don't, Mum's, it's), commas, full stops, question marks, exclamation marks, quotation marks and hyphens. Look carefully above and between letters for small marks, because an apostrophe is easy to miss. Never add punctuation or capitals the child did not write, and never remove any they did.
-3. Crossed-out words: anything crossed out, scribbled over or struck through was deleted by the child. Leave it out completely and never mention it. If a replacement is written above, beside or after it, use the replacement.
+3. Crossed-out words: before you copy each word, check whether a line, scribble or cross runs through it. A word with any line through it, even one thin line, was deleted by the child and is not part of the writing. Write every crossed-out word wrapped in double tildes, like ~~famly~~, so it can be removed. Crossed-out words often look like misspellings: they still get the tildes, never a correction. If a replacement is written above, beside or after it, write the replacement as a normal word.
 4. Insertions: a word added above the line with a caret (^), an arrow or an asterisk goes where the child pointed.
 5. Keep the child's line breaks: one line of transcript per line of handwriting. When a sentence carries on to the next line or the next page, just keep going.
 6. If there are several photos, they are pages of the same piece of writing, in order. Transcribe page 1, then page 2, and so on, with one blank line between pages.
 7. Ignore anything that is not the child's writing: printed headings, ruled lines, page numbers, a teacher's marks or comments in a different pen, stickers or stamps.
 8. If a word is truly unreadable, write your single best guess. Do not use brackets, question marks or notes: the child will check the transcript afterwards.
-Respond with ONLY a JSON object in exactly this shape: { "transcript": "the full transcript, using \\n for line breaks" }
+Respond with ONLY a JSON object in exactly this shape: { "transcript": "the full transcript, using \\n for line breaks, with crossed-out words as ~~word~~" }
 If nothing on the page can be read at all, use { "transcript": "" }.`;
+
+// The model marks crossed-out words as ~~word~~ (marking is far more reliable than asking it
+// to leave them out). The child deleted them, so they leave the transcript here. A line that
+// was entirely crossed out goes too; blank lines (page breaks) and untouched lines stay as is.
+export function dropCrossedOut(transcript) {
+  const lines = [];
+  for (const line of transcript.split("\n")) {
+    if (!line.includes("~~")) {
+      lines.push(line);
+      continue;
+    }
+    const kept = line
+      .replace(/[ \t]*~~[^~\n]*~~/g, "")
+      .replace(/[ \t]*~~/g, "")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim();
+    if (kept) lines.push(kept);
+  }
+  return lines.join("\n");
+}
 
 // What the research on feedback says works, boiled down for the model: answer "where to next?",
 // stay specific to the task, model the improvement instead of just naming it, and leave the
@@ -270,7 +290,7 @@ async function transcribePages({ images, env, fetchImpl }) {
   if (!data || typeof data.transcript !== "string") {
     return { status: 502, payload: { error: CHILD_SAFE_ERROR } };
   }
-  return { status: 200, payload: { transcript: data.transcript.trim() } };
+  return { status: 200, payload: { transcript: dropCrossedOut(data.transcript).trim() } };
 }
 
 async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchImpl }) {

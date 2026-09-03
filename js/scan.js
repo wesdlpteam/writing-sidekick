@@ -5,6 +5,16 @@
 // small marks like apostrophes survive at 2000px that vanish at 1000px.
 const DEFAULT_MAX_EDGE = 2000;
 const JPEG_QUALITY = 0.85;
+// Each page travels in its own request, which must stay under the server's 4.5MB request limit
+// (Vercel). A cleaned page is usually about 1MB of data URL; a very noisy photo can reach 1.5MB.
+// Anything over this cap is re-rendered smaller, stepping down to a floor that still reads.
+export const MAX_PAGE_CHARS = 3_500_000;
+const MIN_EDGE = 1000;
+const SHRINK_STEP = 0.8;
+
+export function nextEdge(edge) {
+  return Math.max(MIN_EDGE, Math.round(edge * SHRINK_STEP));
+}
 // Background window as a fraction of the longer edge: wide enough to span handwriting strokes,
 // narrow enough to follow a shadow across the page.
 const BACKGROUND_RADIUS_FRACTION = 1 / 30;
@@ -100,8 +110,7 @@ function enhance(ctx, width, height) {
   ctx.putImageData(imageData, 0, 0);
 }
 
-export async function prepareScan(file, { maxEdge = DEFAULT_MAX_EDGE } = {}) {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+function renderScan(bitmap, maxEdge) {
   const ratio = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * ratio);
   const height = Math.round(bitmap.height * ratio);
@@ -110,9 +119,22 @@ export async function prepareScan(file, { maxEdge = DEFAULT_MAX_EDGE } = {}) {
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
   enhance(ctx, width, height);
   return { dataUrl: canvas.toDataURL("image/jpeg", JPEG_QUALITY), width, height };
+}
+
+export async function prepareScan(file, { maxEdge = DEFAULT_MAX_EDGE, maxChars = MAX_PAGE_CHARS } = {}) {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  try {
+    let edge = maxEdge;
+    for (;;) {
+      const scan = renderScan(bitmap, edge);
+      if (scan.dataUrl.length <= maxChars || edge <= MIN_EDGE) return scan;
+      edge = nextEdge(edge);
+    }
+  } finally {
+    bitmap.close();
+  }
 }
 
 export async function rotate90(dataUrl) {

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleFeedback } from "../api/feedback.js";
+import { handleFeedback, dropCrossedOut } from "../api/feedback.js";
 
 const area = (status, strength, next_step) => ({ status, strength, next_step });
 
@@ -126,12 +126,28 @@ test("photos go to a transcription-only call and return just the transcript", as
   assert.equal(capture.body.model, "gpt-5.4", "transcription uses the stronger model by default");
 });
 
+test("crossed-out words the model marks with ~~ are dropped from the transcript", async () => {
+  const marked = "On the weekend I went to the ~~beech~~ beach.\n~~I had fun~~\nWe had ~~fish~~ chips ~~and~~.\n\nThe End";
+  const r = await handleFeedback({ image: IMG, yearLevel: 2 }, { fetchImpl: mockFetch(JSON.stringify({ transcript: marked })), env: ENV });
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.transcript, "On the weekend I went to the beach.\nWe had chips.\n\nThe End");
+});
+
+test("dropCrossedOut: stray markers vanish, untouched lines and blank lines stay", () => {
+  assert.equal(dropCrossedOut("I ~~ went home"), "I went home");
+  assert.equal(dropCrossedOut("Line one\n\nLine two"), "Line one\n\nLine two");
+  assert.equal(dropCrossedOut("~~all gone~~"), "");
+  assert.equal(dropCrossedOut("Keep  my   spacing"), "Keep  my   spacing");
+});
+
 test("transcription rules cover apostrophes, crossed-out words and page order", async () => {
   const capture = {};
   await handleFeedback({ image: IMG, yearLevel: 2 }, { fetchImpl: mockFetch(JSON.stringify({ transcript: "x" }), { capture }), env: ENV });
   const sys = capture.body.messages[0].content;
   assert.match(sys, /apostrophe/i);
   assert.match(sys, /crossed out|crossed-out/i);
+  assert.match(sys, /~~/, "crossed-out words are marked, not silently dropped");
+  assert.match(sys, /before you copy each word|check whether a line/i, "the model is told to check every word for a strike-through");
   assert.match(sys, /caret|inserted|added above/i);
   assert.match(sys, /page 1, then page 2|in order/i);
   assert.match(sys, /misspell/i);
