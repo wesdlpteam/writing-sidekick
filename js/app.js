@@ -533,30 +533,12 @@ function showSlide(index) {
   const current = slides[slideIndex].key;
   stopSpeaking();
   document.querySelectorAll(".fb-slide").forEach((s) => s.classList.toggle("active", s.dataset.slide === current));
-  playSlideClip(current);
   renderSteps(slides, slideIndex);
   const next = slides[slideIndex + 1];
   $("btn-slide-back").hidden = slideIndex === 0;
   $("btn-slide-next").hidden = !next;
   if (next) $("btn-slide-next").textContent = `Next: ${next.label} →`;
   window.scrollTo(0, 0);
-}
-
-// Some slides open with a short clip of the sidekick (power-up, hero scan). It plays once,
-// muted, from the start each time the slide opens, and ends on its last frame. If the browser
-// will not play it, or the child prefers less motion, the poster frame stands in.
-function playSlideClip(current) {
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  document.querySelectorAll(".fb-slide").forEach((slide) => {
-    const clip = slide.querySelector("video.stage-video");
-    if (!clip) return;
-    if (slide.dataset.slide === current && !reduceMotion) {
-      clip.currentTime = 0;
-      clip.play().catch(() => {});
-    } else {
-      clip.pause();
-    }
-  });
 }
 
 $("btn-slide-back").addEventListener("click", () => showSlide(slideIndex - 1));

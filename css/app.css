@@ -458,8 +458,8 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .fb-step.is-current .fb-step-num { background: var(--ink); color: var(--gold); }
 .fb-lead + .practice-card, .practice-card[hidden] + .practice-card { margin-top: 0; }
 
-/* A short clip of the sidekick at the top of a slide, framed like a comic panel. It plays once
-   when the slide opens; the poster (its last frame) shows when it cannot play. */
+/* A still of the sidekick at the top of a slide, framed like a comic panel. (The clips these
+   came from were dropped: no motion, nothing that could flash.) */
 .stage {
   margin: 4px 0 18px;
   border: var(--border);
@@ -468,7 +468,7 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
   background: #1a1233;
   box-shadow: var(--pop-shadow);
 }
-.stage-video { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.stage-art { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
 /* Power-up: the golden aura spills out of the panel and onto the heading. */
 .stage-power { box-shadow: 5px 5px 0 var(--gold-deep), 0 0 44px rgba(255, 194, 51, 0.45); }
 .fb-slide[data-slide="power"] .fb-heading { text-shadow: 3px 3px 0 var(--ink), 0 0 22px rgba(255, 194, 51, 0.75); }
