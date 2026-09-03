@@ -83,7 +83,7 @@
         <textarea id="transcript" aria-label="Your writing as typed text" spellcheck="false" placeholder="Type your writing here"></textarea>
         <p class="edit-hint">Tap to put the cursor where you want it. Double-tap a word to select it, then type the fix.</p>
       </div>
-      <div class="btn-row review-actions">
+      <div class="btn-row step-actions review-actions">
         <button id="btn-prev-page" class="ghost" type="button" hidden>&#8592; Previous page</button>
         <button id="btn-next-page" class="primary big" type="button" hidden>Next page &#8594;</button>
         <button id="btn-confirm" class="primary big" type="button">Looks right, show my feedback &#8594;</button>
@@ -92,29 +92,37 @@
 
     <section id="screen-feedback" class="screen">
       <h1><span class="h-emoji">&#x1F31F; </span>Sidekick says</h1>
-      <img class="hero-art hero-art-feedback" src="art/hero.png" alt="The Writing Sidekick, a young superhero in purple and gold holding a giant glowing pencil">
-      <div class="wish-card">
-        <p class="wish-title">First, the big picture</p>
-        <p id="headline"></p>
-        <div id="headline-actions" class="wish-actions"></div>
-      </div>
-      <h2 class="fb-heading"><span class="h-emoji">&#x26A1; </span>Power up here</h2>
-      <p class="lead fb-lead">Revise first. These writing moves will lift this piece the most. Try each one, then use it in other spots too.</p>
-      <div id="power-ups" class="power-ups"></div>
-      <div id="boost-card" class="practice-card boost-card" hidden>
-        <div class="title-row">
-          <p class="practice-title"><span class="h-emoji">&#x1F4AA; </span>Word power</p>
-          <span id="boost-listen"></span>
+      <nav id="fb-steps" class="fb-steps" aria-label="Feedback steps"></nav>
+
+      <section class="fb-slide" data-slide="picture">
+        <img class="hero-art hero-art-feedback" src="art/hero.png" alt="The Writing Sidekick, a young superhero in purple and gold holding a giant glowing pencil">
+        <div class="wish-card">
+          <p class="wish-title">First, the big picture</p>
+          <p id="headline"></p>
+          <div id="headline-actions" class="wish-actions"></div>
         </div>
-        <ul id="boost-swaps"></ul>
-        <div id="boost-example" hidden>
-          <p class="boost-line"><span class="boost-label">Your sentence:</span> <span id="boost-before"></span></p>
-          <p class="boost-line"><span class="boost-label">With word power:</span> <strong id="boost-after"></strong></p>
+      </section>
+
+      <section class="fb-slide" data-slide="power">
+        <h2 class="fb-heading"><span class="h-emoji">&#x26A1; </span>Power up here</h2>
+        <p class="lead fb-lead">Revise first. These writing moves will lift this piece the most. Try each one, then use it in other spots too.</p>
+        <div id="power-ups" class="power-ups"></div>
+      </section>
+
+      <section class="fb-slide" data-slide="words">
+        <h2 class="fb-heading"><span class="h-emoji">&#x270F;&#xFE0F; </span>Words and spelling</h2>
+        <p class="lead fb-lead">Once the writing says what you want, polish it: stronger words first, then spelling.</p>
+        <div id="boost-card" class="practice-card boost-card" hidden>
+          <div class="title-row">
+            <p class="practice-title"><span class="h-emoji">&#x1F4AA; </span>Word power</p>
+            <span id="boost-listen"></span>
+          </div>
+          <ul id="boost-swaps"></ul>
+          <div id="boost-example" hidden>
+            <p class="boost-line"><span class="boost-label">Your sentence:</span> <span id="boost-before"></span></p>
+            <p class="boost-line"><span class="boost-label">With word power:</span> <strong id="boost-after"></strong></p>
+          </div>
         </div>
-      </div>
-      <div id="edit-section" hidden>
-        <h2 class="fb-heading"><span class="h-emoji">&#x270F;&#xFE0F; </span>Then edit</h2>
-        <p class="lead fb-lead">Spelling comes last, once the writing says what you want it to.</p>
         <div id="practice-card" class="practice-card" hidden>
           <div class="title-row">
             <p class="practice-title"><span class="h-emoji">&#x1F4DD; </span>Spelling to practise</p>
@@ -123,18 +131,24 @@
           <ul id="practice-words"></ul>
           <p id="practice-tip" class="practice-tip" hidden></p>
         </div>
-      </div>
-      <div id="checkup">
+      </section>
+
+      <section class="fb-slide" data-slide="checkup">
         <h2 class="fb-heading"><span class="h-emoji">&#x1F6E1;&#xFE0F; </span>Your writing check-up</h2>
-        <p class="lead fb-lead">What writing markers look at, and how you are going on each one.</p>
+        <p class="lead fb-lead">No new jobs here. This is how your writing is going in the ten things writing markers look at: green is a strength, gold is on track, purple is where to grow next.</p>
         <div id="criteria" class="criteria-grid"></div>
+        <div class="btn-row">
+          <button id="btn-save-pic" class="secondary"><span class="h-emoji">&#x1F4F8; </span>Save picture</button>
+          <button id="btn-print" class="secondary"><span class="h-emoji">&#x1F5A8;&#xFE0F; </span>Print</button>
+          <button id="btn-restart" class="primary">Start again</button>
+        </div>
+        <p class="privacy-note">When you leave this page, your photo and feedback disappear. Nothing is saved.</p>
+      </section>
+
+      <div class="btn-row step-actions slide-nav">
+        <button id="btn-slide-back" class="ghost" type="button" hidden>&#8592; Back</button>
+        <button id="btn-slide-next" class="primary big" type="button">Next: Power-ups &#8594;</button>
       </div>
-      <div class="btn-row">
-        <button id="btn-save-pic" class="secondary"><span class="h-emoji">&#x1F4F8; </span>Save picture</button>
-        <button id="btn-print" class="secondary"><span class="h-emoji">&#x1F5A8;&#xFE0F; </span>Print</button>
-        <button id="btn-restart" class="primary">Start again</button>
-      </div>
-      <p class="privacy-note">When you leave this page, your photo and feedback disappear. Nothing is saved.</p>
     </section>
 
     <div id="loading" class="overlay" role="status" aria-live="polite" hidden>

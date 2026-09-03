@@ -378,11 +378,12 @@ button:focus-visible, .file-btn:focus-within, #transcript:focus-visible {
   letter-spacing: 0.04em;
   color: var(--gold);
 }
-.review-actions { flex-wrap: wrap; align-items: stretch; }
-.review-actions > * { margin-top: 0; }
-.review-actions .ghost { flex: 0 1 auto; }
-.review-actions .primary.big { flex: 1 1 260px; }
-.review-actions [hidden] { display: none; }
+/* A row with a ghost Back/Previous on the left and one big primary button that takes the rest. */
+.step-actions { flex-wrap: wrap; align-items: stretch; }
+.step-actions > * { margin-top: 0; }
+.step-actions .ghost { flex: 0 1 auto; }
+.step-actions .primary.big { flex: 1 1 260px; }
+.step-actions [hidden] { display: none; }
 .edit-hint { margin: 0; font-size: 0.95rem; color: var(--sky-muted); line-height: 1.4; }
 .check-row { display: flex; align-items: center; gap: 14px; margin: 14px 0; font-weight: 700; font-size: 1.05rem; cursor: pointer; }
 .check-row input { width: 26px; height: 26px; accent-color: var(--purple); flex: none; }
@@ -462,6 +463,40 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 
 .fb-heading { margin: 34px 0 4px; }
 .fb-lead { margin: 0 0 14px; }
+
+/* Feedback comes one part at a time: a step bar up top, one slide showing, Back and Next below. */
+.fb-slide { display: none; }
+.fb-slide.active { display: block; }
+.fb-slide .fb-heading { margin-top: 10px; }
+.fb-steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 18px; }
+.fb-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sky-muted);
+  border: 2px solid rgba(170, 182, 218, 0.45);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.95rem;
+  min-height: 44px;
+}
+.fb-step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.85rem;
+}
+.fb-step.is-done { color: var(--sky-text); border-color: var(--purple-mid); }
+.fb-step.is-done .fb-step-num { background: var(--purple-mid); color: #fff; }
+.fb-step.is-current { background: var(--gold); color: var(--ink); border-color: var(--gold); box-shadow: 0 3px 0 var(--gold-deep); }
+.fb-step.is-current .fb-step-num { background: var(--ink); color: var(--gold); }
+.fb-lead + .practice-card, .practice-card[hidden] + .practice-card { margin-top: 0; }
 
 /* Tap-to-listen: idle, loading, playing (shows Stop). */
 .listen {
@@ -592,8 +627,6 @@ body.senior .practice-tip::before { content: ""; }
   line-height: 1.5;
 }
 .move-note p { margin: 0; }
-#edit-section[hidden] { display: none; }
-#edit-section .practice-card { margin-top: 0; }
 .st-title { font-weight: 700; color: var(--purple); }
 .st-rule { margin-top: 2px; }
 .st-example { margin-top: 2px; color: var(--muted); }
@@ -658,7 +691,6 @@ body.senior .power-title { font-size: 1.25rem; }
 body.senior .revise-verdict { font-size: 1.1rem; }
 
 /* The check-up: one compact card per area, colour-coded by status. */
-#checkup[hidden] { display: none; }
 .criteria-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 700px) { .criteria-grid { grid-template-columns: 1fr; } }
 .crit-card {

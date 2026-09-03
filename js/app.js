@@ -237,7 +237,6 @@ function renderPractice() {
   const tip = state.feedback.spellingTip || "";
   const card = $("practice-card");
   card.hidden = words.length === 0;
-  $("edit-section").hidden = words.length === 0;
   if (!words.length) return;
   const list = $("practice-words");
   list.innerHTML = "";
@@ -467,7 +466,10 @@ function renderCriteria(criteria) {
       const link = el("button", "crit-link");
       link.type = "button";
       link.append(emoji("⚡"), `See Power-up ${c.powerUp}`);
-      link.addEventListener("click", () => $(`power-up-${c.powerUp}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      link.addEventListener("click", () => {
+        showSlide(activeSlides().findIndex((s) => s.key === "power"));
+        $(`power-up-${c.powerUp}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
       card.appendChild(link);
     } else if (c.nextStep) {
       const line = el("p", "crit-line crit-next");
@@ -494,7 +496,55 @@ function renderFeedback() {
   $("headline").textContent = headline;
   renderPowerUps(powerUps);
   renderCriteria(criteria);
+  showSlide(0);
 }
+
+// ---- feedback slides: one part at a time -----------------------------------
+
+const SLIDES = [
+  { key: "picture", label: "Big picture" },
+  { key: "power", label: "Power-ups" },
+  { key: "words", label: "Words" },
+  { key: "checkup", label: "Check-up" },
+];
+let slideIndex = 0;
+
+// The words slide only exists when there is word power or spelling to show.
+function activeSlides() {
+  const fb = state.feedback;
+  const hasWords = Boolean(fb && (fb.wordBoost || (fb.practiceWords || []).length));
+  return SLIDES.filter((s) => s.key !== "words" || hasWords);
+}
+
+function renderSteps(slides, index) {
+  const nav = $("fb-steps");
+  nav.innerHTML = "";
+  slides.forEach((s, i) => {
+    const step = el("button", `fb-step${i === index ? " is-current" : i < index ? " is-done" : ""}`);
+    step.type = "button";
+    step.append(el("span", "fb-step-num", String(i + 1)), s.label);
+    if (i === index) step.setAttribute("aria-current", "step");
+    step.addEventListener("click", () => showSlide(i));
+    nav.appendChild(step);
+  });
+}
+
+function showSlide(index) {
+  const slides = activeSlides();
+  slideIndex = Math.max(0, Math.min(slides.length - 1, index));
+  const current = slides[slideIndex].key;
+  stopSpeaking();
+  document.querySelectorAll(".fb-slide").forEach((s) => s.classList.toggle("active", s.dataset.slide === current));
+  renderSteps(slides, slideIndex);
+  const next = slides[slideIndex + 1];
+  $("btn-slide-back").hidden = slideIndex === 0;
+  $("btn-slide-next").hidden = !next;
+  if (next) $("btn-slide-next").textContent = `Next: ${next.label} →`;
+  window.scrollTo(0, 0);
+}
+
+$("btn-slide-back").addEventListener("click", () => showSlide(slideIndex - 1));
+$("btn-slide-next").addEventListener("click", () => showSlide(slideIndex + 1));
 
 // ---- save picture / print / restart ---------------------------------------
 
