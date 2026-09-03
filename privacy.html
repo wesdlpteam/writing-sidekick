@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How the Writing Sidekick handles your child's writing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <main class="doc">
+    <h1>How the Writing Sidekick handles writing</h1>
+    <p class="draft">Draft for approval. The school's privacy and safeguarding leads should confirm this page, the provider settings and the retention arrangement before students use the app.</p>
+
+    <p>The Writing Sidekick is a web app that gives a primary student feedback on a piece of handwriting. This page explains, for parents, carers and staff, what leaves the iPad, where it goes, and what is kept. Short answer: the app itself keeps nothing, but the photo and typed writing are sent to an AI service to be read.</p>
+
+    <h2>What the app collects</h2>
+    <ul>
+      <li>A photo of the handwritten page or pages, cleaned up on the iPad so the page reads white and the ink dark.</li>
+      <li>The typed copy of the writing, after the student has checked and fixed it.</li>
+      <li>The year level and the kind of writing the student chose.</li>
+      <li>Any sentence the student types when they try a power-up ("Revise it").</li>
+      <li>The feedback text, when a Listen button is tapped, so it can be read aloud.</li>
+    </ul>
+    <p>There are no accounts, no names are asked for, and students are reminded to cover their name before taking the photo. The app has no database, no analytics and uses no cookies or browser storage.</p>
+
+    <h2>Where it goes</h2>
+    <ul>
+      <li>The photo is sent to OpenAI's API to be turned into typed text.</li>
+      <li>The checked writing is first passed through OpenAI's safety (moderation) check, then, if it is ordinary writing, sent to OpenAI's API for feedback. Phone numbers, email addresses and street addresses are blanked out before that step.</li>
+      <li>Feedback text is sent to OpenAI's API to be turned into speech when a Listen button is tapped.</li>
+      <li>These requests pass through a small server function hosted on Vercel. It holds the OpenAI key, forwards the request and returns the answer. It keeps no copy.</li>
+    </ul>
+
+    <h2>How long it is kept</h2>
+    <p>The app and its server keep nothing: each answer is returned and forgotten. On the iPad, the photo, typing and feedback stay in memory only until the student taps "Finish and clear", leaves the page, or leaves the iPad untouched for ten minutes (a warning shows first).</p>
+    <p>OpenAI's published API terms say content sent through the API is not used to train its models. OpenAI may keep API content for up to 30 days for abuse monitoring unless a zero-data-retention arrangement is in place for the account. The school should confirm which arrangement applies to its account and record the answer here.</p>
+
+    <h2>Where it is processed</h2>
+    <p>OpenAI processes API requests on its own servers, which may be outside Australia. The server function runs in Vercel's Sydney region. The school should confirm and record both before student use.</p>
+
+    <h2>Saving and printing</h2>
+    <p>A student can save a picture of the feedback or print it. The photos of the writing are only included when the student ticks "Include the photos of my writing"; that box is off by default. Saved pictures go wherever the iPad's Share sheet sends them, which the school controls through its device settings.</p>
+
+    <h2>If the writing raises a concern</h2>
+    <p>If a piece of writing looks like it needs a trusted adult, the app does not give writing feedback. It shows a short message asking the student to show their teacher, with a note for the teacher, and for the most serious cases the Kids Helpline number. Nothing is sent anywhere automatically; the school's own wellbeing and child-safety steps apply.</p>
+
+    <h2>Questions</h2>
+    <p>Please contact the school. This page will be updated when the school records its provider arrangement and processing details.</p>
+  </main>
+</body>
+</html>

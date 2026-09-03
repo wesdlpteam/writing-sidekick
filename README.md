@@ -95,19 +95,43 @@ settings, using the same variable names as `.env.example`. They are never in the
 On an iPad, open the site in Safari and use Share, then Add to Home Screen, so it
 looks and launches like a normal app.
 
-## Privacy design
+## Privacy and safeguarding
 
-- No accounts, no database, no saved photos or writing. The API responds and forgets.
-- Students are reminded to cover their name before photographing.
-- The AI is instructed to never use or repeat a name even if one appears.
-- The OpenAI key lives only in server environment variables.
+- No accounts, no database, no analytics, no browser storage. The server function responds
+  and forgets. On the iPad everything stays in memory until "Finish and clear", leaving the
+  page, or ten minutes untouched (a warning shows first).
+- The photo and typed writing do go to OpenAI's API to be read and given feedback, and the
+  read-aloud voice is OpenAI's too. `privacy.html` (linked from the app as "For adults") is a
+  draft explanation for parents and staff; the school must confirm the retention arrangement
+  on its OpenAI account and the processing regions, then approve the wording.
+- Photos are only included in a saved picture or print-out when the child ticks the box.
+- Before any feedback, the writing goes through a safeguarding check (`api/_safety.js`): narrow
+  local rules for plain first-person disclosures, then OpenAI's moderation check. A flagged
+  piece gets a trusted-adult screen with a note for the teacher instead of feedback, and the
+  feedback model is never asked about it. The wording is a draft for the school's safeguarding
+  lead to approve. Phone numbers, emails and street addresses are blanked before ordinary
+  writing goes to the feedback model.
+- The feedback may only quote, correct or swap words that really are in the child's writing;
+  anything else is dropped before it is shown.
+- Students are reminded to cover their name before photographing, and the AI is told never to
+  use or repeat a name even if one appears.
+- The OpenAI key lives only in server environment variables. The functions refuse any request
+  that does not come from the app's own pages. `APP_PAUSED=1` switches every AI call off;
+  `ALLOWED_ORIGINS` adds extra allowed sites; `OPENAI_BASE_URL` can point at an approved
+  regional endpoint; `OPENAI_MODERATION_MODEL` changes the safety check's model.
+- Still open (from the September 2026 audit): a classroom sign-in so only the school's
+  devices can spend on the AI, and durable per-day quotas. Until then, set a spending limit
+  and alerts on the OpenAI account.
 
 ## Where things live
 
 - `index.html`, `css/`, `js/`: the app the student sees
 - `art/`: the Writing Sidekick hero artwork
 - `api/feedback.js`: the server function that talks to OpenAI (both steps)
-- `api/speak.js`: the read-aloud function (text in, mp3 out); `api/_cors.js` is shared by both
+- `api/speak.js`: the read-aloud function (text in, mp3 out); `api/_cors.js` (the request gate)
+  and `api/_provider.js` (provider address and timeouts) are shared by both
+- `api/_safety.js`: the safeguarding check and the trusted-adult response
+- `privacy.html`: the adult-facing explanation of where writing goes (draft)
 - `api/_curriculum.js`: per-year writing expectations, distilled from
   `curriculum/english-curriculum-f-6-v9.md` (ACARA v9, © ACARA 2022)
 - `tests/`: run with `npm test`

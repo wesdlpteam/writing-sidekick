@@ -20,6 +20,16 @@ function show(screenId) {
   stopSpeaking();
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === screenId));
   window.scrollTo(0, 0);
+  focusHeading(document.querySelector(`#${screenId} h1`));
+}
+
+// Screen readers need telling where they are: after a screen, slide or page change, focus
+// lands on its heading.
+function focusHeading(node) {
+  if (!node) return;
+  node.tabIndex = -1;
+  // A tick later: the loading overlay's `finally` has switched the screens back on by then.
+  setTimeout(() => node.focus({ preventScroll: true }), 0);
 }
 
 // Read-aloud is always on (the app is student-only for now); renderers call mountListen.
@@ -32,9 +42,15 @@ function mountListen(slot, text, options) {
 
 const joinOr = (items) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}` : items[0]);
 
+// While the sidekick works, the screens underneath are switched off (inert) so nothing can be
+// tapped twice, and the app reports itself busy.
 function setLoading(visible, message) {
   if (message) $("loading-msg").textContent = message;
   $("loading").hidden = !visible;
+  document.querySelectorAll(".screen").forEach((s) => {
+    s.inert = visible;
+  });
+  $("app").setAttribute("aria-busy", visible ? "true" : "false");
 }
 
 function showError(message) {
@@ -56,7 +72,7 @@ $("year-buttons").addEventListener("click", (event) => {
   const btn = event.target.closest(".year-btn");
   if (!btn) return;
   state.yearLevel = Number(btn.dataset.year);
-  document.querySelectorAll(".year-btn").forEach((b) => b.classList.toggle("selected", b === btn));
+  document.querySelectorAll(".year-btn").forEach((b) => markSelected(b, b === btn));
   setSeniorLook();
   refreshStartButton();
 });
@@ -65,8 +81,15 @@ $("genre-chips").addEventListener("click", (event) => {
   const chip = event.target.closest(".chip");
   if (!chip) return;
   state.genre = chip.dataset.genre;
-  document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("selected", c === chip));
+  document.querySelectorAll(".chip").forEach((c) => markSelected(c, c === chip));
 });
+
+// The selected year and kind of writing are told to screen readers too, not just coloured.
+function markSelected(button, selected) {
+  button.classList.toggle("selected", selected);
+  button.setAttribute("aria-pressed", selected ? "true" : "false");
+}
+document.querySelectorAll(".year-btn, .chip").forEach((b) => markSelected(b, b.classList.contains("selected")));
 
 $("btn-start").addEventListener("click", () => show("screen-camera"));
 $("btn-back-start").addEventListener("click", () => show("screen-start"));
@@ -102,9 +125,9 @@ function renderPages() {
     label.textContent = `Page ${index + 1}`;
     const tools = document.createElement("div");
     tools.className = "page-tools";
-    for (const [action, text] of [
-      ["rotate", "↻ Rotate"],
-      ["remove", "✕ Remove"],
+    for (const [action, text, name] of [
+      ["rotate", "↻ Rotate", "Rotate"],
+      ["remove", "✕ Remove", "Remove"],
     ]) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -112,6 +135,7 @@ function renderPages() {
       btn.dataset.action = action;
       btn.dataset.index = index;
       btn.textContent = text;
+      btn.setAttribute("aria-label", `${name} page ${index + 1}`);
       tools.appendChild(btn);
     }
     li.append(img, label, tools);
@@ -122,6 +146,7 @@ function renderPages() {
   $("first-photo").hidden = count > 0;
   $("add-page").hidden = count >= MAX_PAGES;
   $("pages-title").textContent = count === 1 ? "Your page" : `Your ${count} pages`;
+  resetIdle();
 }
 
 $("pages-list").addEventListener("click", async (event) => {
@@ -187,6 +212,8 @@ function showReviewPage() {
   $("btn-confirm").hidden = !last;
   autosizeTranscript();
   window.scrollTo(0, 0);
+  if (count > 1) focusHeading($("review-page-label"));
+  resetIdle();
 }
 
 $("transcript").addEventListener("input", () => {
@@ -222,7 +249,12 @@ $("btn-confirm").addEventListener("click", async () => {
   }
   try {
     setLoading(true, "Your sidekick is thinking about your writing…");
-    state.feedback = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
+    const reply = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
+    if (reply.safety) {
+      showAdult(reply);
+      return;
+    }
+    state.feedback = reply;
     renderFeedback();
     show("screen-feedback");
   } catch (error) {
@@ -252,7 +284,9 @@ function renderPractice() {
   }
   $("practice-tip").hidden = !tip;
   $("practice-tip").textContent = tip;
-  mountListen($("practice-listen"), () => `Spelling to practise: ${words.map((w) => w.correct).join(", ")}.${tip ? ` Tip: ${tip}` : ""}`);
+  mountListen($("practice-listen"), () => `Spelling to practise: ${words.map((w) => w.correct).join(", ")}.${tip ? ` Tip: ${tip}` : ""}`, {
+    label: "Listen to spelling to practise",
+  });
 }
 
 function renderBoost() {
@@ -275,10 +309,13 @@ function renderBoost() {
     $("boost-before").textContent = boost.before;
     $("boost-after").textContent = boost.after;
   }
-  mountListen($("boost-listen"), () =>
-    `Word power. ${boost.swaps.map((s) => `Instead of ${s.from}, try ${joinOr(s.to)}`).join(". ")}.${
-      hasExample ? ` Your sentence: ${boost.before} With word power: ${boost.after}` : ""
-    }`,
+  mountListen(
+    $("boost-listen"),
+    () =>
+      `Word power. ${boost.swaps.map((s) => `Instead of ${s.from}, try ${joinOr(s.to)}`).join(". ")}.${
+        hasExample ? ` Your sentence: ${boost.before} With word power: ${boost.after}` : ""
+      }`,
+    { label: "Listen to word power" },
   );
 }
 
@@ -316,9 +353,11 @@ function moveNote(move) {
 
 const moveSpeech = (move) => (move ? `Writing move: ${move.name}. ${move.rule} Another one: ${move.example}` : "");
 
-// Emoji live in a span so the senior look (Years 5 and 6) can hide them.
+// Emoji live in a span so the senior look (Years 5 and 6) can hide them; screen readers skip them.
 function emoji(char) {
-  return el("span", "h-emoji", `${char} `);
+  const node = el("span", "h-emoji", `${char} `);
+  node.setAttribute("aria-hidden", "true");
+  return node;
 }
 
 // Each power-up: the skill, why it matters here, the child's own line, that line done well
@@ -330,21 +369,23 @@ function renderPowerUps(powerUps) {
     const card = el("section", "power-card");
     card.id = `power-up-${index + 1}`;
     const head = el("div", "power-head");
-    head.appendChild(el("p", "power-title", `Power-up ${index + 1}: ${p.skill}`));
+    head.appendChild(el("h3", "power-title", `Power-up ${index + 1}: ${p.skill}`));
     if (p.areaLabel) head.appendChild(el("span", "power-area", p.areaLabel));
     if (readAloud) {
       head.appendChild(
-        listenButton(() =>
-          [
-            `Power-up ${index + 1}: ${p.skill}.`,
-            p.why,
-            p.yourLine && `Your line: ${p.yourLine}`,
-            `Try this: ${p.tryThis}`,
-            moveSpeech(p.move),
-            p.nowYou && `Now you: ${p.nowYou}`,
-          ]
-            .filter(Boolean)
-            .join(" "),
+        listenButton(
+          () =>
+            [
+              `Power-up ${index + 1}: ${p.skill}.`,
+              p.why,
+              p.yourLine && `Your line: ${p.yourLine}`,
+              `Try this: ${p.tryThis}`,
+              moveSpeech(p.move),
+              p.nowYou && `Now you: ${p.nowYou}`,
+            ]
+              .filter(Boolean)
+              .join(" "),
+          { label: `Listen to Power-up ${index + 1}` },
         ),
       );
     }
@@ -384,6 +425,7 @@ function reviseBlock(p, index) {
   button.type = "button";
   actions.appendChild(button);
   const result = el("div", "revise-result");
+  result.setAttribute("role", "status");
   result.hidden = true;
   wrap.append(label, input, actions, result);
 
@@ -400,6 +442,10 @@ function reviseBlock(p, index) {
         yearLevel: state.yearLevel,
         revise: { attempt, yourLine: p.yourLine, tryThis: p.tryThis, nowYou: p.nowYou, skill: p.skill, move: p.move?.key ?? null },
       });
+      if (reply.safety) {
+        showAdult(reply, attempt);
+        return;
+      }
       renderRevision(result, reply);
     } catch (error) {
       showError(error.message);
@@ -420,7 +466,7 @@ function renderRevision(result, reply) {
   verdict.append(emoji(v.emoji), v.label);
   head.appendChild(verdict);
   const lines = [reply.praise, reply.tweak && `One tweak: ${reply.tweak}`, reply.example && `Like this: ${reply.example}`].filter(Boolean);
-  if (readAloud) head.appendChild(listenButton(() => `${v.label}. ${lines.join(" ")}`, { compact: true }));
+  if (readAloud) head.appendChild(listenButton(() => `${v.label}. ${lines.join(" ")}`, { compact: true, label: "Listen to the check of your sentence" }));
   result.appendChild(head);
   result.appendChild(el("p", "revise-line", reply.praise));
   if (reply.tweak) {
@@ -452,7 +498,7 @@ function renderCriteria(criteria) {
     const card = el("article", `crit-card ${status.css}`);
     const head = el("div", "crit-head");
     const names = el("div");
-    names.append(el("p", "crit-label", c.label), el("p", "crit-sub", c.sub));
+    names.append(el("h3", "crit-label", c.label), el("p", "crit-sub", c.sub));
     const badge = el("span", "crit-status");
     badge.append(emoji(status.emoji), status.label);
     head.append(names, badge);
@@ -478,7 +524,7 @@ function renderCriteria(criteria) {
     }
     if (readAloud) {
       const next = c.powerUp ? `See power-up ${c.powerUp}.` : c.nextStep;
-      card.appendChild(listenButton(() => [`${c.label}: ${status.label}.`, c.strength, next].filter(Boolean).join(" "), { compact: true }));
+      card.appendChild(listenButton(() => [`${c.label}: ${status.label}.`, c.strength, next].filter(Boolean).join(" "), { compact: true, label: `Listen to ${c.label}` }));
     }
     grid.appendChild(card);
   }
@@ -495,7 +541,27 @@ function renderFeedback() {
   renderPowerUps(powerUps);
   renderCriteria(criteria);
   showSlide(0);
+  resetIdle();
 }
+
+// ---- the trusted-adult screen ----------------------------------------------
+
+// The server answers a disclosure with a safety message instead of feedback. Show it calmly,
+// with the route to the teacher; the teacher panel holds the writing so they can read it.
+function showAdult(reply, attempt = "") {
+  $("adult-title").textContent = reply.title || "This writing needs a trusted adult";
+  $("adult-message").textContent = reply.message || "Please show your teacher or another adult you trust now.";
+  $("teacher-note").textContent = reply.teacherNote || "";
+  $("teacher-transcript").textContent = `${fullTranscript()}${attempt ? `\n\nTheir new sentence: ${attempt}` : ""}`.trim();
+  $("teacher-panel").hidden = true;
+  mountListen($("adult-listen"), () => `${$("adult-title").textContent}. ${$("adult-message").textContent}`, { label: "Listen to this message" });
+  show("screen-adult");
+}
+
+$("btn-show-teacher").addEventListener("click", () => {
+  $("teacher-panel").hidden = false;
+  focusHeading($("teacher-panel").querySelector(".teacher-title"));
+});
 
 // ---- feedback slides: one part at a time -----------------------------------
 
@@ -539,6 +605,7 @@ function showSlide(index) {
   $("btn-slide-next").hidden = !next;
   if (next) $("btn-slide-next").textContent = `Next: ${next.label} →`;
   window.scrollTo(0, 0);
+  focusHeading(document.querySelector(`.fb-slide[data-slide="${current}"] .fb-heading`));
 }
 
 $("btn-slide-back").addEventListener("click", () => showSlide(slideIndex - 1));
@@ -554,8 +621,11 @@ function shareOptions() {
   return { brief: $("save-brief").checked, detail: $("save-detail").checked };
 }
 
+// Photos of the writing only leave the app when the child ticks the box (off by default).
+const includePhotos = () => $("include-photos").checked;
+
 function shareImageInputs(include) {
-  return { pages: state.pages, feedback: state.feedback, yearLevel: state.yearLevel, include };
+  return { pages: includePhotos() ? state.pages : [], feedback: state.feedback, yearLevel: state.yearLevel, include };
 }
 
 function rebuildShareImage() {
@@ -574,6 +644,7 @@ function rebuildShareImage() {
 
 $("save-brief").addEventListener("change", rebuildShareImage);
 $("save-detail").addEventListener("change", rebuildShareImage);
+$("include-photos").addEventListener("change", rebuildShareImage);
 $("btn-save-pic").addEventListener("click", () => $("save-dialog").showModal());
 $("btn-save-cancel").addEventListener("click", () => $("save-dialog").close());
 
@@ -597,7 +668,7 @@ $("btn-print").addEventListener("click", () => {
   });
   const pagesBox = $("print-pages");
   pagesBox.innerHTML = "";
-  state.pages.forEach((dataUrl, index) => {
+  (includePhotos() ? state.pages : []).forEach((dataUrl, index) => {
     const img = document.createElement("img");
     img.src = dataUrl;
     img.alt = `Page ${index + 1}`;
@@ -680,24 +751,11 @@ $("btn-print").addEventListener("click", () => {
   window.print();
 });
 
-// First tap arms the button; only a second tap within 4s actually clears the work.
-let restartArmed = false;
-let restartTimer = null;
+// ---- finish and clear: shared iPads must not hand one child's work to the next ------------
 
-function disarmRestart() {
-  restartArmed = false;
-  clearTimeout(restartTimer);
-  $("btn-restart").textContent = "Start again";
-}
-
-$("btn-restart").addEventListener("click", () => {
-  if (!restartArmed) {
-    restartArmed = true;
-    $("btn-restart").textContent = "Sure? Tap again";
-    restartTimer = setTimeout(disarmRestart, 4000);
-    return;
-  }
-  disarmRestart();
+// Everything the app holds about this piece of writing, gone: photos, typing, feedback,
+// cached speech, the prepared share picture, and the copies drawn on screen.
+function clearEverything() {
   clearSpeechCache();
   state.pages = [];
   state.transcripts = [];
@@ -705,9 +763,88 @@ $("btn-restart").addEventListener("click", () => {
   state.feedback = null;
   shareCache = { key: "", blob: null };
   $("transcript").value = "";
+  $("include-photos").checked = false;
+  $("teacher-panel").hidden = true;
+  for (const id of ["power-ups", "criteria", "practice-words", "boost-swaps", "print-pages", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
+    $(id).innerHTML = "";
+  }
+  for (const id of ["print-transcript", "teacher-transcript", "teacher-note", "adult-message"]) $(id).textContent = "";
   renderPages();
-  show("screen-start");
+}
+
+// Every "Finish and clear" button: a first tap arms it, a second tap within 4 seconds clears.
+let armedFinish = null; // { button, label, timer }
+
+function disarmFinish() {
+  if (!armedFinish) return;
+  clearTimeout(armedFinish.timer);
+  armedFinish.button.textContent = armedFinish.label;
+  armedFinish = null;
+}
+
+document.querySelectorAll(".btn-finish").forEach((button) => {
+  button.addEventListener("click", () => {
+    if (armedFinish && armedFinish.button === button) {
+      disarmFinish();
+      clearEverything();
+      show("screen-start");
+      return;
+    }
+    disarmFinish();
+    armedFinish = { button, label: button.textContent, timer: setTimeout(disarmFinish, 4000) };
+    button.textContent = "Sure? Tap again";
+  });
 });
+
+// Left alone with work on screen, the iPad warns after nine minutes and clears itself a
+// minute later, so the next child cannot find the last one's writing. Any tap or key press
+// starts the clock again. Nothing clears while the camera or another app is in front.
+// (?idle=<seconds> shortens the wait for testing.)
+const IDLE_TEST_SECONDS = Number(new URLSearchParams(location.search).get("idle")) || 0;
+const IDLE_WARN_MS = IDLE_TEST_SECONDS ? IDLE_TEST_SECONDS * 1000 : 9 * 60_000;
+const IDLE_CLEAR_MS = IDLE_TEST_SECONDS ? 4_000 : 60_000;
+let idleWarnTimer = null;
+let idleClearTimer = null;
+
+const hasWork = () => state.pages.length > 0 || state.transcripts.length > 0 || state.feedback !== null;
+
+function resetIdle() {
+  clearTimeout(idleWarnTimer);
+  clearTimeout(idleClearTimer);
+  $("idle-banner").hidden = true;
+  if (!hasWork()) return;
+  idleWarnTimer = setTimeout(() => {
+    if (document.hidden) {
+      resetIdle();
+      return;
+    }
+    $("idle-banner").hidden = false;
+    idleClearTimer = setTimeout(() => {
+      if (document.hidden) {
+        resetIdle();
+        return;
+      }
+      $("idle-banner").hidden = true;
+      disarmFinish();
+      clearEverything();
+      show("screen-start");
+    }, IDLE_CLEAR_MS);
+  }, IDLE_WARN_MS);
+}
+
+for (const type of ["pointerdown", "keydown", "touchstart", "input"]) {
+  document.addEventListener(type, resetIdle, { passive: true });
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) resetIdle();
+});
+
+// The camera screen's instructions and privacy line can be listened to as well as read.
+mountListen(
+  $("camera-listen"),
+  () => `${[...document.querySelectorAll("#screen-camera .reminder li")].map((li) => li.textContent.trim()).join(". ")}. ${$("privacy-line").textContent.trim()}`,
+  { label: "Listen to this screen" },
+);
 
 // ---- error banner ----------------------------------------------------------
 

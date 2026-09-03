@@ -48,18 +48,18 @@ async function bufferFor(text) {
 
 // A Listen button for `text` (a string, or a function that builds the text when tapped).
 // Errors are raised as a bubbling "speech-error" event so the app can show its usual banner.
-export function listenButton(text, { compact = false } = {}) {
+export function listenButton(text, { compact = false, label = "Listen to this feedback" } = {}) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = compact ? "listen compact" : "listen";
-  button.setAttribute("aria-label", "Listen to this feedback");
+  button.setAttribute("aria-label", label);
   const icon = document.createElement("span");
   icon.className = "listen-icon";
   icon.setAttribute("aria-hidden", "true");
   icon.textContent = "🔊";
-  const label = document.createElement("span");
-  label.className = "listen-label";
-  button.append(icon, label);
+  const labelSpan = document.createElement("span");
+  labelSpan.className = "listen-label";
+  button.append(icon, labelSpan);
   setState(button, "idle");
 
   button.addEventListener("click", async () => {
