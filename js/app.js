@@ -1,5 +1,5 @@
 import { prepareScan, rotate90 } from "./scan.js";
-import { transcribePages, getFeedback } from "./api.js";
+import { transcribePages, getFeedback, checkRevision } from "./api.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js";
@@ -329,8 +329,83 @@ function renderPowerUps(powerUps) {
       task.append(emoji("✍️"), el("strong", "", "Now you: "), p.nowYou);
       card.appendChild(task);
     }
+    card.appendChild(reviseBlock(p, index));
     box.appendChild(card);
   });
+}
+
+const VERDICT = {
+  nailed_it: { emoji: "🏆", label: "Nailed it!", css: "is-nailed" },
+  nearly: { emoji: "👍", label: "Nearly there", css: "is-nearly" },
+  not_yet: { emoji: "💪", label: "Keep going", css: "is-notyet" },
+};
+
+// "Revise it": the child types their new version and gets a quick check on the move only.
+function reviseBlock(p, index) {
+  const wrap = el("div", "revise");
+  const label = el("label", "revise-label");
+  const boxId = `revise-${index + 1}`;
+  label.htmlFor = boxId;
+  label.append(emoji("🔁"), "Revise it: write your new version here");
+  const input = el("textarea", "revise-input");
+  input.id = boxId;
+  input.rows = 2;
+  input.placeholder = "Type your improved sentence…";
+  const actions = el("div", "revise-actions");
+  const button = el("button", "secondary small revise-check", "Check my sentence");
+  button.type = "button";
+  actions.appendChild(button);
+  const result = el("div", "revise-result");
+  result.hidden = true;
+  wrap.append(label, input, actions, result);
+
+  button.addEventListener("click", async () => {
+    const attempt = input.value.trim();
+    if (!attempt) {
+      showError("Type your new version first.");
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "Checking…";
+    try {
+      const reply = await checkRevision({
+        yearLevel: state.yearLevel,
+        revise: { attempt, yourLine: p.yourLine, tryThis: p.tryThis, nowYou: p.nowYou, skill: p.skill, move: p.move?.key ?? null },
+      });
+      renderRevision(result, reply);
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = "Check again";
+    }
+  });
+  return wrap;
+}
+
+function renderRevision(result, reply) {
+  const v = VERDICT[reply.verdict] || VERDICT.nearly;
+  result.className = `revise-result ${v.css}`;
+  result.innerHTML = "";
+  const head = el("div", "revise-head");
+  const verdict = el("p", "revise-verdict");
+  verdict.append(emoji(v.emoji), v.label);
+  head.appendChild(verdict);
+  const lines = [reply.praise, reply.tweak && `One tweak: ${reply.tweak}`, reply.example && `Like this: ${reply.example}`].filter(Boolean);
+  if (readAloud) head.appendChild(listenButton(() => `${v.label}. ${lines.join(" ")}`, { compact: true }));
+  result.appendChild(head);
+  result.appendChild(el("p", "revise-line", reply.praise));
+  if (reply.tweak) {
+    const tweak = el("p", "revise-line");
+    tweak.append(el("strong", "", "One tweak: "), reply.tweak);
+    result.appendChild(tweak);
+  }
+  if (reply.example) {
+    const example = el("p", "revise-line");
+    example.append(el("strong", "", "Like this: "), el("em", "", reply.example));
+    result.appendChild(example);
+  }
+  result.hidden = false;
 }
 
 const STATUS = {

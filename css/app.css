@@ -630,6 +630,52 @@ body.senior .practice-tip::before { content: ""; }
 }
 body.senior .power-title { font-size: 1.25rem; }
 
+/* Revise it: the child's own go at the move, checked on the spot. */
+.revise { margin-top: 14px; padding-top: 12px; border-top: 2px dashed #d9cbe6; }
+.revise-label { display: block; font-weight: 800; margin-bottom: 8px; }
+.revise-input {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--ink);
+  background: #fff;
+  resize: vertical;
+  field-sizing: content;
+}
+.revise-input:focus-visible { outline: 3px solid var(--purple-mid); outline-offset: 2px; }
+.revise-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+.revise-check { padding: 10px 18px; font-size: 1rem; min-height: 44px; }
+.revise-check:disabled { opacity: 0.6; }
+.revise-result {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.revise-result[hidden] { display: none; }
+.revise-result.is-nailed { background: var(--green-soft); }
+.revise-result.is-nearly { background: var(--gold-soft); }
+.revise-result.is-notyet { background: var(--purple-soft); }
+.revise-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.revise-head .listen.compact { margin-top: 0; }
+.revise-verdict {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+  color: var(--purple);
+}
+.revise-line { margin: 6px 0 0; }
+body.senior .revise-verdict { font-size: 1.1rem; }
+
 /* The check-up: one compact card per area, colour-coded by status. */
 #checkup[hidden] { display: none; }
 .criteria-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }

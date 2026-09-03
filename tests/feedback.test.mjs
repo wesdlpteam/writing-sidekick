@@ -479,6 +479,63 @@ test("word boost junk filtered: caps, bad entries, missing -> null", async () =>
   assert.equal(r2.payload.wordBoost, null);
 });
 
+// ---- step 3: the child's revised sentence -> quick check ----------------------
+
+const REVISE = {
+  attempt: "When the gate swung open, the dog raced across the wet grass.",
+  yourLine: "The dog ran fast.",
+  tryThis: "When the gate swung open, the dog ran fast.",
+  nowYou: "Find your other sentence and start it with 'While' or 'When'.",
+  skill: "Start with a subordinating conjunction",
+  move: "subordinating_conjunction",
+};
+const REVISE_REPLY = { verdict: "nailed_it", praise: "'When the gate swung open,' is a proper subordinating conjunction start, comma and all.", tweak: "", example: "" };
+
+test("revise: empty or too long attempt -> 400, no key -> 500", async () => {
+  const empty = await handleFeedback({ yearLevel: 3, revise: { ...REVISE, attempt: "  " } }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(empty.status, 400);
+  assert.match(empty.payload.error, /type your new version/i);
+  const long = await handleFeedback({ yearLevel: 3, revise: { ...REVISE, attempt: "a".repeat(1201) } }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(long.status, 400);
+  const junk = await handleFeedback({ yearLevel: 3, revise: "nope" }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(junk.status, 400);
+  const noKey = await handleFeedback({ yearLevel: 3, revise: REVISE }, { fetchImpl: mockFetch("{}"), env: {} });
+  assert.equal(noKey.status, 500);
+});
+
+test("revise: prompt carries the move rule, the task, the original line and the attempt; reply normalised", async () => {
+  const capture = {};
+  const r = await handleFeedback({ yearLevel: 3, revise: REVISE }, { fetchImpl: mockFetch(JSON.stringify(REVISE_REPLY), { capture }), env: ENV });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.payload, REVISE_REPLY);
+  const sys = capture.body.messages[0].content;
+  assert.match(sys, /Subordinating conjunction start\. Begin with a joining word/);
+  assert.match(sys, /end of Year 3/);
+  assert.match(sys, /revising, not editing/i);
+  assert.match(sys, /"nailed_it" \| "nearly" \| "not_yet"/);
+  assert.match(sys, /copies the example word for word/);
+  const user = capture.body.messages[1].content[0].text;
+  assert.match(user, /My original line: The dog ran fast\./);
+  assert.match(user, /The example I was shown: When the gate swung open, the dog ran fast\./);
+  assert.match(user, /The task I was given: Find your other sentence/);
+  assert.match(user, /My new version: When the gate swung open, the dog raced/);
+  assert.equal(capture.body.max_completion_tokens, 600);
+});
+
+test("revise: unknown move is dropped, odd verdict becomes nearly, missing praise -> 502", async () => {
+  const capture = {};
+  const odd = { verdict: "superb", praise: "Nice try with 'raced'.", tweak: "Add a comma after 'open'.", example: "When the gate swung open, the dog raced." };
+  const r = await handleFeedback({ yearLevel: 2, revise: { ...REVISE, move: "haiku" } }, { fetchImpl: mockFetch(JSON.stringify(odd), { capture }), env: ENV });
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.verdict, "nearly");
+  assert.equal(r.payload.tweak, "Add a comma after 'open'.");
+  assert.doesNotMatch(capture.body.messages[0].content, /The writing move they were practising/);
+
+  const bad = await handleFeedback({ yearLevel: 2, revise: REVISE }, { fetchImpl: mockFetch(JSON.stringify({ verdict: "nearly" })), env: ENV });
+  assert.equal(bad.status, 502);
+  assert.doesNotMatch(bad.payload.error, /json|parse|model/i);
+});
+
 test("upstream error -> 502 without leaking details", async () => {
   const failFetch = async () => ({ ok: false, status: 429, json: async () => ({ error: { message: "rate limited" } }) });
   const r = await handleFeedback({ transcript: TEXT, yearLevel: 3 }, { fetchImpl: failFetch, env: ENV });

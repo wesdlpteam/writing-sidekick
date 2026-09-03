@@ -1,5 +1,5 @@
 import { getYearGuide, getGenreGuide, FEEDBACK_RULES } from "./_curriculum.js";
-import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, STATUSES } from "./_criteria.js";
+import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, STATUSES, MOVES } from "./_criteria.js";
 import { handlePreamble } from "./_cors.js";
 
 // The AI work happens in two steps so each call has one job:
@@ -90,6 +90,24 @@ Rules for practice_words: only genuinely misspelt words the child actually wrote
 Rules for spelling_tip: one child-friendly spelling generalisation only if it genuinely fits two or more of the practice words (for example "When you add -ing to a word ending in e, drop the e: make -> making", or "Say tricky words in syllables: fam-i-ly"). Word it so a child of this year level can read it. Use "" if no pattern fits.
 Rules for word_boost: pick 1-3 plain words the child actually wrote that could be stronger; for each, suggest 1-3 richer but year-appropriate alternatives. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". Use null if their word choices are already strong.
 Be very specific everywhere: every comment must quote or point to actual words, phrases or sentences from this child's writing, never generic advice that could apply to anyone's work.`;
+
+// Step 3 (optional, per power-up): the child types their revised sentence and gets a quick check.
+const REVISE_SPEC = `A child has just tried a revising move on their own writing and typed their new version. Judge ONLY whether the new version does the task they were set, judged for their year level. This is revising, not editing: ignore spelling and small punctuation slips unless they block the meaning. Be honest and warm, and quote their exact words.
+Verdicts:
+- "nailed_it": the move is clearly there and the sentence works.
+- "nearly": a real attempt that partly does the move, or has one clear slip in it.
+- "not_yet": the move is missing, the new version is the same as the original, or it is not a real attempt.
+If the new version copies the example word for word, use "nearly" and ask them to make it their own by changing one detail.
+Respond with ONLY a JSON object in exactly this shape:
+{
+  "verdict": "nailed_it" | "nearly" | "not_yet",
+  "praise": "one sentence, quoting their exact words, naming what works (for not_yet, one kind sentence about what to try)",
+  "tweak": "one sentence with the single most useful next tweak, or \\"\\" if none is needed",
+  "example": "for nearly or not_yet: their new version rewritten to show the move done well, keeping their ideas and year level; \\"\\" for nailed_it"
+}`;
+
+const VERDICTS = ["nailed_it", "nearly", "not_yet"];
+const MAX_ATTEMPT_CHARS = 1200;
 
 const text = (value) => (typeof value === "string" ? value.trim() : "");
 
@@ -299,10 +317,85 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
   return { status: 200, payload: { transcript, ...payload } };
 }
 
+// Reads and bounds the revision request; returns { error } for a bad one.
+function readRevision(raw) {
+  if (!raw || typeof raw !== "object") return { error: "Type your new version first." };
+  const attempt = text(raw.attempt);
+  if (!attempt) return { error: "Type your new version first." };
+  if (attempt.length > MAX_ATTEMPT_CHARS) return { error: "That is a lot to check at once. Try one or two sentences." };
+  return {
+    attempt,
+    yourLine: text(raw.yourLine).slice(0, 1500),
+    tryThis: text(raw.tryThis).slice(0, 1500),
+    nowYou: text(raw.nowYou).slice(0, 500),
+    skill: text(raw.skill).slice(0, 200),
+    move: typeof raw.move === "string" && MOVES[raw.move] ? raw.move : null,
+  };
+}
+
+function validateRevision(data) {
+  if (!data || typeof data !== "object") return null;
+  const praise = text(data.praise);
+  if (!praise) return null;
+  return {
+    verdict: VERDICTS.includes(data.verdict) ? data.verdict : "nearly",
+    praise,
+    tweak: text(data.tweak),
+    example: text(data.example),
+  };
+}
+
+async function checkRevision({ revise, yearLevel, env, fetchImpl }) {
+  const move = revise.move ? MOVES[revise.move] : null;
+  const systemPrompt = [
+    FEEDBACK_RULES,
+    `Year level expectations to judge against:\n${getYearGuide(yearLevel).summary}`,
+    move ? `The writing move they were practising: ${move.name}. ${move.rule} Example: ${move.example}` : "",
+    REVISE_SPEC,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const userText = [
+    revise.skill && `The power-up: ${revise.skill}`,
+    revise.nowYou && `The task I was given: ${revise.nowYou}`,
+    revise.yourLine && `My original line: ${revise.yourLine}`,
+    revise.tryThis && `The example I was shown: ${revise.tryThis}`,
+    `My new version: ${revise.attempt}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const content = await callModel({
+    fetchImpl,
+    apiKey: env.OPENAI_API_KEY,
+    body: {
+      model: env.OPENAI_MODEL || DEFAULT_FEEDBACK_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [{ type: "text", text: userText }] },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 600,
+    },
+  });
+  const payload = validateRevision(extractJson(content));
+  if (!payload) return { status: 502, payload: { error: "Hmm, I couldn't check that one. Please try again." } };
+  return { status: 200, payload };
+}
+
 export async function handleFeedback(body, { fetchImpl, env }) {
   const yearLevel = Number(body?.yearLevel);
   if (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 6) {
     return { status: 400, payload: { error: "Please choose a year level from 1 to 6." } };
+  }
+
+  if (body?.revise !== undefined) {
+    const revise = readRevision(body.revise);
+    if (revise.error) return { status: 400, payload: { error: revise.error } };
+    if (!env?.OPENAI_API_KEY) {
+      return { status: 500, payload: { error: "The app isn't set up yet. Please tell your teacher." } };
+    }
+    return checkRevision({ revise, yearLevel, env, fetchImpl });
   }
 
   const images = collectImages(body);

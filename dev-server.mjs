@@ -180,6 +180,19 @@ const server = http.createServer(async (req, res) => {
     }
     if (MOCK) {
       await new Promise((r) => setTimeout(r, 1200)); // simulate thinking time
+      if (body.revise) {
+        const attempt = typeof body.revise.attempt === "string" ? body.revise.attempt.trim() : "";
+        if (!attempt) {
+          res.writeHead(400).end(JSON.stringify({ error: "Type your new version first." }));
+          return;
+        }
+        const good = /,/.test(attempt) && /\b(when|while|after|before|although|since|under|at|in)\b/i.test(attempt);
+        const payload = good
+          ? { verdict: "nailed_it", praise: `'${attempt.split(",")[0]},' opens the sentence with a proper joining phrase and a comma.`, tweak: "", example: "" }
+          : { verdict: "nearly", praise: `You kept your idea in '${attempt.slice(0, 40)}'.`, tweak: "Put the when or where part at the front, then a comma.", example: `When the sun came out, ${attempt.charAt(0).toLowerCase()}${attempt.slice(1)}` };
+        res.writeHead(200).end(JSON.stringify(payload));
+        return;
+      }
       const hasPhotos = (Array.isArray(body.images) && body.images.length) || body.image;
       const payload = hasPhotos
         ? { transcript: MOCK_TRANSCRIPT }
