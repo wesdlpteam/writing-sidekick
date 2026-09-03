@@ -9,6 +9,8 @@ const state = {
   yearLevel: null,
   genre: "",
   pages: [], // cleaned-up page photos as data URLs, in order
+  transcripts: [], // the typed copy of each page, kept up to date as the child edits
+  reviewIndex: 0, // which page is open on the check-the-typing screen
   feedback: null,
 };
 
@@ -140,17 +142,6 @@ for (const id of ["photo-input", "photo-add"]) {
 
 // ---- step 1: pages -> transcript -> review screen ---------------------------
 
-function renderReviewPages() {
-  const box = $("review-pages");
-  box.innerHTML = "";
-  state.pages.forEach((dataUrl, index) => {
-    const img = document.createElement("img");
-    img.src = dataUrl;
-    img.alt = `Photo of page ${index + 1}`;
-    box.appendChild(img);
-  });
-}
-
 $("btn-read").addEventListener("click", async () => {
   if (!state.pages.length) return;
   try {
@@ -163,13 +154,10 @@ $("btn-read").addEventListener("click", async () => {
     // One request per page, read side by side, then joined in page order with a blank line
     // between pages. One big request for all pages used to trip the server's upload limit.
     const pages = await Promise.all(state.pages.map((image) => transcribePage({ image, yearLevel: state.yearLevel })));
-    $("transcript").value = pages
-      .map((page) => page.transcript.trim())
-      .filter(Boolean)
-      .join("\n\n");
-    renderReviewPages();
+    state.transcripts = pages.map((page) => page.transcript.trim());
+    state.reviewIndex = 0;
     show("screen-review");
-    autosizeTranscript();
+    showReviewPage();
   } catch (error) {
     showError(error.message);
   } finally {
@@ -177,7 +165,7 @@ $("btn-read").addEventListener("click", async () => {
   }
 });
 
-// ---- the typed copy: one document-style box that grows with the writing --------------
+// ---- the typed copy: one page at a time in a document-style box that grows with the writing --
 
 function autosizeTranscript() {
   const box = $("transcript");
@@ -185,12 +173,49 @@ function autosizeTranscript() {
   box.style.height = `${Math.max(320, box.scrollHeight + 4)}px`;
 }
 
-$("transcript").addEventListener("input", autosizeTranscript);
+// Shows the current page's typing. Next page moves through the pages; the feedback button
+// only appears on the last page, so every page gets checked.
+function showReviewPage() {
+  const count = state.transcripts.length;
+  const index = state.reviewIndex;
+  const last = index >= count - 1;
+  $("transcript").value = state.transcripts[index] || "";
+  $("review-page-label").textContent = `Page ${index + 1} of ${count}`;
+  $("review-page-label").hidden = count < 2;
+  $("btn-prev-page").hidden = index === 0;
+  $("btn-next-page").hidden = last;
+  $("btn-confirm").hidden = !last;
+  autosizeTranscript();
+  window.scrollTo(0, 0);
+}
+
+$("transcript").addEventListener("input", () => {
+  state.transcripts[state.reviewIndex] = $("transcript").value;
+  autosizeTranscript();
+});
+
+$("btn-prev-page").addEventListener("click", () => {
+  state.reviewIndex = Math.max(0, state.reviewIndex - 1);
+  showReviewPage();
+});
+
+$("btn-next-page").addEventListener("click", () => {
+  state.reviewIndex = Math.min(state.transcripts.length - 1, state.reviewIndex + 1);
+  showReviewPage();
+});
+
+// All pages joined in order, with a blank line between pages; empty pages are skipped.
+function fullTranscript() {
+  return state.transcripts
+    .map((page) => page.trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
 
 // ---- step 2: checked transcript -> feedback --------------------------------
 
 $("btn-confirm").addEventListener("click", async () => {
-  const transcript = $("transcript").value.trim();
+  const transcript = fullTranscript();
   if (!transcript) {
     showError("The typing box is empty. If the photo was too hard to read, try taking it again, or type your writing in.");
     return;
@@ -530,7 +555,7 @@ $("btn-print").addEventListener("click", () => {
     img.alt = `Page ${index + 1}`;
     pagesBox.appendChild(img);
   });
-  $("print-transcript").textContent = $("transcript").value;
+  $("print-transcript").textContent = fullTranscript();
   $("print-headline").textContent = headline;
   const powerBox = $("print-powerups");
   powerBox.innerHTML = "";
@@ -628,10 +653,11 @@ $("btn-restart").addEventListener("click", () => {
   disarmRestart();
   clearSpeechCache();
   state.pages = [];
+  state.transcripts = [];
+  state.reviewIndex = 0;
   state.feedback = null;
   shareCache = { key: "", blob: null };
   $("transcript").value = "";
-  $("review-pages").innerHTML = "";
   renderPages();
   show("screen-start");
 });

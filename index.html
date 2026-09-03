@@ -78,16 +78,16 @@
       <h1><span class="h-emoji">&#x1F50D; </span>Check the typing</h1>
       <p class="lead">Here is your writing. Fix any words the app got wrong, then keep going.</p>
       <button id="btn-back-camera" class="ghost small">&#8592; Back to the camera</button>
-      <div class="review-grid">
-        <figure class="scan-box">
-          <div id="review-pages" class="review-pages"></div>
-        </figure>
-        <div class="typed-box">
-          <textarea id="transcript" aria-label="Your writing as typed text" spellcheck="false" placeholder="Type your writing here"></textarea>
-          <p class="edit-hint">Tap to put the cursor where you want it. Double-tap a word to select it, then type the fix.</p>
-        </div>
+      <div class="typed-box">
+        <p id="review-page-label" class="review-page-label" hidden>Page 1 of 2</p>
+        <textarea id="transcript" aria-label="Your writing as typed text" spellcheck="false" placeholder="Type your writing here"></textarea>
+        <p class="edit-hint">Tap to put the cursor where you want it. Double-tap a word to select it, then type the fix.</p>
       </div>
-      <button id="btn-confirm" class="primary big">Looks right, show my feedback &#8594;</button>
+      <div class="btn-row review-actions">
+        <button id="btn-prev-page" class="ghost" type="button" hidden>&#8592; Previous page</button>
+        <button id="btn-next-page" class="primary big" type="button" hidden>Next page &#8594;</button>
+        <button id="btn-confirm" class="primary big" type="button">Looks right, show my feedback &#8594;</button>
+      </div>
     </section>
 
     <section id="screen-feedback" class="screen">
