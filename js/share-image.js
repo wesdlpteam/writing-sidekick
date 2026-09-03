@@ -3,6 +3,7 @@
 const W = 1080;
 const PAD = 56;
 const INNER = W - PAD * 2;
+const TEXT_W = INNER - 56; // card padding either side
 
 const INK = "#131a30";
 const NIGHT = "#141433";
@@ -15,6 +16,10 @@ const YELLOW = "#ffe9a8";
 const DETAIL = "#f4f0fa";
 const MUTED = "#4a5570";
 
+const STATUS_LABEL = { strength: "Strength", steady: "On track", next_step: "Next step" };
+const STATUS_FILL = { strength: GREEN, steady: YELLOW, next_step: BLUE };
+
+// Breaks text into lines that fit maxWidth in the font currently set on ctx.
 function wrapText(ctx, text, maxWidth) {
   const lines = [];
   for (const rawLine of String(text).split("\n")) {
@@ -43,24 +48,33 @@ function roundedRect(ctx, x, y, w, h, r) {
   }
 }
 
-function drawCard(ctx, y, lines, lineHeight, fill, title, titleFont, bodyFont) {
-  const titleHeight = title ? lineHeight + 8 : 0;
-  const height = titleHeight + lines.length * lineHeight + 44;
+function cardHeight(section, lineHeight) {
+  const titleHeight = section.titleLines.length ? section.titleLines.length * lineHeight + 8 : 0;
+  return titleHeight + section.lines.length * lineHeight + 44;
+}
+
+// Draws one card. Title lines and body lines were wrapped with the same fonts used here,
+// so nothing runs past the border.
+function drawCard(ctx, y, section, lineHeight, titleFont, bodyFont) {
+  const height = cardHeight(section, lineHeight);
   roundedRect(ctx, PAD, y, INNER, height, 18);
-  ctx.fillStyle = fill;
+  ctx.fillStyle = section.fill;
   ctx.fill();
   ctx.lineWidth = 4;
   ctx.strokeStyle = INK;
   ctx.stroke();
   ctx.fillStyle = INK;
   let textY = y + 34 + lineHeight / 2;
-  if (title) {
+  if (section.titleLines.length) {
     ctx.font = titleFont;
-    ctx.fillText(title, PAD + 28, textY);
-    textY += lineHeight + 8;
+    for (const line of section.titleLines) {
+      ctx.fillText(line, PAD + 28, textY);
+      textY += lineHeight;
+    }
+    textY += 8;
   }
   ctx.font = bodyFont;
-  for (const line of lines) {
+  for (const line of section.lines) {
     ctx.fillText(line, PAD + 28, textY);
     textY += lineHeight;
   }
@@ -77,60 +91,60 @@ async function loadImage(src) {
   return img;
 }
 
-const STATUS_LABEL = { strength: "Strength", steady: "On track", next_step: "Next step" };
-const STATUS_FILL = { strength: GREEN, steady: YELLOW, next_step: BLUE };
-
 // include.brief = the sidekick's message, power-ups, spelling and word power;
 // include.detail = the writing check-up (one card per area).
 export async function buildFeedbackImage({ pages = [], feedback, yearLevel, include = { brief: true, detail: false } }) {
   const bodyFont = `30px Nunito, sans-serif`;
-  const boldFont = `800 30px Nunito, sans-serif`;
   const titleFont = `800 34px Nunito, sans-serif`;
   const lineHeight = 42;
 
   const measure = document.createElement("canvas").getContext("2d");
+  const wrap = (text, font) => {
+    measure.font = font;
+    return wrapText(measure, text, TEXT_W);
+  };
   const sections = [];
+  const addCard = (fill, title, bodyTexts) =>
+    sections.push({
+      fill,
+      titleLines: title ? wrap(title, titleFont) : [],
+      lines: bodyTexts.filter(Boolean).flatMap((t) => wrap(t, bodyFont)),
+    });
 
-  measure.font = bodyFont;
   if (include.brief) {
-    sections.push({ fill: BLUE, title: "First, the big picture", lines: wrapText(measure, feedback.headline, INNER - 56) });
+    addCard(BLUE, "First, the big picture", [feedback.headline]);
     feedback.powerUps.forEach((p, index) => {
-      const lines = wrapText(measure, p.why, INNER - 56);
-      if (p.yourLine) lines.push(...wrapText(measure, `Your line: ${p.yourLine}`, INNER - 56));
-      lines.push(...wrapText(measure, `Try this: ${p.tryThis}`, INNER - 56));
-      if (p.sentenceType) {
-        const st = p.sentenceType;
-        lines.push(...wrapText(measure, `This is a ${st.name}. ${st.rule} Another one: ${st.example}`, INNER - 56));
-      }
-      if (p.nowYou) lines.push(...wrapText(measure, `Now you: ${p.nowYou}`, INNER - 56));
-      sections.push({ fill: "#ffffff", title: `⚡ Power-up ${index + 1}: ${p.skill}`, lines });
+      const st = p.sentenceType;
+      addCard("#ffffff", `⚡ Power-up ${index + 1}: ${p.skill}`, [
+        p.why,
+        p.yourLine && `Your line: ${p.yourLine}`,
+        `Try this: ${p.tryThis}`,
+        st && `This is a ${st.name}. ${st.rule} Another one: ${st.example}`,
+        p.nowYou && `Now you: ${p.nowYou}`,
+      ]);
     });
     if (feedback.practiceWords?.length) {
-      const wordsText = feedback.practiceWords.map((w) => `${w.correct} (you wrote: ${w.wrote})`).join("   ");
-      const lines = wrapText(measure, wordsText, INNER - 56);
-      if (feedback.spellingTip) lines.push(...wrapText(measure, `Tip: ${feedback.spellingTip}`, INNER - 56));
-      sections.push({ fill: YELLOW, title: "Spelling to practise", lines });
+      addCard(YELLOW, "Spelling to practise", [
+        feedback.practiceWords.map((w) => `${w.correct} (you wrote: ${w.wrote})`).join("   "),
+        feedback.spellingTip && `Tip: ${feedback.spellingTip}`,
+      ]);
     }
     if (feedback.wordBoost) {
-      const lines = feedback.wordBoost.swaps.map((s) => `${s.from} → ${s.to.join(", ")}`);
-      if (feedback.wordBoost.before && feedback.wordBoost.after) {
-        lines.push(...wrapText(measure, `Your sentence: ${feedback.wordBoost.before}`, INNER - 56));
-        lines.push(...wrapText(measure, `With word power: ${feedback.wordBoost.after}`, INNER - 56));
-      }
-      sections.push({ fill: DETAIL, title: "Word power", lines });
+      const boost = feedback.wordBoost;
+      addCard(DETAIL, "Word power", [
+        ...boost.swaps.map((s) => `${s.from} → ${s.to.join(", ")}`),
+        boost.before && boost.after && `Your sentence: ${boost.before}`,
+        boost.before && boost.after && `With word power: ${boost.after}`,
+      ]);
     }
   }
   if (include.detail && Array.isArray(feedback.criteria)) {
     for (const c of feedback.criteria) {
-      const lines = [];
-      if (c.strength) lines.push(...wrapText(measure, `✅ ${c.strength}`, INNER - 56));
       const next = c.powerUp ? `See Power-up ${c.powerUp}.` : c.nextStep;
-      if (next) lines.push(...wrapText(measure, `➡️ ${next}`, INNER - 56));
-      sections.push({
-        fill: STATUS_FILL[c.status] || YELLOW,
-        title: `${c.label}: ${STATUS_LABEL[c.status] || STATUS_LABEL.steady}`,
-        lines,
-      });
+      addCard(STATUS_FILL[c.status] || YELLOW, `${c.label}: ${STATUS_LABEL[c.status] || STATUS_LABEL.steady}`, [
+        c.strength && `✅ ${c.strength}`,
+        next && `➡️ ${next}`,
+      ]);
     }
   }
 
@@ -144,10 +158,7 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
   });
   const pagesHeight = pageBoxes.reduce((sum, p) => sum + p.height + 40, 0);
 
-  const sectionsHeight = sections.reduce(
-    (sum, s) => sum + (s.title ? lineHeight + 8 : 0) + s.lines.length * lineHeight + 44 + 28,
-    0,
-  );
+  const sectionsHeight = sections.reduce((sum, s) => sum + cardHeight(s, lineHeight) + 28, 0);
   const height = 170 + pagesHeight + sectionsHeight + 90;
 
   const canvas = document.createElement("canvas");
@@ -187,7 +198,7 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
   }
 
   for (const section of sections) {
-    y = drawCard(ctx, y, section.lines, lineHeight, section.fill, section.title, titleFont, section.title ? boldFont : bodyFont);
+    y = drawCard(ctx, y, section, lineHeight, titleFont, bodyFont);
   }
 
   ctx.fillStyle = MUTED;
