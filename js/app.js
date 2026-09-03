@@ -2,6 +2,7 @@ import { prepareScan, rotate90 } from "./scan.js";
 import { transcribePages, getFeedback } from "./api.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js";
+import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js";
 
 const MAX_PAGES = 4;
 
@@ -15,9 +16,20 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 function show(screenId) {
+  stopSpeaking();
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === screenId));
   window.scrollTo(0, 0);
 }
+
+// Read-aloud (teacher setting). Set for each feedback render; renderers call mountListen.
+let readAloud = true;
+
+function mountListen(slot, text, options) {
+  slot.innerHTML = "";
+  if (readAloud) slot.appendChild(listenButton(text, options));
+}
+
+const joinOr = (items) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}` : items[0]);
 
 function setLoading(visible, message) {
   if (message) $("loading-msg").textContent = message;
@@ -211,6 +223,7 @@ function renderPractice() {
   }
   $("practice-tip").hidden = !tip;
   $("practice-tip").textContent = tip;
+  mountListen($("practice-listen"), () => `Spelling to practise: ${words.map((w) => w.correct).join(", ")}.${tip ? ` Tip: ${tip}` : ""}`);
 }
 
 function renderBoost() {
@@ -233,6 +246,11 @@ function renderBoost() {
     $("boost-before").textContent = boost.before;
     $("boost-after").textContent = boost.after;
   }
+  mountListen($("boost-listen"), () =>
+    `Word power. ${boost.swaps.map((s) => `Instead of ${s.from}, try ${joinOr(s.to)}`).join(". ")}.${
+      hasExample ? ` Your sentence: ${boost.before} With word power: ${boost.after}` : ""
+    }`,
+  );
 }
 
 function labelledLine(label, value, tag) {
@@ -283,6 +301,23 @@ function renderPowerUps(powerUps) {
     const head = el("div", "power-head");
     head.appendChild(el("p", "power-title", `Power-up ${index + 1}: ${p.skill}`));
     if (p.areaLabel) head.appendChild(el("span", "power-area", p.areaLabel));
+    if (readAloud) {
+      const st = p.sentenceType;
+      head.appendChild(
+        listenButton(() =>
+          [
+            `Power-up ${index + 1}: ${p.skill}.`,
+            p.why,
+            p.yourLine && `Your line: ${p.yourLine}`,
+            `Try this: ${p.tryThis}`,
+            st && `This is a ${st.name}. ${st.rule} Another one: ${st.example}`,
+            p.nowYou && `Now you: ${p.nowYou}`,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        ),
+      );
+    }
     card.append(head, el("p", "power-why", p.why));
     if (p.yourLine) card.appendChild(labelledLine("Your line:", p.yourLine, "q"));
     card.appendChild(labelledLine("Try this:", p.tryThis, "strong"));
@@ -333,12 +368,19 @@ function renderCriteria(criteria) {
       line.append(emoji("➡️"), c.nextStep);
       card.appendChild(line);
     }
+    if (readAloud) {
+      const next = c.powerUp ? `See power-up ${c.powerUp}.` : c.nextStep;
+      card.appendChild(listenButton(() => [`${c.label}: ${status.label}.`, c.strength, next].filter(Boolean).join(" "), { compact: true }));
+    }
     grid.appendChild(card);
   }
 }
 
 function renderFeedback() {
   const { headline, criteria, powerUps } = state.feedback;
+  readAloud = loadSettings().readAloud;
+  clearSpeechCache();
+  mountListen($("headline-actions"), headline);
   renderPractice();
   renderBoost();
   const showDetail = loadSettings().showDetail;
@@ -509,6 +551,7 @@ $("btn-restart").addEventListener("click", () => {
     return;
   }
   disarmRestart();
+  clearSpeechCache();
   state.pages = [];
   state.feedback = null;
   shareCache = { key: "", blob: null };
@@ -524,12 +567,15 @@ $("btn-error-close").addEventListener("click", () => {
   $("error-banner").hidden = true;
 });
 
+document.addEventListener("speech-error", (event) => showError(event.detail));
+
 // ---- teacher settings ------------------------------------------------------
 
 $("btn-settings").addEventListener("click", () => {
   const settings = loadSettings();
   $("setting-year").value = settings.defaultYear ?? "";
   $("setting-detail").checked = settings.showDetail;
+  $("setting-readaloud").checked = settings.readAloud;
   $("settings-dialog").showModal();
 });
 
@@ -538,6 +584,7 @@ $("btn-settings-done").addEventListener("click", () => {
   saveSettings({
     defaultYear: yearValue ? Number(yearValue) : null,
     showDetail: $("setting-detail").checked,
+    readAloud: $("setting-readaloud").checked,
   });
   $("settings-dialog").close();
   applyDefaultYear();

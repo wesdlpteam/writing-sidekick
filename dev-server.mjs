@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleFeedback } from "./api/feedback.js";
+import { handleSpeak } from "./api/speak.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.argv.find((a) => a.startsWith("--port="))?.slice(7)) || 4173;
@@ -105,8 +106,63 @@ function collectBody(req) {
   });
 }
 
+// Practice mode cannot talk, so the Listen buttons play a short two-note chime instead.
+function mockChime() {
+  const rate = 22050;
+  const seconds = 0.7;
+  const samples = Math.floor(rate * seconds);
+  const data = Buffer.alloc(samples * 2);
+  for (let i = 0; i < samples; i++) {
+    const t = i / rate;
+    const freq = t < 0.35 ? 523 : 659;
+    const envelope = Math.min(1, (t % 0.35) * 40) * Math.max(0, 1 - (t % 0.35) / 0.35);
+    data.writeInt16LE(Math.round(Math.sin(2 * Math.PI * freq * t) * envelope * 12000), i * 2);
+  }
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write("WAVEfmt ", 8);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(rate, 24);
+  header.writeUInt32LE(rate * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(data.length, 40);
+  return Buffer.concat([header, data]);
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+
+  if (url.pathname === "/api/speak") {
+    res.setHeader("Cache-Control", "no-store");
+    if (req.method !== "POST") {
+      res.writeHead(405, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "Method not allowed" }));
+      return;
+    }
+    let body = {};
+    try {
+      body = JSON.parse((await collectBody(req)) || "{}");
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "Bad request" }));
+      return;
+    }
+    if (MOCK) {
+      await new Promise((r) => setTimeout(r, 600));
+      res.writeHead(200, { "Content-Type": "audio/wav" }).end(mockChime());
+      return;
+    }
+    const result = await handleSpeak(body, { fetchImpl: fetch, env: process.env });
+    if (result.audio) {
+      res.writeHead(200, { "Content-Type": result.contentType }).end(result.audio);
+      return;
+    }
+    res.writeHead(result.status, { "Content-Type": "application/json" }).end(JSON.stringify(result.payload));
+    return;
+  }
 
   if (url.pathname === "/api/feedback") {
     res.setHeader("Cache-Control", "no-store");

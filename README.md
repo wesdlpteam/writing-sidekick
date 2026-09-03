@@ -22,6 +22,8 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
   step), what the child did well, and a next step. Reports and poems use the nine shared
   areas. Teachers can hide the check-up for younger students.
 - Spelling to practise and Word power.
+- A Listen button on every card reads it aloud in a warm, sincere voice (OpenAI's "marin"
+  voice), so younger readers can hear their feedback. Teachers can switch the buttons off.
 
 The area names follow the national writing assessment criteria; the descriptions used in
 the prompt and the app are written in our own words (the marking guides themselves are
@@ -57,7 +59,9 @@ the feedback is a canned example, but every screen works.
 3. The `.env` file stays on this computer; it is ignored by version control and never shared.
 
 Both steps default to `gpt-5.4`. Set `OPENAI_MODEL=gpt-5.4-mini` to make the feedback
-step cheaper, or `OPENAI_TRANSCRIBE_MODEL` to change the reading step.
+step cheaper, or `OPENAI_TRANSCRIBE_MODEL` to change the reading step. The Listen buttons
+use `gpt-4o-mini-tts` with the `marin` voice; `OPENAI_TTS_MODEL` and `OPENAI_TTS_VOICE`
+change that.
 
 ## The live site
 
@@ -87,6 +91,7 @@ looks and launches like a normal app.
 - `index.html`, `css/`, `js/`: the app the student sees
 - `art/`: the Writing Sidekick hero artwork
 - `api/feedback.js`: the server function that talks to OpenAI (both steps)
+- `api/speak.js`: the read-aloud function (text in, mp3 out); `api/_cors.js` is shared by both
 - `api/_curriculum.js`: per-year writing expectations, distilled from
   `curriculum/english-curriculum-f-6-v9.md` (ACARA v9, © ACARA 2022)
 - `tests/`: run with `npm test`

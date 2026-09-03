@@ -39,3 +39,32 @@ export function transcribePages({ images, yearLevel }) {
 export function getFeedback({ transcript, yearLevel, genre }) {
   return post({ transcript, yearLevel, genre });
 }
+
+// Read-aloud: one card's text -> mp3 bytes (an ArrayBuffer)
+export async function speak(text) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  let response;
+  try {
+    response = await fetch(`${API_BASE}/api/speak`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal: controller.signal,
+    });
+  } catch {
+    throw new Error(FRIENDLY_FAIL);
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!response.ok) {
+    let data = {};
+    try {
+      data = await response.json();
+    } catch {
+      // fall through to the friendly message
+    }
+    throw new Error(data.error || FRIENDLY_FAIL);
+  }
+  return response.arrayBuffer();
+}

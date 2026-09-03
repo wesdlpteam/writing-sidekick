@@ -1,5 +1,5 @@
 const KEY = "wf-settings";
-const DEFAULTS = { defaultYear: null, showDetail: true };
+const DEFAULTS = { defaultYear: null, showDetail: true, readAloud: true };
 
 export function loadSettings() {
   try {

@@ -97,6 +97,7 @@
       <div class="wish-card">
         <p class="wish-title">First, the big picture</p>
         <p id="headline"></p>
+        <div id="headline-actions" class="wish-actions"></div>
       </div>
       <h2 class="fb-heading"><span class="h-emoji">&#x26A1; </span>Power up here</h2>
       <p class="lead fb-lead">The moves that will lift this piece the most. Try each one, then use it in other spots too.</p>
@@ -107,12 +108,18 @@
         <div id="criteria" class="criteria-grid"></div>
       </div>
       <div id="practice-card" class="practice-card" hidden>
-        <p class="practice-title"><span class="h-emoji">&#x1F4DD; </span>Spelling to practise</p>
+        <div class="title-row">
+          <p class="practice-title"><span class="h-emoji">&#x1F4DD; </span>Spelling to practise</p>
+          <span id="practice-listen"></span>
+        </div>
         <ul id="practice-words"></ul>
         <p id="practice-tip" class="practice-tip" hidden></p>
       </div>
       <div id="boost-card" class="practice-card boost-card" hidden>
-        <p class="practice-title"><span class="h-emoji">&#x1F4AA; </span>Word power</p>
+        <div class="title-row">
+          <p class="practice-title"><span class="h-emoji">&#x1F4AA; </span>Word power</p>
+          <span id="boost-listen"></span>
+        </div>
         <ul id="boost-swaps"></ul>
         <div id="boost-example" hidden>
           <p class="boost-line"><span class="boost-label">Your sentence:</span> <span id="boost-before"></span></p>
@@ -150,6 +157,9 @@
       </label>
       <label class="setting-row">Show the full writing check-up to students
         <input id="setting-detail" type="checkbox" checked>
+      </label>
+      <label class="setting-row">Listen buttons (reads each card aloud)
+        <input id="setting-readaloud" type="checkbox" checked>
       </label>
       <button id="btn-settings-done" class="primary">Done</button>
     </dialog>
