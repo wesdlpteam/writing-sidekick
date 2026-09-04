@@ -1,6 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getYearGuide, getGenreGuide, FEEDBACK_RULES } from "../api/_curriculum.js";
+import { getYearGuide, getGenreGuide, FEEDBACK_RULES, readingLevel } from "../api/_curriculum.js";
+
+test("the reading level steps up in three bands and names the year", () => {
+  assert.match(readingLevel(1), /Year 1\. .*under 12 words/);
+  assert.match(readingLevel(2), /six or seven year old/);
+  assert.match(readingLevel(3), /Year 3\. .*under 16 words/);
+  assert.match(readingLevel(4), /eight or nine year old/);
+  assert.match(readingLevel(5), /Year 5\. .*proper names of writing moves/);
+  assert.match(readingLevel(6), /ten or eleven year old/);
+  assert.doesNotMatch(readingLevel(6), /under 1[26] words/, "older writers get natural sentences, not a word cap");
+});
 
 test("years 1-6 return non-empty summaries", () => {
   for (let year = 1; year <= 6; year++) {

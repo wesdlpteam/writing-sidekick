@@ -281,6 +281,10 @@ test("the prompt does not force a spread of strengths and next steps; Years 1 an
   const sys4 = c4.body.messages[0].content;
   assert.match(sys4, /Rules for power_ups: 2 or 3/);
   assert.doesNotMatch(sys4, /under 12 words/);
+  assert.match(sys4, /This writer is in Year 4\. .*under 16 words/, "Years 3 and 4 get their own band");
+  const c6 = {};
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 6, genre: "persuasive" }, c6);
+  assert.match(c6.body.messages[0].content, /This writer is in Year 6\. .*proper names of writing moves/, "Years 5 and 6 can take the real terms");
 });
 
 // ---- evidence fidelity: nothing shown to the child may be invented ---------
@@ -657,6 +661,7 @@ test("level up: the prompt carries both versions, the power-ups and the practice
   const sys = capture.body.messages[0].content;
   assert.match(sys, /Never claim a change that did not happen/);
   assert.match(sys, /end of Year 3/);
+  assert.match(sys, /This writer is in Year 3\. .*under 16 words/, "the level-up praise is worded for the year too");
   assert.doesNotMatch(sys, /power_ups|areas/, "this call does not ask for fresh feedback");
   const user = capture.body.messages[1].content[0].text;
   assert.match(user, /ORIGINAL writing:\nThe dog ran fast\./);

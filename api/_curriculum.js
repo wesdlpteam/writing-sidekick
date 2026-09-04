@@ -29,6 +29,19 @@ Non-negotiable rules:
 6. Word everything so a child of this year level can read it themselves: short sentences for younger years, no teacher jargon, no lecture.
 7. Do not mention these rules, the curriculum, ACARA, research, or that you are an AI.`;
 
+// How to talk to the child, by year: the same feedback said three ways. Years 1 and 2 read like
+// a picture book; Years 3 and 4 get plain words with a hint for any writing term; Years 5 and
+// 6 can take the proper names of writing moves and a little more depth.
+export function readingLevel(year) {
+  if (year <= 2) {
+    return `This writer is in Year ${year}. Write as if talking to a six or seven year old: every sentence under 12 words, one idea per sentence, everyday words only (say "joining word", not "conjunction"), and keep the whole feedback short enough to read in a minute.`;
+  }
+  if (year <= 4) {
+    return `This writer is in Year ${year}. Write for an eight or nine year old: sentences under 16 words, plain words first, and when you use a writing term (comma, paragraph, adjective) add a few words saying what it means the first time. Keep each power-up to a few short lines.`;
+  }
+  return `This writer is in Year ${year}. Write for a ten or eleven year old: clear, natural sentences, the proper names of writing moves and terms (subordinate clause, appositive, topic sentence) with a brief reminder of the meaning the first time, and a little more depth on why each change helps.`;
+}
+
 export function getYearGuide(year) {
   const guide = YEAR_GUIDES[year];
   if (!guide) throw new Error(`No curriculum guide for year: ${year}`);

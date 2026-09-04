@@ -1,4 +1,4 @@
-import { getYearGuide, getGenreGuide, FEEDBACK_RULES } from "./_curriculum.js";
+import { getYearGuide, getGenreGuide, FEEDBACK_RULES, readingLevel } from "./_curriculum.js";
 import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, STATUSES } from "./_criteria.js";
 import { handlePreamble } from "./_cors.js";
 import { apiUrl, fetchWithTimeout } from "./_provider.js";
@@ -375,9 +375,7 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
     criteriaPrompt(kind),
     FEEDBACK_PRINCIPLES,
     movesPrompt(yearLevel),
-    yearLevel <= 2
-      ? `This writer is in Year ${yearLevel}: keep every sentence you write under 12 words, use everyday words only, and keep the whole feedback short.`
-      : "",
+    readingLevel(yearLevel),
     outputSpec(yearLevel <= 2 ? "1 or 2" : "2 or 3"),
   ]
     .filter(Boolean)
@@ -468,7 +466,7 @@ async function levelUpFeedback({ levelUp, yearLevel, env, fetchImpl }) {
       },
     };
   }
-  const systemPrompt = [`Year level of the writer, for tone and expectations:\n${getYearGuide(yearLevel).summary}`, LEVEL_UP_SPEC].join("\n\n");
+  const systemPrompt = [`Year level of the writer, for tone and expectations:\n${getYearGuide(yearLevel).summary}`, readingLevel(yearLevel), LEVEL_UP_SPEC].join("\n\n");
   const powerUpLines = levelUp.powerUps.map(
     (p, i) => `${i + 1}. ${p.skill}${p.area ? ` (${p.area})` : ""}.${p.tryThis ? ` Try this: ${p.tryThis}` : ""}${p.nowYou ? ` Now you: ${p.nowYou}` : ""}${p.move ? ` Move: ${p.move}` : ""}`,
   );
