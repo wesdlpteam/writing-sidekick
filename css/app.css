@@ -117,7 +117,6 @@ h1 {
   text-shadow: 3px 3px 0 var(--ink), 0 0 22px rgba(255, 194, 51, 0.3);
   text-wrap: balance;
 }
-h1::after { content: " \2726"; color: var(--violet); -webkit-text-stroke: 0; }
 
 h2 {
   font-family: var(--font-display);
@@ -139,7 +138,6 @@ h2 {
   margin: 0;
   transform: rotate(-2deg);
 }
-.title-lockup h1::after { content: ""; }
 .emblem svg {
   width: 0.95em;
   height: 0.95em;
@@ -896,7 +894,6 @@ dialog::backdrop { background: rgba(10, 17, 40, 0.72); }
 
 /* Years 5-6: same system, quieter voice. */
 body.senior .h-emoji { display: none; }
-body.senior h1::after { content: ""; }
 body.senior .title-lockup h1,
 body.senior .tagline { transform: none; }
 body.senior .reminder-title { font-family: var(--font-body); font-size: 1.1rem; font-weight: 800; color: var(--ink); }
@@ -923,7 +920,6 @@ body.senior .year-btn.selected::after { content: ""; }
     color: #000;
   }
   #print-doc h1 { font-size: 20pt; margin-bottom: 2pt; font-family: Georgia, serif; color: #000; -webkit-text-stroke: 0; text-shadow: none; letter-spacing: 0; }
-  #print-doc h1::after { content: ""; }
   #print-doc h2 { font-size: 13pt; margin: 12pt 0 4pt; border-bottom: 1px solid #999; font-family: Georgia, serif; color: #000; text-shadow: none; letter-spacing: 0; }
   #print-doc img { max-width: 100%; max-height: 40vh; }
   #print-doc pre { white-space: pre-wrap; font-family: Georgia, serif; font-size: 11pt; line-height: 1.5; }
