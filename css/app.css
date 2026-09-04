@@ -489,26 +489,31 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .stage-scan { box-shadow: 5px 5px 0 #1f8fb8, 0 0 44px rgba(96, 224, 255, 0.4); }
 .fb-slide[data-slide="checkup"] .fb-heading { text-shadow: 3px 3px 0 var(--ink), 0 0 22px rgba(96, 224, 255, 0.7); }
 
-/* Tap-to-listen: idle, loading, playing (shows Stop). */
+/* Tap-to-listen: quiet by design, a small outlined pill that only lights up while playing
+   (idle, loading, playing shows Stop). */
 .listen {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: #fff;
-  color: var(--ink);
-  border: 2px solid var(--ink);
+  gap: 5px;
+  background: transparent;
+  color: var(--muted);
+  border: 1.5px solid rgba(19, 26, 48, 0.28);
   border-radius: 999px;
-  padding: 6px 14px;
-  min-height: 44px;
+  padding: 4px 11px;
+  min-height: 40px;
   font-family: var(--font-body);
-  font-weight: 800;
-  font-size: 0.95rem;
-  box-shadow: 2px 2px 0 var(--purple-mid);
+  font-weight: 700;
+  font-size: 0.82rem;
+  box-shadow: none;
   white-space: nowrap;
 }
-.listen[data-state="loading"] { opacity: 0.7; }
-.listen[data-state="playing"] { background: var(--gold); }
-.listen.compact { padding: 4px 12px; font-size: 0.85rem; margin-top: 10px; }
+.listen:hover { color: var(--ink); border-color: var(--ink); }
+.listen[data-state="loading"] { opacity: 0.6; }
+.listen[data-state="playing"] { background: var(--gold-soft); color: var(--ink); border-color: var(--gold-deep); }
+.listen.compact { padding: 3px 9px; font-size: 0.78rem; margin-top: 8px; min-height: 36px; }
+/* On the dark sky (camera screen) the pill goes light so it can still be found. */
+.screen-listen .listen { color: var(--sky-muted); border-color: rgba(170, 182, 218, 0.45); }
+.screen-listen .listen:hover { color: var(--sky-text); border-color: var(--sky-text); }
 .title-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .title-row .practice-title { margin: 0; }
 .title-row + ul { margin-top: 10px; }
