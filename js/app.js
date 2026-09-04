@@ -1,5 +1,5 @@
 import { prepareScan, rotate90 } from "./scan.js";
-import { transcribePage, getFeedback, checkRevision } from "./api.js";
+import { transcribePage, getFeedback, getLevelUp } from "./api.js";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js";
 
@@ -12,6 +12,8 @@ const state = {
   transcripts: [], // the typed copy of each page, kept up to date as the child edits
   reviewIndex: 0, // which page is open on the check-the-typing screen
   feedback: null,
+  round: 1, // 2 once the child comes back with their revised writing
+  original: null, // round 2: { transcript, feedback } from round 1
 };
 
 const $ = (id) => document.getElementById(id);
@@ -92,7 +94,8 @@ function markSelected(button, selected) {
 document.querySelectorAll(".year-btn, .chip").forEach((b) => markSelected(b, b.classList.contains("selected")));
 
 $("btn-start").addEventListener("click", () => show("screen-camera"));
-$("btn-back-start").addEventListener("click", () => show("screen-start"));
+// In round 2 the camera's Back goes to the feedback, where the child came from.
+$("btn-back-start").addEventListener("click", () => show(state.round === 2 ? "screen-feedback" : "screen-start"));
 $("btn-back-camera").addEventListener("click", () => show("screen-camera"));
 
 // ---- pages: photo -> cleaned scan, up to four pages -------------------------
@@ -181,8 +184,16 @@ $("btn-read").addEventListener("click", async () => {
     const pages = await Promise.all(state.pages.map((image) => transcribePage({ image, yearLevel: state.yearLevel })));
     state.transcripts = pages.map((page) => page.transcript.trim());
     state.reviewIndex = 0;
-    show("screen-review");
-    showReviewPage();
+    // Years 1 to 3 do not check the typing: it is a lot of reading for a young writer, so the
+    // feedback comes straight back. Year 4 and up still get to fix anything the app misread.
+    // An unreadable photo always shows the typing screen, whatever the year, so the writing
+    // can be typed in rather than the child being stuck.
+    if (checksTyping() || !fullTranscript()) {
+      show("screen-review");
+      showReviewPage();
+      return;
+    }
+    await submitWriting();
   } catch (error) {
     showError(error.message);
   } finally {
@@ -197,6 +208,11 @@ function autosizeTranscript() {
   box.style.height = "auto";
   box.style.height = `${Math.max(320, box.scrollHeight + 4)}px`;
 }
+
+// The first measurement can be short if the writing font or the screen size arrives late,
+// which used to leave a page of writing cut off halfway. Measure again when either changes.
+document.fonts?.ready.then(autosizeTranscript).catch(() => {});
+window.addEventListener("resize", autosizeTranscript);
 
 // Shows the current page's typing. Next page moves through the pages; the feedback button
 // only appears on the last page, so every page gets checked.
@@ -239,22 +255,40 @@ function fullTranscript() {
     .join("\n\n");
 }
 
-// ---- step 2: checked transcript -> feedback --------------------------------
+// ---- step 2: the writing -> feedback ---------------------------------------
 
-$("btn-confirm").addEventListener("click", async () => {
+// Year 4 and up see the typed copy and can fix it before the feedback comes back.
+const checksTyping = () => state.yearLevel >= 4;
+
+$("btn-confirm").addEventListener("click", () => submitWriting());
+
+async function submitWriting() {
   const transcript = fullTranscript();
   if (!transcript) {
     showError("The typing box is empty. If the photo was too hard to read, try taking it again, or type your writing in.");
     return;
   }
   try {
-    setLoading(true, "Your sidekick is thinking about your writing…");
-    const reply = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
-    if (reply.safety) {
-      showAdult(reply);
+    if (state.round === 2 && state.original) {
+      // Round 2: compare the new version with the first one and celebrate what changed.
+      setLoading(true, "Your sidekick is checking what got better…");
+      const fb = state.original.feedback;
+      const reply = await getLevelUp({
+        yearLevel: state.yearLevel,
+        genre: state.genre,
+        levelUp: {
+          before: state.original.transcript,
+          after: transcript,
+          powerUps: fb.powerUps.map((p) => ({ skill: p.skill, area: p.areaLabel, tryThis: p.tryThis, nowYou: p.nowYou, move: p.move?.name || "" })),
+          practiceWords: fb.practiceWords || [],
+        },
+      });
+      renderLevelUp(reply);
+      show("screen-levelup");
       return;
     }
-    state.feedback = reply;
+    setLoading(true, "Your sidekick is thinking about your writing…");
+    state.feedback = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
     renderFeedback();
     show("screen-feedback");
   } catch (error) {
@@ -262,7 +296,7 @@ $("btn-confirm").addEventListener("click", async () => {
   } finally {
     setLoading(false);
   }
-});
+}
 
 function renderPractice() {
   const words = state.feedback.practiceWords || [];
@@ -398,88 +432,53 @@ function renderPowerUps(powerUps) {
       task.append(emoji("✍️"), el("strong", "", "Now you: "), p.nowYou);
       card.appendChild(task);
     }
-    card.appendChild(reviseBlock(p, index));
     box.appendChild(card);
   });
 }
 
-const VERDICT = {
-  nailed_it: { emoji: "🏆", label: "Nailed it!", css: "is-nailed" },
-  nearly: { emoji: "👍", label: "Nearly there", css: "is-nearly" },
-  not_yet: { emoji: "💪", label: "Keep going", css: "is-notyet" },
-};
+// ---- level up: round 2 -------------------------------------------------------
 
-// "Revise it": the child types their new version and gets a quick check on the move only.
-function reviseBlock(p, index) {
-  const wrap = el("div", "revise");
-  const label = el("label", "revise-label");
-  const boxId = `revise-${index + 1}`;
-  label.htmlFor = boxId;
-  label.append(emoji("🔁"), "Revise it: write your new version here");
-  const input = el("textarea", "revise-input");
-  input.id = boxId;
-  input.rows = 2;
-  input.placeholder = "Type your improved sentence…";
-  const actions = el("div", "revise-actions");
-  const button = el("button", "secondary small revise-check", "Check my sentence");
-  button.type = "button";
-  actions.appendChild(button);
-  const result = el("div", "revise-result");
-  result.setAttribute("role", "status");
-  result.hidden = true;
-  wrap.append(label, input, actions, result);
-
-  button.addEventListener("click", async () => {
-    const attempt = input.value.trim();
-    if (!attempt) {
-      showError("Type your new version first.");
-      return;
-    }
-    button.disabled = true;
-    button.textContent = "Checking…";
-    try {
-      const reply = await checkRevision({
-        yearLevel: state.yearLevel,
-        revise: { attempt, yourLine: p.yourLine, tryThis: p.tryThis, nowYou: p.nowYou, skill: p.skill, move: p.move?.key ?? null },
-      });
-      if (reply.safety) {
-        showAdult(reply, attempt);
-        return;
-      }
-      renderRevision(result, reply);
-    } catch (error) {
-      showError(error.message);
-    } finally {
-      button.disabled = false;
-      button.textContent = "Check again";
-    }
-  });
-  return wrap;
+// The child goes back to their book, revises, then photographs the new version. Round 1's
+// typing and feedback are kept so the server can compare and name what improved.
+function startLevelUp() {
+  state.original = { transcript: fullTranscript(), feedback: state.feedback };
+  state.round = 2;
+  state.pages = [];
+  state.transcripts = [];
+  state.reviewIndex = 0;
+  $("camera-title").textContent = "Photo time: round 2";
+  $("round-note").hidden = false;
+  renderPages();
+  show("screen-camera");
 }
 
-function renderRevision(result, reply) {
-  const v = VERDICT[reply.verdict] || VERDICT.nearly;
-  result.className = `revise-result ${v.css}`;
-  result.innerHTML = "";
-  const head = el("div", "revise-head");
-  const verdict = el("p", "revise-verdict");
-  verdict.append(emoji(v.emoji), v.label);
-  head.appendChild(verdict);
-  const lines = [reply.praise, reply.tweak && `One tweak: ${reply.tweak}`, reply.example && `Like this: ${reply.example}`].filter(Boolean);
-  if (readAloud) head.appendChild(listenButton(() => `${v.label}. ${lines.join(" ")}`, { compact: true, label: "Listen to the check of your sentence" }));
-  result.appendChild(head);
-  result.appendChild(el("p", "revise-line", reply.praise));
-  if (reply.tweak) {
-    const tweak = el("p", "revise-line");
-    tweak.append(el("strong", "", "One tweak: "), reply.tweak);
-    result.appendChild(tweak);
+$("btn-level-up").addEventListener("click", startLevelUp);
+
+// Specific praise for what really changed: the wins (each quoting the new writing), the
+// practice words now spelt right, and one gentle next tip.
+function renderLevelUp(reply) {
+  $("cheer").textContent = reply.cheer || "You went back and worked on your writing. That is what real writers do.";
+  mountListen($("cheer-listen"), () => $("cheer").textContent, { label: "Listen to this message" });
+  const wins = $("wins");
+  wins.innerHTML = "";
+  for (const w of reply.wins || []) {
+    const li = el("li", "win");
+    li.append(emoji("✅"), el("strong", "", w.what), el("q", "win-evidence", w.evidence));
+    wins.appendChild(li);
   }
-  if (reply.example) {
-    const example = el("p", "revise-line");
-    example.append(el("strong", "", "Like this: "), el("em", "", reply.example));
-    result.appendChild(example);
+  if (!(reply.wins || []).length) {
+    wins.appendChild(el("li", "win win-empty", "I could not spot a change yet. Every writer starts somewhere: try one power-up next time."));
   }
-  result.hidden = false;
+  const fixed = reply.spellingFixed || [];
+  $("spelling-fixed-card").hidden = fixed.length === 0;
+  const list = $("spelling-fixed");
+  list.innerHTML = "";
+  for (const word of fixed) list.appendChild(el("li", "", word));
+  // The model sometimes opens with "Next time..." itself, so the label is not doubled up.
+  const next = (reply.next || "").replace(/^next time[,:]?\s*/i, "");
+  $("next-tip").hidden = !next;
+  $("next-tip").textContent = next ? `Next time: ${next.charAt(0).toUpperCase()}${next.slice(1)}` : "";
+  resetIdle();
 }
 
 const STATUS = {
@@ -488,50 +487,11 @@ const STATUS = {
   next_step: { emoji: "🚀", label: "Next step", css: "is-next" },
 };
 
-// The check-up: one compact card per area writing markers look at, with a status, what the
-// child did well and the next step (or a pointer to the power-up that covers it).
-function renderCriteria(criteria) {
-  const grid = $("criteria");
-  grid.innerHTML = "";
-  for (const c of criteria) {
-    const status = STATUS[c.status] || STATUS.steady;
-    const card = el("article", `crit-card ${status.css}`);
-    const head = el("div", "crit-head");
-    const names = el("div");
-    names.append(el("h3", "crit-label", c.label), el("p", "crit-sub", c.sub));
-    const badge = el("span", "crit-status");
-    badge.append(emoji(status.emoji), status.label);
-    head.append(names, badge);
-    card.appendChild(head);
-    if (c.strength) {
-      const line = el("p", "crit-line crit-strength");
-      line.append(emoji("✅"), c.strength);
-      card.appendChild(line);
-    }
-    if (c.powerUp) {
-      const link = el("button", "crit-link");
-      link.type = "button";
-      link.append(emoji("⚡"), `See Power-up ${c.powerUp}`);
-      link.addEventListener("click", () => {
-        showSlide(activeSlides().findIndex((s) => s.key === "power"));
-        $(`power-up-${c.powerUp}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-      card.appendChild(link);
-    } else if (c.nextStep) {
-      const line = el("p", "crit-line crit-next");
-      line.append(emoji("➡️"), c.nextStep);
-      card.appendChild(line);
-    }
-    if (readAloud) {
-      const next = c.powerUp ? `See power-up ${c.powerUp}.` : c.nextStep;
-      card.appendChild(listenButton(() => [`${c.label}: ${status.label}.`, c.strength, next].filter(Boolean).join(" "), { compact: true, label: `Listen to ${c.label}` }));
-    }
-    grid.appendChild(card);
-  }
-}
+// The ten-area check-up is no longer shown to the child; it goes into the teacher report
+// (print and saved picture) with the highest-impact goal.
 
 function renderFeedback() {
-  const { criteria, powerUps } = state.feedback;
+  const { powerUps } = state.feedback;
   clearSpeechCache();
   renderPractice();
   renderBoost();
@@ -539,29 +499,17 @@ function renderFeedback() {
   $("save-detail").checked = true;
   rebuildShareImage();
   renderPowerUps(powerUps);
-  renderCriteria(criteria);
   showSlide(0);
   resetIdle();
 }
 
-// ---- the trusted-adult screen ----------------------------------------------
-
-// The server answers a disclosure with a safety message instead of feedback. Show it calmly,
-// with the route to the teacher; the teacher panel holds the writing so they can read it.
-function showAdult(reply, attempt = "") {
-  $("adult-title").textContent = reply.title || "This writing needs a trusted adult";
-  $("adult-message").textContent = reply.message || "Please show your teacher or another adult you trust now.";
-  $("teacher-note").textContent = reply.teacherNote || "";
-  $("teacher-transcript").textContent = `${fullTranscript()}${attempt ? `\n\nTheir new sentence: ${attempt}` : ""}`.trim();
-  $("teacher-panel").hidden = true;
-  mountListen($("adult-listen"), () => `${$("adult-title").textContent}. ${$("adult-message").textContent}`, { label: "Listen to this message" });
-  show("screen-adult");
+// The teacher's one-line takeaway: the first power-up is the most useful change, so it is the
+// highest-impact goal for this student on this piece.
+function highestImpactGoal() {
+  const goal = state.feedback?.powerUps?.[0];
+  if (!goal) return "";
+  return `${goal.skill}${goal.areaLabel ? ` (${goal.areaLabel})` : ""}. ${goal.why}`;
 }
-
-$("btn-show-teacher").addEventListener("click", () => {
-  $("teacher-panel").hidden = false;
-  focusHeading($("teacher-panel").querySelector(".teacher-title"));
-});
 
 // ---- feedback slides: one part at a time -----------------------------------
 
@@ -569,7 +517,7 @@ $("btn-show-teacher").addEventListener("click", () => {
 const SLIDES = [
   { key: "power", label: "Power-ups" },
   { key: "words", label: "Word lab" },
-  { key: "checkup", label: "Hero scan" },
+  { key: "levelup", label: "Level up" },
 ];
 let slideIndex = 0;
 
@@ -663,6 +611,7 @@ $("btn-save-go").addEventListener("click", async () => {
 
 $("btn-print").addEventListener("click", () => {
   const { criteria, powerUps } = state.feedback;
+  $("print-goal").textContent = highestImpactGoal() ? `Highest-impact goal for this student: ${highestImpactGoal()}` : "";
   $("print-date").textContent = new Date().toLocaleDateString("en-AU", {
     day: "numeric", month: "long", year: "numeric",
   });
@@ -761,14 +710,17 @@ function clearEverything() {
   state.transcripts = [];
   state.reviewIndex = 0;
   state.feedback = null;
+  state.round = 1;
+  state.original = null;
   shareCache = { key: "", blob: null };
   $("transcript").value = "";
   $("include-photos").checked = false;
-  $("teacher-panel").hidden = true;
-  for (const id of ["power-ups", "criteria", "practice-words", "boost-swaps", "print-pages", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
+  $("camera-title").textContent = "Photo time";
+  $("round-note").hidden = true;
+  for (const id of ["power-ups", "practice-words", "boost-swaps", "wins", "spelling-fixed", "print-pages", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
     $(id).innerHTML = "";
   }
-  for (const id of ["print-transcript", "teacher-transcript", "teacher-note", "adult-message"]) $(id).textContent = "";
+  for (const id of ["print-transcript", "print-goal", "cheer", "next-tip"]) $(id).textContent = "";
   renderPages();
 }
 

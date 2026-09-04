@@ -5,7 +5,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleFeedback } from "./api/feedback.js";
 import { handleSpeak } from "./api/speak.js";
-import { localSafetyScan, safetyPayload } from "./api/_safety.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.argv.find((a) => a.startsWith("--port="))?.slice(7)) || 4173;
@@ -71,7 +70,7 @@ const MOCK_PAYLOAD = {
       move: {
         key: "subordinating_conjunction",
         name: "Subordinating conjunction start",
-        rule: "Begin with a joining word like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
+        rule: "Begin with a subordinating conjunction like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
         example: "When the bell rang, we sprinted to the oval.",
       },
       nowYou: "Rewrite your first sentence so it starts with 'When' or 'While'.",
@@ -181,23 +180,16 @@ const server = http.createServer(async (req, res) => {
     }
     if (MOCK) {
       await new Promise((r) => setTimeout(r, 1200)); // simulate thinking time
-      // Practice mode runs the local safeguarding rules too, so the adult screen can be tried.
-      const checked = body.revise ? body.revise.attempt : body.transcript;
-      const level = localSafetyScan(typeof checked === "string" ? checked : "");
-      if (level !== "ordinary" && (body.revise || !body.images)) {
-        res.writeHead(200).end(JSON.stringify(safetyPayload(level)));
-        return;
-      }
-      if (body.revise) {
-        const attempt = typeof body.revise.attempt === "string" ? body.revise.attempt.trim() : "";
-        if (!attempt) {
-          res.writeHead(400).end(JSON.stringify({ error: "Type your new version first." }));
-          return;
-        }
-        const good = /,/.test(attempt) && /\b(when|while|after|before|although|since|under|at|in)\b/i.test(attempt);
-        const payload = good
-          ? { verdict: "nailed_it", praise: `'${attempt.split(",")[0]},' opens the sentence with a proper joining phrase and a comma.`, tweak: "", example: "" }
-          : { verdict: "nearly", praise: `You kept your idea in '${attempt.slice(0, 40)}'.`, tweak: "Put the when or where part at the front, then a comma.", example: `When the sun came out, ${attempt.charAt(0).toLowerCase()}${attempt.slice(1)}` };
+      if (body.levelUp) {
+        // Practice mode: celebrate the first line of the new version as the change.
+        const after = typeof body.levelUp.after === "string" ? body.levelUp.after.trim() : "";
+        const firstLine = after.split("\n")[0] || "";
+        const payload = {
+          cheer: `You went back and changed your writing. '${firstLine.slice(0, 60)}' is a great start.`,
+          wins: firstLine ? [{ what: "Power-up 1 used: Expand your sentence", evidence: firstLine }] : [],
+          spellingFixed: ["family"],
+          next: "Next time, try a When or While start on one more sentence.",
+        };
         res.writeHead(200).end(JSON.stringify(payload));
         return;
       }

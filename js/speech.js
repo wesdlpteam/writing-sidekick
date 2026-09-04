@@ -1,18 +1,50 @@
 import { speak } from "./api.js";
 
-// Tap-to-listen for each feedback card. One shared audio context is unlocked on the first tap:
-// iPad Safari only lets sound start inside a tap, but a context resumed in a tap stays usable
-// once the audio has downloaded. Audio for each card is kept in memory so a second tap is instant.
+// Tap-to-listen for each feedback card, played through one shared <audio> element.
+// iPad Safari only lets sound start inside a tap, so the first tap plays a moment of silence
+// on the element ("unlocking" it); after that the downloaded voice can be loaded and played
+// on the same element once it arrives. An <audio> element also plays with the iPad's silent
+// switch on, which Web Audio does not: that was why Listen could seem to do nothing.
+// Audio for each card is kept in memory so a second tap is instant.
 
 const LABELS = { idle: "Listen", loading: "Stop", playing: "Stop" };
 
-let context = null;
-let playing = null; // { source, button }
-const cache = new Map(); // text -> AudioBuffer
+let player = null;
+let unlocked = false;
+let current = null; // { button }
+const cache = new Map(); // text -> object URL of the mp3
 
-function getContext() {
-  if (!context) context = new (window.AudioContext || window.webkitAudioContext)();
-  return context;
+// A tenth of a second of silence as a WAV, built once; used to unlock the element in a tap.
+function silentClip() {
+  const rate = 8000;
+  const samples = rate / 10;
+  const bytes = new Uint8Array(44 + samples * 2);
+  const view = new DataView(bytes.buffer);
+  const ascii = (offset, s) => [...s].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+  ascii(0, "RIFF");
+  view.setUint32(4, 36 + samples * 2, true);
+  ascii(8, "WAVEfmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, "data");
+  view.setUint32(40, samples * 2, true);
+  return URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
+}
+
+function getPlayer() {
+  if (!player) {
+    player = new Audio();
+    player.preload = "auto";
+    player.setAttribute("playsinline", "");
+    player.addEventListener("ended", finish);
+    player.addEventListener("error", finish);
+  }
+  return player;
 }
 
 function setState(button, state) {
@@ -21,29 +53,36 @@ function setState(button, state) {
   button.querySelector(".listen-label").textContent = LABELS[state];
 }
 
+function finish() {
+  if (!current) return;
+  setState(current.button, "idle");
+  current = null;
+}
+
 export function stopSpeaking() {
-  if (!playing) return;
-  const { source, button } = playing;
-  playing = null;
+  if (!current) return;
+  const p = getPlayer();
+  p.pause();
   try {
-    source.stop();
+    p.currentTime = 0;
   } catch {
-    // already finished
+    // nothing loaded yet
   }
-  setState(button, "idle");
+  finish();
 }
 
 export function clearSpeechCache() {
   stopSpeaking();
+  for (const url of cache.values()) URL.revokeObjectURL(url);
   cache.clear();
 }
 
-async function bufferFor(text) {
+async function urlFor(text) {
   if (cache.has(text)) return cache.get(text);
   const bytes = await speak(text);
-  const buffer = await getContext().decodeAudioData(bytes);
-  cache.set(text, buffer);
-  return buffer;
+  const url = URL.createObjectURL(new Blob([bytes], { type: "audio/mpeg" }));
+  cache.set(text, url);
+  return url;
 }
 
 // A Listen button for `text` (a string, or a function that builds the text when tapped).
@@ -64,7 +103,7 @@ export function listenButton(text, { compact = false, label = "Listen to this fe
 
   button.addEventListener("click", async () => {
     // Same button again: stop (or cancel while still loading). The label says "Stop" meanwhile.
-    if (playing && playing.button === button) {
+    if (current && current.button === button) {
       stopSpeaking();
       return;
     }
@@ -73,28 +112,29 @@ export function listenButton(text, { compact = false, label = "Listen to this fe
       return;
     }
     stopSpeaking();
-    const ctx = getContext();
-    ctx.resume().catch(() => {});
+    const p = getPlayer();
+    if (!unlocked) {
+      // Still inside the tap: a silent play now lets the real play through after the download.
+      p.src = silentClip();
+      p.play()
+        .then(() => {
+          unlocked = true;
+        })
+        .catch(() => {});
+    }
     setState(button, "loading");
     try {
-      const buffer = await bufferFor(typeof text === "function" ? text() : text);
+      const url = await urlFor(typeof text === "function" ? text() : text);
       if (button.dataset.state !== "loading") return;
       stopSpeaking();
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.onended = () => {
-        if (playing && playing.source === source) {
-          playing = null;
-          setState(button, "idle");
-        }
-      };
-      playing = { source, button };
+      current = { button };
       setState(button, "playing");
-      source.start();
+      p.src = url;
+      await p.play();
     } catch (error) {
+      finish();
       setState(button, "idle");
-      button.dispatchEvent(new CustomEvent("speech-error", { bubbles: true, detail: error.message }));
+      button.dispatchEvent(new CustomEvent("speech-error", { bubbles: true, detail: error.message || "The voice could not play on this device." }));
     }
   });
   return button;

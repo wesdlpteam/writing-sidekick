@@ -49,7 +49,8 @@
     </section>
 
     <section id="screen-camera" class="screen">
-      <h1><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Photo time</h1>
+      <h1><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span><span id="camera-title">Photo time</span></h1>
+      <p id="round-note" class="lead round-note" hidden>Round 2: snap the page with your changes on it, and I'll tell you what got better.</p>
       <div class="reminder">
         <p class="reminder-title">Before you snap:</p>
         <ul>
@@ -106,6 +107,10 @@
         <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Power up here</h2>
         <p class="lead fb-lead">Revise first. These writing moves will lift this piece the most. Try each one, then use it in other spots too.</p>
         <div id="power-ups" class="power-ups"></div>
+        <div class="pencil-card">
+          <p class="pencil-title"><span class="h-emoji" aria-hidden="true">&#x270D;&#xFE0F; </span>Pick up your pencil</p>
+          <p>Go back to your book and make these changes in your own writing. When you're done, come back for Level up and show me.</p>
+        </div>
       </section>
 
       <section class="fb-slide" data-slide="words">
@@ -132,13 +137,13 @@
         </div>
       </section>
 
-      <section class="fb-slide" data-slide="checkup">
+      <section class="fb-slide" data-slide="levelup">
         <div class="stage stage-scan">
           <img class="stage-art" src="art/heroscan.jpg" alt="">
         </div>
-        <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x1F6E1;&#xFE0F; </span>Hero scan</h2>
-        <p class="lead fb-lead">No new jobs here. The scan shows how your writing is going in the ten things writing markers look at: green is a strength, gold is on track, purple is where to grow next.</p>
-        <div id="criteria" class="criteria-grid"></div>
+        <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Level up</h2>
+        <p class="lead fb-lead">Made your changes in your book? Take a new photo of your writing and I'll tell you exactly what got better.</p>
+        <button id="btn-level-up" class="primary big" type="button"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Take a new photo &#8594;</button>
         <label class="check-row export-photos"><input id="include-photos" type="checkbox"> Include the photos of my writing in the picture and print-out</label>
         <div class="btn-row">
           <button id="btn-save-pic" class="secondary"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Save picture</button>
@@ -154,20 +159,24 @@
       </div>
     </section>
 
-    <section id="screen-adult" class="screen">
-      <h1><span class="h-emoji" aria-hidden="true">&#x1F6E1;&#xFE0F; </span><span id="adult-title">This writing needs a trusted adult</span></h1>
-      <div class="adult-card">
-        <p id="adult-message" class="adult-message"></p>
-        <div id="adult-listen" class="adult-actions"></div>
+    <section id="screen-levelup" class="screen">
+      <h1><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Level up!</h1>
+      <div class="stage stage-power">
+        <img class="stage-art" src="art/powerup.jpg" alt="">
       </div>
-      <button id="btn-show-teacher" class="primary big" type="button">Show my teacher &#8594;</button>
-      <div id="teacher-panel" class="teacher-panel" hidden>
-        <h2 class="teacher-title">For the teacher</h2>
-        <p id="teacher-note"></p>
-        <h2 class="teacher-title">The student's writing</h2>
-        <pre id="teacher-transcript" class="teacher-transcript"></pre>
+      <div class="cheer-card">
+        <p id="cheer" class="cheer"></p>
+        <div id="cheer-listen" class="card-actions"></div>
       </div>
-      <button id="btn-finish-adult" class="ghost btn-finish" type="button">Finish and clear this iPad</button>
+      <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x1F31F; </span>What got better</h2>
+      <ul id="wins" class="wins"></ul>
+      <div id="spelling-fixed-card" class="practice-card" hidden>
+        <h3 class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F4DD; </span>Spelling fixed</h3>
+        <ul id="spelling-fixed" class="fixed-words"></ul>
+      </div>
+      <p id="next-tip" class="next-tip" hidden></p>
+      <button id="btn-finish-levelup" class="primary big btn-finish" type="button">Finish and clear</button>
+      <p class="privacy-note">Your photos and typed writing went to an AI helper to be read. This iPad forgets them when you tap Finish, leave, or stop for ten minutes. The app itself keeps nothing.</p>
     </section>
 
     <div id="loading" class="overlay" role="status" aria-live="polite" hidden>
@@ -188,7 +197,7 @@
       <h2 id="save-title">Save a picture</h2>
       <p class="lead">Tick what goes in the picture.</p>
       <label class="check-row"><input id="save-brief" type="checkbox" checked> Power-ups, with word power and spelling</label>
-      <label class="check-row" id="save-detail-row"><input id="save-detail" type="checkbox" checked> Full hero scan (all ten areas)</label>
+      <label class="check-row" id="save-detail-row"><input id="save-detail" type="checkbox" checked> Teacher report: highest-impact goal and the ten-area check-up</label>
       <div class="btn-row">
         <button id="btn-save-cancel" class="ghost" type="button">Cancel</button>
         <button id="btn-save-go" class="primary" type="button">Save picture</button>
@@ -203,9 +212,10 @@
     <div id="print-pages"></div>
     <h2>My writing</h2>
     <pre id="print-transcript"></pre>
-    <h2>Sidekick says</h2>
     <h2>Power-ups</h2>
     <div id="print-powerups"></div>
+    <h2>Teacher report</h2>
+    <p id="print-goal"></p>
     <div id="print-checkup"></div>
     <div id="print-practice"></div>
     <div id="print-boost"></div>

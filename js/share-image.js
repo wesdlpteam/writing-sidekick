@@ -92,7 +92,7 @@ async function loadImage(src) {
 }
 
 // include.brief = the power-ups, word power and spelling;
-// include.detail = the writing check-up (one card per area).
+// include.detail = the teacher report: the highest-impact goal, then the check-up (one card per area).
 export async function buildFeedbackImage({ pages = [], feedback, yearLevel, include = { brief: true, detail: false } }) {
   const bodyFont = `30px Nunito, sans-serif`;
   const titleFont = `800 34px Nunito, sans-serif`;
@@ -138,6 +138,10 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
     }
   }
   if (include.detail && Array.isArray(feedback.criteria)) {
+    const goal = feedback.powerUps?.[0];
+    if (goal) {
+      addCard(GOLD, "Teacher report: highest-impact goal", [`${goal.skill}${goal.areaLabel ? ` (${goal.areaLabel})` : ""}.`, goal.why]);
+    }
     for (const c of feedback.criteria) {
       const next = c.powerUp ? `See Power-up ${c.powerUp}.` : c.nextStep;
       addCard(STATUS_FILL[c.status] || YELLOW, `${c.label}: ${STATUS_LABEL[c.status] || STATUS_LABEL.steady}`, [

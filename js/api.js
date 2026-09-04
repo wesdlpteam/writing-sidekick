@@ -46,9 +46,10 @@ export function getFeedback({ transcript, yearLevel, genre }) {
   return post({ transcript, yearLevel, genre });
 }
 
-// Step 3: the child's revised sentence for one power-up -> { verdict, praise, tweak, example }
-export function checkRevision({ yearLevel, revise }) {
-  return post({ yearLevel, revise });
+// Step 3: the child revised in their book and photographed the new version. Both versions,
+// the power-ups and practice words they were given -> { cheer, wins, spellingFixed, next }
+export function getLevelUp({ yearLevel, genre, levelUp }) {
+  return post({ yearLevel, genre, levelUp });
 }
 
 // Read-aloud: one card's text -> mp3 bytes (an ArrayBuffer)

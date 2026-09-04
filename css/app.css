@@ -370,8 +370,15 @@ h1[tabindex="-1"]:focus-visible, h2[tabindex="-1"]:focus-visible, h3[tabindex="-
 
 #print-pages img { width: 100%; max-height: 45vh; object-fit: contain; object-position: top; margin-bottom: 8px; display: block; }
 
+/* The typing check (Year 4 and up) breaks out of the app's reading column so a page of
+   handwriting is not squeezed into half the screen. It stays centred because #app is. */
+#screen-review.active {
+  width: min(1180px, calc(100vw - 32px));
+  margin-left: calc(50% - min(1180px, calc(100vw - 32px)) / 2);
+}
+
 /* The typed copy: one page at a time, full width, a plain document page that grows with the
-   writing (no inner scrolling). The page label and Next/Previous buttons only show for 2+ pages. */
+   writing. The page label and Next/Previous buttons only show for 2+ pages. */
 .typed-box { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
 .review-page-label {
   margin: 0;
@@ -406,7 +413,9 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
   color: var(--ink);
   box-shadow: var(--pop-shadow);
   resize: none;
-  overflow: hidden;
+  /* The box is grown to fit the writing by script. If that measurement is ever short (a font
+     arriving late, say), the text scrolls instead of being silently cut off halfway. */
+  overflow-y: auto;
   field-sizing: content;
   /* Faint ruled lines, one per line of text, like a lined page. */
   background-color: #fff;
@@ -738,42 +747,54 @@ body.senior .crit-label { font-size: 1.1rem; }
 .link-row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
 .export-photos { margin: 22px 0 0; }
 
-/* The trusted-adult screen: calm, no feedback at all, and a clear route to the teacher. */
-.adult-card {
+/* Power-ups end with a nudge back to the book, and round 2 starts from the camera screen. */
+.pencil-card {
+  background: var(--gold-soft);
+  color: var(--ink);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-top: 24px;
+  box-shadow: var(--pop-shadow);
+}
+.pencil-card p { margin: 0; line-height: 1.5; font-size: 1.1rem; }
+.pencil-title { font-family: var(--font-display); font-size: 1.4rem; letter-spacing: 0.04em; color: var(--purple); margin-bottom: 6px !important; }
+.round-note { margin-top: 0; color: var(--gold); font-weight: 700; }
+.round-note[hidden] { display: none; }
+#btn-level-up { margin-top: 10px; }
+
+/* Level up: the cheer, the wins (each quoting the new writing), spelling fixed, one next tip. */
+.cheer-card {
   background: var(--card);
   color: var(--ink);
   border: var(--border);
   border-radius: var(--radius);
   padding: 22px 24px;
-  box-shadow: var(--pop-shadow);
+  box-shadow: 5px 5px 0 var(--gold-deep), 0 0 44px rgba(255, 194, 51, 0.35);
   margin-top: 18px;
 }
-.adult-message { margin: 0; font-size: 1.25rem; line-height: 1.6; }
-.adult-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
-.adult-actions:empty { display: none; }
-.teacher-panel {
-  background: var(--gold-soft);
+.cheer { margin: 0; font-family: var(--font-hand); font-size: 1.45rem; line-height: 1.5; }
+.card-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.card-actions:empty { display: none; }
+.wins { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.win {
+  background: var(--green-soft);
   color: var(--ink);
   border: var(--border);
-  border-radius: var(--radius);
-  padding: 20px 22px;
-  margin-top: 22px;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 4px 4px 0 var(--purple-mid);
+  line-height: 1.5;
 }
-.teacher-panel[hidden] { display: none; }
-.teacher-title { margin: 0 0 6px; font-family: var(--font-body); font-size: 1.1rem; font-weight: 800; color: var(--ink); text-shadow: none; }
-.teacher-panel p { margin: 0 0 16px; line-height: 1.5; }
-.teacher-transcript {
-  margin: 0;
-  white-space: pre-wrap;
-  font-family: var(--font-body);
-  font-size: 1.05rem;
-  line-height: 1.6;
-  background: #fff;
-  border: 2px solid var(--ink);
-  border-radius: 12px;
-  padding: 12px 14px;
-}
-#screen-adult .btn-finish { margin-top: 18px; }
+.win strong { display: block; font-size: 1.1rem; }
+.win-evidence { display: block; margin-top: 4px; font-style: italic; }
+.win-evidence::before, .win-evidence::after { content: "'"; }
+.win-empty { background: var(--gold-soft); }
+.fixed-words { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.fixed-words li { background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 8px 14px; font-weight: 800; }
+.next-tip { margin: 18px 0 0; font-size: 1.1rem; line-height: 1.5; color: var(--sky-text); }
+.next-tip[hidden] { display: none; }
+#screen-levelup .btn-finish { margin-top: 28px; }
 
 /* Warning before a shared iPad clears itself. */
 .idle {

@@ -1,8 +1,8 @@
 import { getYearGuide, getGenreGuide, FEEDBACK_RULES } from "./_curriculum.js";
-import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, STATUSES, MOVES } from "./_criteria.js";
+import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, STATUSES } from "./_criteria.js";
 import { handlePreamble } from "./_cors.js";
 import { apiUrl, fetchWithTimeout } from "./_provider.js";
-import { assessSafety, minimiseContactDetails, safetyPayload } from "./_safety.js";
+import { minimiseContactDetails } from "./_privacy.js";
 
 // The AI work happens in two steps so each call has one job:
 //   1. photos -> transcript      (vision model, image detail "original", strict copy rules)
@@ -62,7 +62,7 @@ Skill bank to choose power-ups from (pick only what fits this piece, year and ge
 - Subordinating conjunction start: Although, When, Since, After, Before, If, Even though, then a comma, then the rest.
 - Sentence expansion: take a bare kernel sentence and add when, where, why or how (the when usually at the front with a comma).
 - Sentence combining: join choppy short sentences with and, but, because, so, a pronoun or a describing phrase.
-- Transition words between sentences and paragraphs: time (First, Later, Finally), illustration (For example), change of direction (However), conclusion (Therefore, In the end).
+- Transition words between sentences and paragraphs: time and sequence (First, Later, Finally), illustration (For example), change of direction (However), conclusion (Therefore, In the end).
 - Appositives (Year 4 and up): a describing phrase between commas straight after a person or thing.
 - Topic sentence first and concluding sentence last in a paragraph (Year 3 and up); a new paragraph for each new time, place, idea or reason.
 - Sentence types: swap in a question, a command or an exclamation for effect.
@@ -77,7 +77,7 @@ Other craft that still matters:
 - Information: heading, facts, technical words, present tense, general nouns.
 - Poems: images, repetition, rhythm and line breaks.
 - Punctuation for effect: question marks, exclamation marks, commas in lists, ellipsis, as suits the year.
-- Years 1 and 2 basics: capital letters and full stops in the right places, joining words "and" and "because", describing words, sound words.
+- Years 1 and 2 basics: capital letters and full stops in the right places, the conjunctions "and", "but", "so" and "because", describing words, sound words.
 - Years 5 and 6 stretch: complex sentences with the clause order changed for effect, modality, formal register, figurative language, paragraph cohesion, editing out repetition.`;
 
 const outputSpec = (powerUpCount) => `The child has already checked the typed copy of their writing, so treat it as exactly what they wrote. Respond with ONLY a JSON object in exactly this shape:
@@ -109,30 +109,32 @@ const outputSpec = (powerUpCount) => `The child has already checked the typed co
     "after": "that moment rewritten to show real word power, e.g. before: 'The waves were huge and I got dumped!' after: 'The gigantic waves crashed over me and dumped me in the sand!'"
   }
 }
-Rules for areas: include an entry for every area key listed above (and only those keys). "strength" quotes the child's actual words and names the skill (for example "You used a time word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
+Rules for areas: include an entry for every area key listed above (and only those keys). "strength" quotes the child's actual words and names the skill (for example "You used a transition word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
 Rules for power_ups: ${powerUpCount}, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "try_this" must keep the child's meaning, be correct natural English a teacher would accept, and be something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task on their own writing that uses the move (often: find the other places in your writing where this move fits and use it there too), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in practice_words and the spelling and punctuation areas.
 Rules for practice_words: only genuinely misspelt words the child actually wrote (never punctuation or grammar slips); at most 5, choosing the words most worth learning at this year level (everyday high-frequency words first); "correct" is the right spelling, "wrote" is exactly what the child wrote. Use [] if spelling is all correct.
 Rules for spelling_tip: one child-friendly spelling generalisation only if it genuinely fits two or more of the practice words (for example "When you add -ing to a word ending in e, drop the e: make -> making", or "Say tricky words in syllables: fam-i-ly"). Word it so a child of this year level can read it. Use "" if no pattern fits.
 Rules for word_boost: pick 1-3 plain words the child actually wrote that could be stronger; for each, suggest 1-3 richer but year-appropriate alternatives. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". Use null if their word choices are already strong.
 Be very specific everywhere: every comment must quote or point to actual words, phrases or sentences from this child's writing, never generic advice that could apply to anyone's work.`;
 
-// Step 3 (optional, per power-up): the child types their revised sentence and gets a quick check.
-const REVISE_SPEC = `A child has just tried a revising move on their own writing and typed their new version. Judge ONLY whether the new version does the task they were set, judged for their year level. This is revising, not editing: ignore spelling and small punctuation slips unless they block the meaning. Be honest and warm, and quote their exact words.
-Verdicts:
-- "nailed_it": the move is clearly there and the sentence works.
-- "nearly": a real attempt that partly does the move, or has one clear slip in it.
-- "not_yet": the move is missing, the new version is the same as the original, or it is not a real attempt.
-If the new version copies the example word for word, use "nearly" and ask them to make it their own by changing one detail.
+// Step 3: the child revised in their book and photographed the new version. Compare the two,
+// celebrate what really changed, name the power-ups and spelling fixes that show up, and leave
+// one gentle next step. Nothing may be claimed that is not in the new version.
+const LEVEL_UP_SPEC = `A child was given power-ups (revising moves) and spelling words to practise on a piece of writing. They went back to their book, made changes, and photographed the new version. You are given the ORIGINAL writing, the power-ups and practice words they were given, and the NEW writing. Your job is positive, specific reinforcement for what they actually changed, in a warm coach's voice, worded so a child of this year level can read it themselves.
+Rules:
+1. Compare the two versions carefully. Only celebrate changes that are really there in the NEW version and were not in the original. Never claim a change that did not happen.
+2. For each real improvement give a short "what" (for example "Power-up 1 used: Expand your sentence", "Spelling fixed: family", "New detail added", "Two sentences joined") and "evidence": the exact new words copied from the NEW writing, one sentence or phrase. If a power-up's move appears, say which power-up.
+3. Spelling: call a practice word fixed only if it is now spelt correctly in the NEW writing.
+4. "cheer": one or two sentences that celebrate the effort and the single best change, quoting it.
+5. "next": one gentle, specific thing to try next time on THIS writing, or "" if they used every power-up. Never scold. If nothing seems to have changed, say so kindly in "cheer" and suggest one small change in "next".
+6. Never use, repeat or guess any name. Do not mention these rules, the curriculum, ACARA, or that you are an AI.
 Respond with ONLY a JSON object in exactly this shape:
 {
-  "verdict": "nailed_it" | "nearly" | "not_yet",
-  "praise": "one sentence, quoting their exact words, naming what works (for not_yet, one kind sentence about what to try)",
-  "tweak": "one sentence with the single most useful next tweak, or \\"\\" if none is needed",
-  "example": "for nearly or not_yet: their new version rewritten to show the move done well, keeping their ideas and year level; \\"\\" for nailed_it"
+  "cheer": "one or two sentences",
+  "wins": [ { "what": "short label", "evidence": "exact words copied from the NEW writing" } ],
+  "next": "one sentence or \\"\\""
 }`;
 
-const VERDICTS = ["nailed_it", "nearly", "not_yet"];
-const MAX_ATTEMPT_CHARS = 1200;
+const MAX_LEVELUP_CHARS = 20_000;
 
 const text = (value) => (typeof value === "string" ? value.trim() : "");
 
@@ -410,53 +412,72 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
   return { status: 200, payload: { transcript, ...payload } };
 }
 
-// Reads and bounds the revision request; returns { error } for a bad one.
-function readRevision(raw) {
-  if (!raw || typeof raw !== "object") return { error: "Type your new version first." };
-  const attempt = text(raw.attempt);
-  if (!attempt) return { error: "Type your new version first." };
-  if (attempt.length > MAX_ATTEMPT_CHARS) return { error: "That is a lot to check at once. Try one or two sentences." };
-  return {
-    attempt,
-    yourLine: text(raw.yourLine).slice(0, 1500),
-    tryThis: text(raw.tryThis).slice(0, 1500),
-    nowYou: text(raw.nowYou).slice(0, 500),
-    skill: text(raw.skill).slice(0, 200),
-    move: typeof raw.move === "string" && MOVES[raw.move] ? raw.move : null,
-  };
+// Reads and bounds a level-up request; returns { error } for a bad one.
+function readLevelUp(raw) {
+  if (!raw || typeof raw !== "object") return { error: "Take a photo of your new writing first." };
+  const before = text(raw.before);
+  const after = text(raw.after);
+  if (!after) return { error: "The typing box is empty. Take the photo again, or type your writing in." };
+  if (before.length > MAX_LEVELUP_CHARS || after.length > MAX_LEVELUP_CHARS) {
+    return { error: "That is a lot of writing for one go. Please send up to four pages at a time." };
+  }
+  const powerUps = (Array.isArray(raw.powerUps) ? raw.powerUps : [])
+    .filter((p) => p && typeof p === "object" && text(p.skill))
+    .slice(0, 3)
+    .map((p) => ({
+      skill: text(p.skill).slice(0, 200),
+      area: text(p.area).slice(0, 60),
+      tryThis: text(p.tryThis).slice(0, 600),
+      nowYou: text(p.nowYou).slice(0, 400),
+      move: text(p.move).slice(0, 80),
+    }));
+  const practiceWords = (Array.isArray(raw.practiceWords) ? raw.practiceWords : [])
+    .filter((w) => w && typeof w === "object" && text(w.correct) && text(w.wrote))
+    .slice(0, 5)
+    .map((w) => ({ correct: text(w.correct).slice(0, 60), wrote: text(w.wrote).slice(0, 60) }));
+  return { before, after, powerUps, practiceWords };
 }
 
-function validateRevision(data) {
+// Which practice words are now right: the correct spelling is in the new writing and the old
+// misspelling has gone. Checked here, not taken on trust from the model.
+const spellingFixed = (levelUp) =>
+  levelUp.practiceWords.filter((w) => hasWord(levelUp.after, w.correct) && !hasWord(levelUp.after, w.wrote)).map((w) => w.correct);
+
+function validateLevelUp(data, levelUp) {
   if (!data || typeof data !== "object") return null;
-  const praise = text(data.praise);
-  if (!praise) return null;
-  return {
-    verdict: VERDICTS.includes(data.verdict) ? data.verdict : "nearly",
-    praise,
-    tweak: text(data.tweak),
-    example: text(data.example),
-  };
+  const cheer = text(data.cheer);
+  if (!cheer) return null;
+  const beforeNorm = normalise(levelUp.before);
+  const wins = (Array.isArray(data.wins) ? data.wins : [])
+    .map((w) => (w && typeof w === "object" ? { what: text(w.what), evidence: quoteFromTranscript(w.evidence, levelUp.after) } : null))
+    // A win needs new words: in the new version, and not already in the old one.
+    .filter((w) => w && w.what && w.evidence && !beforeNorm.includes(normalise(w.evidence)))
+    .slice(0, 4);
+  return { cheer, wins, spellingFixed: spellingFixed(levelUp), next: text(data.next) };
 }
 
-async function checkRevision({ revise, yearLevel, env, fetchImpl }) {
-  const move = revise.move ? MOVES[revise.move] : null;
-  const systemPrompt = [
-    FEEDBACK_RULES,
-    `Year level expectations to judge against:\n${getYearGuide(yearLevel).summary}`,
-    move ? `The writing move they were practising: ${move.name}. ${move.rule} Example: ${move.example}` : "",
-    REVISE_SPEC,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+async function levelUpFeedback({ levelUp, yearLevel, env, fetchImpl }) {
+  if (normalise(levelUp.before) === normalise(levelUp.after)) {
+    return {
+      status: 200,
+      payload: {
+        cheer: "This looks the same as your first version. Did your changes go into your book? Snap the page with your changes on it and I will take another look.",
+        wins: [],
+        spellingFixed: spellingFixed(levelUp),
+        next: "",
+      },
+    };
+  }
+  const systemPrompt = [`Year level of the writer, for tone and expectations:\n${getYearGuide(yearLevel).summary}`, LEVEL_UP_SPEC].join("\n\n");
+  const powerUpLines = levelUp.powerUps.map(
+    (p, i) => `${i + 1}. ${p.skill}${p.area ? ` (${p.area})` : ""}.${p.tryThis ? ` Try this: ${p.tryThis}` : ""}${p.nowYou ? ` Now you: ${p.nowYou}` : ""}${p.move ? ` Move: ${p.move}` : ""}`,
+  );
   const userText = [
-    revise.skill && `The power-up: ${revise.skill}`,
-    revise.nowYou && `The task I was given: ${revise.nowYou}`,
-    revise.yourLine && `My original line: ${revise.yourLine}`,
-    revise.tryThis && `The example I was shown: ${revise.tryThis}`,
-    `My new version: ${revise.attempt}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+    `ORIGINAL writing:\n${levelUp.before || "(none)"}`,
+    `Power-ups they were given:\n${powerUpLines.join("\n") || "(none)"}`,
+    `Spelling to practise: ${levelUp.practiceWords.map((w) => `${w.correct} (they wrote ${w.wrote})`).join(", ") || "(none)"}`,
+    `NEW writing:\n${levelUp.after}`,
+  ].join("\n\n");
 
   const content = await callModel({
     fetchImpl,
@@ -468,11 +489,11 @@ async function checkRevision({ revise, yearLevel, env, fetchImpl }) {
         { role: "user", content: [{ type: "text", text: userText }] },
       ],
       response_format: { type: "json_object" },
-      max_completion_tokens: 600,
+      max_completion_tokens: 900,
     },
   });
-  const payload = validateRevision(extractJson(content));
-  if (!payload) return { status: 502, payload: { error: "Hmm, I couldn't check that one. Please try again." } };
+  const payload = validateLevelUp(extractJson(content), levelUp);
+  if (!payload) return { status: 502, payload: { error: "Hmm, I couldn't compare your two versions that time. Please try again." } };
   return { status: 200, payload };
 }
 
@@ -482,15 +503,18 @@ export async function handleFeedback(body, { fetchImpl, env }) {
     return { status: 400, payload: { error: "Please choose a year level from 1 to 6." } };
   }
 
-  if (body?.revise !== undefined) {
-    const revise = readRevision(body.revise);
-    if (revise.error) return { status: 400, payload: { error: revise.error } };
+  if (body?.levelUp !== undefined) {
+    const levelUp = readLevelUp(body.levelUp);
+    if (levelUp.error) return { status: 400, payload: { error: levelUp.error } };
     if (!env?.OPENAI_API_KEY) {
       return { status: 500, payload: { error: "The app isn't set up yet. Please tell your teacher." } };
     }
-    const safety = await assessSafety(revise.attempt, { fetchImpl, env });
-    if (safety.level !== "ordinary") return { status: 200, payload: safetyPayload(safety.level) };
-    return checkRevision({ revise, yearLevel, env, fetchImpl });
+    return levelUpFeedback({
+      levelUp: { ...levelUp, before: minimiseContactDetails(levelUp.before), after: minimiseContactDetails(levelUp.after) },
+      yearLevel,
+      env,
+      fetchImpl,
+    });
   }
 
   const images = collectImages(body);
@@ -523,11 +547,6 @@ export async function handleFeedback(body, { fetchImpl, env }) {
   }
 
   if (images.length) return transcribePages({ images, env, fetchImpl });
-
-  // Safeguarding comes before any writing advice: a disclosure gets the trusted-adult route
-  // and the feedback model is never asked about it.
-  const safety = await assessSafety(transcript, { fetchImpl, env });
-  if (safety.level !== "ordinary") return { status: 200, payload: safetyPayload(safety.level) };
   return feedbackForTranscript({ transcript: minimiseContactDetails(transcript), yearLevel, genre: body?.genre, env, fetchImpl });
 }
 
