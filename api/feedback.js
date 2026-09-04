@@ -62,7 +62,7 @@ Skill bank to choose power-ups from (pick only what fits this piece, year and ge
 - Subordinating conjunction start: Although, When, Since, After, Before, If, Even though, then a comma, then the rest.
 - Sentence expansion: take a bare kernel sentence and add when, where, why or how (the when usually at the front with a comma).
 - Sentence combining: join choppy short sentences with and, but, because, so, a pronoun or a describing phrase.
-- Transition words between sentences and paragraphs: time and sequence (First, Later, Finally), illustration (For example), change of direction (However), conclusion (Therefore, In the end).
+- Transition words between sentences and paragraphs: time and sequence (First, Later, Finally), illustration (For example), change of direction (However), conclusion (Therefore, In the end), emphasis (In fact).
 - Appositives (Year 4 and up): a describing phrase between commas straight after a person or thing.
 - Topic sentence first and concluding sentence last in a paragraph (Year 3 and up); a new paragraph for each new time, place, idea or reason.
 - Sentence types: swap in a question, a command or an exclamation for effect.
