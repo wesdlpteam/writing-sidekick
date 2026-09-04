@@ -155,7 +155,7 @@ export const MOVES = {
   transition: {
     name: "Transition word",
     minYear: 2,
-    rule: "A transition word or phrase at the start of a sentence that links it to the one before: First, Next, Later or Finally for time and sequence; For example to illustrate; However or On the other hand to change direction; Therefore or In the end to conclude.",
+    rule: "A transition word or phrase at the start of a sentence that links it to the one before: First, Next, Later or Finally for time and sequence; For example to illustrate; However or On the other hand to change direction; Therefore or In the end to conclude; In fact or Most of all to emphasise.",
     example: "Later, the rain finally stopped.",
   },
   vary_vocabulary: {
@@ -179,7 +179,7 @@ export const MOVES = {
   topic_sentence: {
     name: "Topic sentence",
     minYear: 3,
-    rule: "The first sentence of a paragraph, telling the reader what the whole paragraph is about.",
+    rule: "The first sentence of a paragraph, telling the reader what the whole paragraph is about. Make it interesting: try a question or an exclamation, or begin it with a subordinating conjunction.",
     example: "Our school needs a bigger playground for three reasons.",
   },
   concluding_sentence: {
@@ -220,7 +220,8 @@ export function movesPrompt(yearLevel) {
 ${lines.join("\n")}
 Name a move only when "try_this" really does it: sentence_expansion adds when, where, why or how inside ONE sentence; sentence_combining joins two or more of the child's sentences into fewer sentences; elaborate adds a NEW sentence of detail after one of theirs; because_but_so extends a sentence with because, but or so. If none fits exactly, use null.
 Revising comes before editing: power-ups are revising moves. Spelling and punctuation are editing and belong in practice_words and the spelling and punctuation areas.
-Use the move names above whenever you talk about a move, so the child hears the same words as in class: say "transition word" (never signpost word, connective, linking word or time connective), "subordinating conjunction" (never joining word, opener or sentence starter), "kernel sentence", "fragment", "topic sentence" and "concluding sentence" (never T.S., C.S. or SPO), "revise" for improving the writing and "edit" for fixing spelling and punctuation.`;
+Use the move names above whenever you talk about a move, so the child hears the same words as in class: say "transition word" (never signpost word, connective, linking word or time connective), "subordinating conjunction" (never joining word, opener or sentence starter), "kernel sentence", "fragment", "topic sentence" and "concluding sentence" (never T.S., C.S. or SPO), "revise" for improving the writing and "edit" for fixing spelling and punctuation.
+Phrase "now_you" the way the school's own feedback is phrased, pointing at a sentence: expand it (add when, where, why or how), combine sentences 2 and 3, insert a transition, begin it with a subordinating conjunction, vary vocabulary, give an example, or improve your topic sentence or concluding sentence.`;
 }
 
 // The explanation shown to the child, or null if the key is unknown or too advanced for the year.

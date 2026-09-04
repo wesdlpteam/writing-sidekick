@@ -68,6 +68,9 @@ test("the moves prompt lists only the moves for the year and says revise before 
   assert.match(year3, /elaborate adds a NEW sentence/);
   assert.match(year3, /"now_you"/);
   assert.match(year3, /say "transition word" \(never signpost word/, "naming rule keeps the classroom vocabulary");
+  assert.match(year3, /insert a transition, begin it with a subordinating conjunction, vary vocabulary, give an example/, "tasks use the school's feedback phrasing");
+  assert.match(MOVES.transition.rule, /time and sequence.*illustrate.*change direction.*conclude.*emphasise/, "all five transition types");
+  assert.match(MOVES.topic_sentence.rule, /begin it with a subordinating conjunction/);
   assert.match(movesPrompt(5), /- appositive: Appositive\./);
 });
 
