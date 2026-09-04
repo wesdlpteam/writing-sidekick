@@ -46,7 +46,10 @@ test("the writing moves are named in full, explained, and staged by year", () =>
     assert.ok(m.name && m.rule.length > 30 && m.example.length > 8, key);
     assert.ok(m.minYear >= 1 && m.minYear <= 6, key);
     assert.doesNotMatch(m.name, /\b(T\.S\.|C\.S\.|SPO|MPO|GST|TSG)\b/, `${key}: no classroom shorthand`);
+    assert.doesNotMatch(`${m.name} ${m.rule}`, /signpost|connective|linking word|joining word|opener/i, `${key}: uses the school's names`);
   }
+  assert.match(MOVES.transition.rule, /transition word or phrase/);
+  assert.match(MOVES.subordinating_conjunction.rule, /Begin with a subordinating conjunction/);
   assert.deepEqual(movesFor(1).map((m) => m.key), ["sentence_types", "fragment_fix", "because_but_so"]);
   assert.ok(movesFor(3).some((m) => m.key === "sentence_combining"));
   assert.ok(!movesFor(3).some((m) => m.key === "appositive"), "appositives wait until Year 4");
@@ -64,6 +67,7 @@ test("the moves prompt lists only the moves for the year and says revise before 
   assert.match(year3, /sentence_combining joins two or more/);
   assert.match(year3, /elaborate adds a NEW sentence/);
   assert.match(year3, /"now_you"/);
+  assert.match(year3, /say "transition word" \(never signpost word/, "naming rule keeps the classroom vocabulary");
   assert.match(movesPrompt(5), /- appositive: Appositive\./);
 });
 

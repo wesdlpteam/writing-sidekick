@@ -58,7 +58,7 @@ export const CRITERIA = {
     label: "Sentence structure",
     sub: "building good sentences",
     guide:
-      "Are sentences complete and correct (no fragments), and is there variety? Look for a mix of short and long sentences, simple, compound and complex sentences, different sentence openers such as subordinating conjunctions, expanded sentences that say when, where, why and how, and no run-on sentences joined with and, and, and.",
+      "Are sentences complete and correct (no fragments), and is there variety? Look for a mix of short and long sentences, simple, compound and complex sentences, sentences that begin with a subordinating conjunction, expanded sentences that say when, where, why and how, and no run-on sentences joined with and, and, and.",
   },
   punctuation: {
     label: "Punctuation",
@@ -149,13 +149,13 @@ export const MOVES = {
   subordinating_conjunction: {
     name: "Subordinating conjunction start",
     minYear: 2,
-    rule: "Begin with a joining word like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
+    rule: "Begin with a subordinating conjunction like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
     example: "When the bell rang, we sprinted to the oval.",
   },
   transition: {
     name: "Transition word",
     minYear: 2,
-    rule: "A signpost word at the start of a sentence that links it to the one before: First, Next, Later or Finally for time; For example to illustrate; However or On the other hand to change direction; Therefore or In the end to conclude.",
+    rule: "A transition word or phrase at the start of a sentence that links it to the one before: First, Next, Later or Finally for time and sequence; For example to illustrate; However or On the other hand to change direction; Therefore or In the end to conclude.",
     example: "Later, the rain finally stopped.",
   },
   vary_vocabulary: {
@@ -219,7 +219,8 @@ export function movesPrompt(yearLevel) {
   return `Writing moves the school teaches (the child practises these in class, so build power-ups on them wherever they fit, and phrase "now_you" as a task that uses the move on their own writing, for example "Find your sentence about the waves and expand it: add when and where"). When a power-up's "try_this" clearly shows one of these moves, name it with the exact key in "move"; otherwise use null:
 ${lines.join("\n")}
 Name a move only when "try_this" really does it: sentence_expansion adds when, where, why or how inside ONE sentence; sentence_combining joins two or more of the child's sentences into fewer sentences; elaborate adds a NEW sentence of detail after one of theirs; because_but_so extends a sentence with because, but or so. If none fits exactly, use null.
-Revising comes before editing: power-ups are revising moves. Spelling and punctuation are editing and belong in practice_words and the spelling and punctuation areas.`;
+Revising comes before editing: power-ups are revising moves. Spelling and punctuation are editing and belong in practice_words and the spelling and punctuation areas.
+Use the move names above whenever you talk about a move, so the child hears the same words as in class: say "transition word" (never signpost word, connective, linking word or time connective), "subordinating conjunction" (never joining word, opener or sentence starter), "kernel sentence", "fragment", "topic sentence" and "concluding sentence" (never T.S., C.S. or SPO), "revise" for improving the writing and "edit" for fixing spelling and punctuation.`;
 }
 
 // The explanation shown to the child, or null if the key is unknown or too advanced for the year.
