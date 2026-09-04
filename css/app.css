@@ -263,7 +263,7 @@ h1[tabindex="-1"]:focus-visible, h2[tabindex="-1"]:focus-visible, h3[tabindex="-
 .year-btn:hover { background: var(--gold-soft); }
 .year-btn.selected { background: var(--gold); box-shadow: 5px 5px 0 var(--gold-deep), 0 0 24px rgba(255, 194, 51, 0.4); }
 .year-btn.selected::after {
-  content: "\2B50";
+  content: "\26A1\FE0F";
   position: absolute;
   top: -14px;
   right: -10px;

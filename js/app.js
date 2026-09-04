@@ -377,7 +377,7 @@ function el(tag, className, text) {
 function moveNote(move) {
   const box = el("div", "move-note");
   const title = el("p", "st-title");
-  title.append(emoji("✨"), "Writing strategy: ", el("strong", "", move.name));
+  title.append(emoji("⚡"), "Writing strategy: ", el("strong", "", move.name));
   const rule = el("p", "st-rule", move.rule);
   const example = el("p", "st-example");
   example.append("Another one: ", el("em", "", move.example));
