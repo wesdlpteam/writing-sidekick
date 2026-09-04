@@ -118,7 +118,7 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
         p.why,
         p.yourLine && `Your line: ${p.yourLine}`,
         `Try this: ${p.tryThis}`,
-        m && `Writing move: ${m.name}. ${m.rule} Another one: ${m.example}`,
+        m && `Writing strategy: ${m.name}. ${m.rule} Another one: ${m.example}`,
         p.nowYou && `Now you: ${p.nowYou}`,
       ]);
     });

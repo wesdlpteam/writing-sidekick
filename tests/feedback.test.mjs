@@ -284,7 +284,7 @@ test("the prompt does not force a spread of strengths and next steps; Years 1 an
   assert.match(sys4, /This writer is in Year 4\. .*under 16 words/, "Years 3 and 4 get their own band");
   const c6 = {};
   await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 6, genre: "persuasive" }, c6);
-  assert.match(c6.body.messages[0].content, /This writer is in Year 6\. .*proper names of writing moves/, "Years 5 and 6 can take the real terms");
+  assert.match(c6.body.messages[0].content, /This writer is in Year 6\. .*proper names of writing strategies/, "Years 5 and 6 can take the real terms");
 });
 
 // ---- evidence fidelity: nothing shown to the child may be invented ---------
@@ -666,7 +666,7 @@ test("level up: the prompt carries both versions, the power-ups and the practice
   const user = capture.body.messages[1].content[0].text;
   assert.match(user, /ORIGINAL writing:\nThe dog ran fast\./);
   assert.match(user, /NEW writing:\nThe dog ran fast across the wet grass\./);
-  assert.match(user, /1\. Expand your sentence \(Sentence structure\)\. Try this: The dog ran fast across the oval\. Now you: Add where\. Move: Sentence expansion/);
+  assert.match(user, /1\. Expand your sentence \(Sentence structure\)\. Try this: The dog ran fast across the oval\. Now you: Add where\. Strategy: Sentence expansion/);
   assert.match(user, /family \(they wrote famly\), because \(they wrote becos\)/);
   assert.deepEqual(r.payload.wins, [
     { what: "Power-up 1 used: Expand your sentence", evidence: "The dog ran fast across the wet grass." },

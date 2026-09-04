@@ -372,12 +372,12 @@ function el(tag, className, text) {
   return node;
 }
 
-// A named writing move (the ones the school teaches): its name, the rule, and a fresh example,
-// so the child can recognise the move and use it again.
+// A named writing strategy (The Writing Revolution's word, and the school's): its name, the
+// rule, and a fresh example, so the child can recognise the strategy and use it again.
 function moveNote(move) {
   const box = el("div", "move-note");
   const title = el("p", "st-title");
-  title.append(emoji("✨"), "Writing move: ", el("strong", "", move.name));
+  title.append(emoji("✨"), "Writing strategy: ", el("strong", "", move.name));
   const rule = el("p", "st-rule", move.rule);
   const example = el("p", "st-example");
   example.append("Another one: ", el("em", "", move.example));
@@ -385,7 +385,7 @@ function moveNote(move) {
   return box;
 }
 
-const moveSpeech = (move) => (move ? `Writing move: ${move.name}. ${move.rule} Another one: ${move.example}` : "");
+const moveSpeech = (move) => (move ? `Writing strategy: ${move.name}. ${move.rule} Another one: ${move.example}` : "");
 
 // Emoji live in a span so the senior look (Years 5 and 6) can hide them; screen readers skip them.
 function emoji(char) {

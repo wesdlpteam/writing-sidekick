@@ -8,30 +8,30 @@ Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever st
 ## What the feedback looks like
 
 The feedback comes as three slides, named to fit the superhero theme: Power-ups, Word lab and
-Hero scan.
+Level up. Every word of it is pitched at the child's year: Years 1 and 2 get picture-book
+sentences, Years 3 and 4 plain words with a hint for any term, Years 5 and 6 the proper names
+of strategies.
 
-- Two or three power-ups: the areas with the biggest payoff for this piece, each with the
-  child's own line, that line rewritten to show the skill, and a tiny "now you" task that
-  sends them back into their own writing. The rewrite is named as one of the writing moves
-  the school teaches (because/but/so, subordinating conjunction start, sentence expansion,
-  sentence combining, elaborating with a detail sentence, transition words, appositives, topic
-  and concluding sentences, sentence types, vary vocabulary, and for older years
-  general-to-specific introductions and their mirror conclusions), with a plain explanation
-  and a fresh example. Moves are only offered
-  from the year they suit. Revising comes first; spelling is labelled as editing and comes
-  after.
+- One to three power-ups (one or two for Years 1 and 2): the areas with the biggest payoff for
+  this piece, each with the child's own line, that line rewritten to show the skill, and a tiny
+  "now you" task that sends them back into their own writing. The rewrite is named as one of
+  the writing strategies the school teaches (because/but/so, subordinating conjunction start,
+  sentence expansion, sentence combining, elaborating with a detail sentence, transition words,
+  appositives, topic and concluding sentences, sentence types, vary vocabulary, and for older
+  years general-to-specific introductions and their mirror conclusions), with a plain
+  explanation and a fresh example. Strategies are only offered from the year they suit.
+  Revising comes first; spelling is labelled as editing and comes after. The slide ends with
+  "Pick up your pencil": the child revises in their book, not on the iPad.
 - The word lab: word power (stronger words for plain ones, with the child's sentence rewritten)
   and spelling to practise.
-- The hero scan (the writing check-up): the ten areas writing markers look at (audience, text structure,
-  ideas, characters and setting or persuasive devices, vocabulary, cohesion, paragraphing,
-  sentence structure, punctuation, spelling), each with a status (strength, on track, next
-  step), what the child did well, and a next step. Reports and poems use the nine shared
-  areas.
-- Spelling to practise and Word power.
-- Revise it: under each power-up the child types their own new version and taps "Check my
-  sentence". The AI judges only whether the move is there (nailed it, nearly there, keep
-  going), quotes what works, offers one tweak, and shows the move done well if needed.
-  Spelling is ignored here, because this is revising, not editing.
+- Level up: the child photographs the revised page. The app compares the two versions and
+  gives specific praise for what really changed (which power-ups show up, quoting the new
+  words; which practice words are now spelt right, checked by the server), plus one gentle
+  next tip. Nothing is claimed that is not in the new writing.
+- The ten-area check-up (audience, text structure, ideas, characters and setting or persuasive
+  devices, vocabulary, cohesion, paragraphing, sentence structure, punctuation, spelling; nine
+  for reports and poems) is no longer shown to the child. It goes into the teacher report,
+  with the highest-impact goal, on the print-out and the saved picture.
 - A Listen button on every card reads it aloud in a warm, sincere voice (OpenAI's "marin"
   voice), so younger readers can hear their feedback.
 
@@ -40,9 +40,10 @@ own year level, and the check-up and Listen buttons are always on.
 
 The area names follow the national writing assessment criteria; the descriptions used in
 the prompt and the app are written in our own words (the marking guides themselves are
-not reproduced here). The writing moves follow the approach of The Writing Revolution (the
-Hochman Method), which the school uses for writing instruction; the names are theirs, the
-explanations and examples are ours, and none of their materials are reproduced. See
+not reproduced here). The writing strategies follow the approach of The Writing Revolution (the
+Hochman Method), which the school uses for writing instruction; "strategies" is the book's own
+word for them, the names are theirs, the explanations and examples are ours, and none of their
+materials are reproduced. See
 `docs/research/writing-revolution-brief.md`.
 
 The approach follows what the feedback research says works: answer "where to next?",

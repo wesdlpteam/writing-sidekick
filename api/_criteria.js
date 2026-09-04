@@ -1,7 +1,7 @@
 // The ten areas writing markers look at (the categories used in Australia's national writing
 // assessment), described here in our own words for the model and for the child. Story-style
 // pieces judge "Characters and setting"; persuasive pieces judge "Persuasive devices"; reports
-// and poems use the nine shared areas. Also: the writing moves the school teaches (The Writing
+// and poems use the nine shared areas. Also: the writing strategies the school teaches (The Writing
 // Revolution approach), which the feedback names when a power-up shows one, each with a plain
 // explanation and an example of our own.
 
@@ -32,9 +32,9 @@ export const CRITERIA = {
   },
   persuasive_devices: {
     label: "Persuasive devices",
-    sub: "the moves that convince",
+    sub: "the ways to convince",
     guide:
-      "The moves that convince a reader: an opinion backed by reasons, modal words (should, must, might), rhetorical questions, talking straight to the reader, emotive words, repetition, facts or examples, answering the other side. Judge how many are used and whether they actually work.",
+      "The ways a writer convinces a reader: an opinion backed by reasons, modal words (should, must, might), rhetorical questions, talking straight to the reader, emotive words, repetition, facts or examples, answering the other side. Judge how many are used and whether they actually work.",
   },
   vocabulary: {
     label: "Vocabulary",
@@ -117,10 +117,10 @@ For every area give a status, judged against THIS year level (a Year 1 writer is
 Be honest and judge only what is on the page. Strong work can have mostly strengths, and a very short piece may not show enough to judge some areas: then use "steady" with a next step rather than inventing a weakness. Never mark everything as a strength when the writing has not earned it.`;
 }
 
-// The writing moves the school teaches, following The Writing Revolution approach (sentences
+// The writing strategies the school teaches, following The Writing Revolution approach (sentences
 // first, then paragraphs; revise before you edit). Names are the ones children hear in class,
 // written out in full; the explanations and examples are our own. minYear follows the usual
-// order the moves are introduced, so a Year 2 is never handed an appositive.
+// order the strategies are introduced, so a Year 2 is never handed an appositive.
 export const MOVES = {
   sentence_types: {
     name: "Sentence types",
@@ -216,11 +216,11 @@ export function movesFor(yearLevel) {
 
 export function movesPrompt(yearLevel) {
   const lines = movesFor(yearLevel).map((m) => `- ${m.key}: ${m.name}. ${m.rule}`);
-  return `Writing moves the school teaches (the child practises these in class, so build power-ups on them wherever they fit, and phrase "now_you" as a task that uses the move on their own writing, for example "Find your sentence about the waves and expand it: add when and where"). When a power-up's "try_this" clearly shows one of these moves, name it with the exact key in "move"; otherwise use null:
+  return `Writing strategies the school teaches (the child practises these in class, so build power-ups on them wherever they fit, and phrase "now_you" as a task that uses the strategy on their own writing, for example "Find your sentence about the waves and expand it: add when and where"). When a power-up's "try_this" clearly shows one of these strategies, name it with the exact key in "move"; otherwise use null:
 ${lines.join("\n")}
-Name a move only when "try_this" really does it: sentence_expansion adds when, where, why or how inside ONE sentence; sentence_combining joins two or more of the child's sentences into fewer sentences; elaborate adds a NEW sentence of detail after one of theirs; because_but_so extends a sentence with because, but or so. If none fits exactly, use null.
-Revising comes before editing: power-ups are revising moves. Spelling and punctuation are editing and belong in practice_words and the spelling and punctuation areas.
-Use the move names above whenever you talk about a move, so the child hears the same words as in class: say "transition word" (never signpost word, connective, linking word or time connective), "subordinating conjunction" (never joining word, opener or sentence starter), "kernel sentence", "fragment", "topic sentence" and "concluding sentence" (never T.S., C.S. or SPO), "revise" for improving the writing and "edit" for fixing spelling and punctuation.
+Name a strategy only when "try_this" really does it: sentence_expansion adds when, where, why or how inside ONE sentence; sentence_combining joins two or more of the child's sentences into fewer sentences; elaborate adds a NEW sentence of detail after one of theirs; because_but_so extends a sentence with because, but or so. If none fits exactly, use null.
+Revising comes before editing: power-ups are revising strategies. Spelling and punctuation are editing and belong in practice_words and the spelling and punctuation areas.
+Call them "writing strategies" (never moves, tricks or techniques) and use the strategy names above whenever you talk about one, so the child hears the same words as in class: say "transition word" (never signpost word, connective, linking word or time connective), "subordinating conjunction" (never joining word, opener or sentence starter), "kernel sentence", "fragment", "topic sentence" and "concluding sentence" (never T.S., C.S. or SPO), "revise" for improving the writing and "edit" for fixing spelling and punctuation.
 Phrase "now_you" the way the school's own feedback is phrased, pointing at a sentence: expand it (add when, where, why or how), combine sentences 2 and 3, insert a transition, begin it with a subordinating conjunction, vary vocabulary, give an example, or improve your topic sentence or concluding sentence.`;
 }
 

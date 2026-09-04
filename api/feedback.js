@@ -57,7 +57,7 @@ export function dropCrossedOut(transcript) {
 // child something to do. The skill bank keeps the advice concrete and age-appropriate.
 const FEEDBACK_PRINCIPLES = `What good feedback looks like (follow this): it answers "where to next?", it is specific to this piece of writing, it shows the improvement done well rather than just naming it, and it leaves the child with something small to do straight away.
 
-Skill bank to choose power-ups from (pick only what fits this piece, year and genre; never list them all). The school teaches writing one sentence at a time with these moves, so reach for them first:
+Skill bank to choose power-ups from (pick only what fits this piece, year and genre; never list them all). The school teaches writing one sentence at a time with these strategies, so reach for them first:
 - Because, but, so: finish a thin sentence with a reason, a turn or a result.
 - Subordinating conjunction start: Although, When, Since, After, Before, If, Even though, then a comma, then the rest.
 - Sentence expansion: take a bare kernel sentence and add when, where, why or how (the when usually at the front with a comma).
@@ -97,7 +97,7 @@ const outputSpec = (powerUpCount) => `The child has already checked the typed co
       "why": "one or two sentences on why this will lift THIS piece, pointing at their writing",
       "your_line": "one exact sentence or phrase copied from the child's writing where this skill belongs",
       "try_this": "that same line rewritten to show the skill done well, keeping the child's ideas, voice and year level",
-      "move": "a key from the writing moves list when try_this clearly shows that move, otherwise null",
+      "move": "a key from the writing strategies list when try_this clearly shows that strategy, otherwise null",
       "now_you": "a tiny task the child can do right now on their own writing, e.g. 'Find your sentence about the waves and add one sound you heard.'"
     }
   ],
@@ -119,10 +119,10 @@ Be very specific everywhere: every comment must quote or point to actual words, 
 // Step 3: the child revised in their book and photographed the new version. Compare the two,
 // celebrate what really changed, name the power-ups and spelling fixes that show up, and leave
 // one gentle next step. Nothing may be claimed that is not in the new version.
-const LEVEL_UP_SPEC = `A child was given power-ups (revising moves) and spelling words to practise on a piece of writing. They went back to their book, made changes, and photographed the new version. You are given the ORIGINAL writing, the power-ups and practice words they were given, and the NEW writing. Your job is positive, specific reinforcement for what they actually changed, in a warm coach's voice, worded so a child of this year level can read it themselves.
+const LEVEL_UP_SPEC = `A child was given power-ups (revising strategies) and spelling words to practise on a piece of writing. They went back to their book, made changes, and photographed the new version. You are given the ORIGINAL writing, the power-ups and practice words they were given, and the NEW writing. Your job is positive, specific reinforcement for what they actually changed, in a warm coach's voice, worded so a child of this year level can read it themselves.
 Rules:
 1. Compare the two versions carefully. Only celebrate changes that are really there in the NEW version and were not in the original. Never claim a change that did not happen.
-2. For each real improvement give a short "what" (for example "Power-up 1 used: Expand your sentence", "Spelling fixed: family", "New detail added", "Two sentences joined") and "evidence": the exact new words copied from the NEW writing, one sentence or phrase. If a power-up's move appears, say which power-up.
+2. For each real improvement give a short "what" (for example "Power-up 1 used: Expand your sentence", "Spelling fixed: family", "New detail added", "Two sentences joined") and "evidence": the exact new words copied from the NEW writing, one sentence or phrase. If a power-up's strategy appears, say which power-up.
 3. Spelling: call a practice word fixed only if it is now spelt correctly in the NEW writing.
 4. "cheer": one or two sentences that celebrate the effort and the single best change, quoting it.
 5. "next": one gentle, specific thing to try next time on THIS writing, or "" if they used every power-up. Never scold. If nothing seems to have changed, say so kindly in "cheer" and suggest one small change in "next".
@@ -468,7 +468,7 @@ async function levelUpFeedback({ levelUp, yearLevel, env, fetchImpl }) {
   }
   const systemPrompt = [`Year level of the writer, for tone and expectations:\n${getYearGuide(yearLevel).summary}`, readingLevel(yearLevel), LEVEL_UP_SPEC].join("\n\n");
   const powerUpLines = levelUp.powerUps.map(
-    (p, i) => `${i + 1}. ${p.skill}${p.area ? ` (${p.area})` : ""}.${p.tryThis ? ` Try this: ${p.tryThis}` : ""}${p.nowYou ? ` Now you: ${p.nowYou}` : ""}${p.move ? ` Move: ${p.move}` : ""}`,
+    (p, i) => `${i + 1}. ${p.skill}${p.area ? ` (${p.area})` : ""}.${p.tryThis ? ` Try this: ${p.tryThis}` : ""}${p.nowYou ? ` Now you: ${p.nowYou}` : ""}${p.move ? ` Strategy: ${p.move}` : ""}`,
   );
   const userText = [
     `ORIGINAL writing:\n${levelUp.before || "(none)"}`,
