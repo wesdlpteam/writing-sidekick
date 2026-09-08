@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260909-startup">
+  <link rel="stylesheet" href="css/app.css?v=20260909-text-types">
 </head>
 <body>
   <main id="app">
@@ -38,12 +38,9 @@
       </div>
       <h2>What kind of writing is it?</h2>
       <div id="genre-chips" class="chip-row" role="group" aria-label="Choose the kind of writing">
-        <button class="chip" data-genre="narrative">Story</button>
-        <button class="chip" data-genre="recount">Recount</button>
+        <button class="chip selected" data-genre="narrative">Narrative</button>
         <button class="chip" data-genre="persuasive">Persuasive</button>
-        <button class="chip" data-genre="report">Information report</button>
-        <button class="chip" data-genre="poetry">Poem</button>
-        <button class="chip selected" data-genre="">Not sure</button>
+        <button class="chip" data-genre="report">Informative</button>
       </div>
       <button id="btn-start" class="primary big" disabled>Loading Sidekick...</button>
       <p id="startup-status" class="privacy-note" role="status">Loading your sidekick...</p>
@@ -220,7 +217,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20260909-startup");
+      await import("./js/app.js?v=20260909-text-types");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

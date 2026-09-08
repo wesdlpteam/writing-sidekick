@@ -1,13 +1,13 @@
-import { writingStrength } from "./feedback-visuals.js?v=20260909-startup";
-import { prepareScan, rotate90 } from "./scan.js?v=20260909-startup";
-import { transcribePage, getFeedback } from "./api.js?v=20260909-startup";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-startup";
+import { writingStrength } from "./feedback-visuals.js?v=20260909-text-types";
+import { prepareScan, rotate90 } from "./scan.js?v=20260909-text-types";
+import { transcribePage, getFeedback } from "./api.js?v=20260909-text-types";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-text-types";
 
 const MAX_PAGES = 2;
 
 const state = {
   yearLevel: null,
-  genre: "",
+  genre: "narrative",
   pages: [], // cleaned-up page photos as data URLs, in order
   transcripts: [], // the typed copy of each page, kept up to date as the child edits
   reviewIndex: 0, // which page is open on the check-the-typing screen
