@@ -1,10 +1,9 @@
 import { writingStrength } from "./feedback-visuals.js";
 import { prepareScan, rotate90 } from "./scan.js";
-import { transcribePage, getFeedback, getLevelUp } from "./api.js";
+import { transcribePage, getFeedback } from "./api.js";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js";
-import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js";
 
-const MAX_PAGES = 4;
+const MAX_PAGES = 2;
 
 const state = {
   yearLevel: null,
@@ -13,14 +12,11 @@ const state = {
   transcripts: [], // the typed copy of each page, kept up to date as the child edits
   reviewIndex: 0, // which page is open on the check-the-typing screen
   feedback: null,
-  round: 1, // 2 once the child comes back with their revised writing
-  original: null, // round 2: { transcript, feedback } from round 1
 };
 
 const $ = (id) => document.getElementById(id);
 
 function show(screenId) {
-  stopSpeaking();
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === screenId));
   window.scrollTo(0, 0);
   focusHeading(document.querySelector(`#${screenId} h1`));
@@ -33,14 +29,6 @@ function focusHeading(node) {
   node.tabIndex = -1;
   // A tick later: the loading overlay's `finally` has switched the screens back on by then.
   setTimeout(() => node.focus({ preventScroll: true }), 0);
-}
-
-// Read-aloud is always on (the app is student-only for now); renderers call mountListen.
-const readAloud = true;
-
-function mountListen(slot, text, options) {
-  slot.innerHTML = "";
-  if (readAloud) slot.appendChild(listenButton(text, options));
 }
 
 const joinOr = (items) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}` : items[0]);
@@ -95,11 +83,11 @@ function markSelected(button, selected) {
 document.querySelectorAll(".year-btn, .chip").forEach((b) => markSelected(b, b.classList.contains("selected")));
 
 $("btn-start").addEventListener("click", () => show("screen-camera"));
-// In round 2 the camera's Back goes to the feedback, where the child came from.
-$("btn-back-start").addEventListener("click", () => show(state.round === 2 ? "screen-feedback" : "screen-start"));
+// Return to the year selection before submitting writing.
+$("btn-back-start").addEventListener("click", () => show("screen-start"));
 $("btn-back-camera").addEventListener("click", () => show("screen-camera"));
 
-// ---- pages: photo -> cleaned scan, up to four pages -------------------------
+// ---- pages: photo -> cleaned scan, up to two pages -------------------------
 
 async function addPage(file) {
   if (!file || state.pages.length >= MAX_PAGES) return;
@@ -270,24 +258,6 @@ async function submitWriting() {
     return;
   }
   try {
-    if (state.round === 2 && state.original) {
-      // Round 2: compare the new version with the first one and celebrate what changed.
-      setLoading(true, "Your sidekick is checking what got better…");
-      const fb = state.original.feedback;
-      const reply = await getLevelUp({
-        yearLevel: state.yearLevel,
-        genre: state.genre,
-        levelUp: {
-          before: state.original.transcript,
-          after: transcript,
-          powerUps: fb.powerUps.map((p) => ({ skill: p.skill, area: p.areaLabel, tryThis: p.tryThis, nowYou: p.nowYou, move: p.move?.name || "" })),
-          practiceWords: fb.practiceWords || [],
-        },
-      });
-      renderLevelUp(reply);
-      show("screen-levelup");
-      return;
-    }
     setLoading(true, "Your sidekick is thinking about your writing…");
     state.feedback = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
     renderFeedback();
@@ -307,7 +277,6 @@ const errorTotalLines = (feedback) => [
 const editingTask = "Go back to your writing. Find and fix the errors, then read it again to check.";
 
 function renderPractice() {
-  const lines = errorTotalLines(state.feedback);
   $("practice-card").hidden = false;
   const list = $("practice-words");
   list.innerHTML = "";
@@ -333,9 +302,6 @@ function renderPractice() {
   }
   $("practice-tip").hidden = false;
   $("practice-tip").textContent = editingTask;
-  mountListen($("practice-listen"), () => `Find and fix. ${lines.join(". ")}. ${editingTask}`, {
-    label: "Listen to error totals",
-  });
 }
 
 function renderBoost() {
@@ -358,14 +324,6 @@ function renderBoost() {
     $("boost-before").textContent = boost.before;
     $("boost-after").textContent = boost.after;
   }
-  mountListen(
-    $("boost-listen"),
-    () =>
-      `Word power. ${boost.swaps.map((s) => `Instead of ${s.from}, try ${joinOr(s.to)}`).join(". ")}.${
-        hasExample ? ` Your sentence: ${boost.before} With word power: ${boost.after}` : ""
-      }`,
-    { label: "Listen to word power" },
-  );
 }
 
 function labelledLine(label, value, tag) {
@@ -420,24 +378,6 @@ function renderPowerUps(powerUps) {
     const head = el("div", "power-head");
     head.appendChild(el("h3", "power-title", `Power-up ${index + 1}: ${p.skill}`));
     if (p.areaLabel) head.appendChild(el("span", "power-area", p.areaLabel));
-    if (readAloud) {
-      head.appendChild(
-        listenButton(
-          () =>
-            [
-              `Power-up ${index + 1}: ${p.skill}.`,
-              p.why,
-              p.yourLine && `Your line: ${p.yourLine}`,
-              `Try this: ${p.tryThis}`,
-              moveSpeech(p.move),
-              p.nowYou && `Now you: ${p.nowYou}`,
-            ]
-              .filter(Boolean)
-              .join(" "),
-          { label: `Listen to Power-up ${index + 1}` },
-        ),
-      );
-    }
     card.append(head, el("p", "power-why", p.why));
     if (p.yourLine) card.appendChild(labelledLine("Your line:", p.yourLine, "q"));
     card.appendChild(labelledLine("Try this:", p.tryThis, "strong"));
@@ -449,51 +389,6 @@ function renderPowerUps(powerUps) {
     }
     box.appendChild(card);
   });
-}
-
-// ---- level up: round 2 -------------------------------------------------------
-
-// The child goes back to their book, revises, then photographs the new version. Round 1's
-// typing and feedback are kept so the server can compare and name what improved.
-function startLevelUp() {
-  state.original = { transcript: fullTranscript(), feedback: state.feedback };
-  state.round = 2;
-  state.pages = [];
-  state.transcripts = [];
-  state.reviewIndex = 0;
-  $("camera-title").textContent = "Photo time: round 2";
-  $("round-note").hidden = false;
-  renderPages();
-  show("screen-camera");
-}
-
-$("btn-level-up").addEventListener("click", startLevelUp);
-
-// Specific praise for what really changed: the wins (each quoting the new writing), the
-// practice words now spelt right, and one gentle next tip.
-function renderLevelUp(reply) {
-  $("cheer").textContent = reply.cheer || "You went back and worked on your writing. That is what real writers do.";
-  mountListen($("cheer-listen"), () => $("cheer").textContent, { label: "Listen to this message" });
-  const wins = $("wins");
-  wins.innerHTML = "";
-  for (const w of reply.wins || []) {
-    const li = el("li", "win");
-    li.append(emoji("✅"), el("strong", "", w.what), el("q", "win-evidence", w.evidence));
-    wins.appendChild(li);
-  }
-  if (!(reply.wins || []).length) {
-    wins.appendChild(el("li", "win win-empty", "I could not spot a change yet. Every writer starts somewhere: try one power-up next time."));
-  }
-  const fixed = reply.spellingFixed || [];
-  $("spelling-fixed-card").hidden = fixed.length === 0;
-  const list = $("spelling-fixed");
-  list.innerHTML = "";
-  for (const word of fixed) list.appendChild(el("li", "", word));
-  // The model sometimes opens with "Next time..." itself, so the label is not doubled up.
-  const next = (reply.next || "").replace(/^next time[,:]?\s*/i, "");
-  $("next-tip").hidden = !next;
-  $("next-tip").textContent = next ? `Next time: ${next.charAt(0).toUpperCase()}${next.slice(1)}` : "";
-  resetIdle();
 }
 
 const STATUS = {
@@ -521,12 +416,10 @@ function renderStrength() {
   $("strength-summary").textContent = description;
   $("strength-key").textContent = summary.keyStrength;
   $("strength-focus").textContent = summary.focus;
-  mountListen($("strength-listen"), () => `Writing strength. ${description}. Key strength: ${summary.keyStrength}. Next focus: ${summary.focus}.`, { label: "Listen to writing strength" });
 }
 
 function renderFeedback() {
   const { powerUps } = state.feedback;
-  clearSpeechCache();
   renderStrength();
   renderPractice();
   renderBoost();
@@ -552,7 +445,7 @@ function highestImpactGoal() {
 const SLIDES = [
   { key: "power", label: "Power-ups" },
   { key: "words", label: "Word lab" },
-  { key: "levelup", label: "Level up" },
+  { key: "finish", label: "Finish" },
 ];
 let slideIndex = 0;
 
@@ -580,7 +473,6 @@ function showSlide(index) {
   const slides = activeSlides();
   slideIndex = Math.max(0, Math.min(slides.length - 1, index));
   const current = slides[slideIndex].key;
-  stopSpeaking();
   document.querySelectorAll(".fb-slide").forEach((s) => s.classList.toggle("active", s.dataset.slide === current));
   playSlideClip(current);
   renderSteps(slides, slideIndex);
@@ -750,24 +642,20 @@ $("btn-print").addEventListener("click", () => {
 // ---- finish and clear: shared iPads must not hand one child's work to the next ------------
 
 // Everything the app holds about this piece of writing, gone: photos, typing, feedback,
-// cached speech, the prepared share picture, and the copies drawn on screen.
+// the prepared share picture, and the copies drawn on screen.
 function clearEverything() {
-  clearSpeechCache();
   state.pages = [];
   state.transcripts = [];
   state.reviewIndex = 0;
   state.feedback = null;
-  state.round = 1;
-  state.original = null;
   shareCache = { key: "", blob: null };
   $("transcript").value = "";
   $("include-photos").checked = false;
   $("camera-title").textContent = "Photo time";
-  $("round-note").hidden = true;
-  for (const id of ["strength-bar", "power-ups", "practice-words", "boost-swaps", "wins", "spelling-fixed", "print-pages", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
+  for (const id of ["strength-bar", "power-ups", "practice-words", "boost-swaps", "print-pages", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
     $(id).innerHTML = "";
   }
-  for (const id of ["strength-summary", "strength-key", "strength-focus", "print-transcript", "print-goal", "cheer", "next-tip"]) $(id).textContent = "";
+  for (const id of ["strength-summary", "strength-key", "strength-focus", "print-transcript", "print-goal"]) $(id).textContent = "";
   renderPages();
 }
 
@@ -838,12 +726,6 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden) resetIdle();
 });
 
-// The camera screen's instructions and privacy line can be listened to as well as read.
-mountListen(
-  $("camera-listen"),
-  () => `${[...document.querySelectorAll("#screen-camera .reminder li")].map((li) => li.textContent.trim()).join(". ")}. ${$("privacy-line").textContent.trim()}`,
-  { label: "Listen to this screen" },
-);
 
 // ---- error banner ----------------------------------------------------------
 
@@ -851,6 +733,6 @@ $("btn-error-close").addEventListener("click", () => {
   $("error-banner").hidden = true;
 });
 
-document.addEventListener("speech-error", (event) => showError(event.detail));
+
 
 renderPages();

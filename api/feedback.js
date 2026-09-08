@@ -9,7 +9,7 @@ import { minimiseContactDetails } from "./_privacy.js";
 //   2. checked transcript -> feedback (curriculum-guided, improvement-first)
 // The child checks and fixes the transcript between the two steps.
 
-const MAX_PAGES = 4;
+const MAX_PAGES = 2;
 const MAX_IMAGE_CHARS = 6_000_000; // ~4.4MB of base64 data per page
 const MAX_TOTAL_IMAGE_CHARS = 4_500_000; // the whole request must fit the host's 4.5MB limit
 const MAX_TRANSCRIPT_CHARS = 20_000;
@@ -419,7 +419,7 @@ function readLevelUp(raw) {
   const after = text(raw.after);
   if (!after) return { error: "The typing box is empty. Take the photo again, or type your writing in." };
   if (before.length > MAX_LEVELUP_CHARS || after.length > MAX_LEVELUP_CHARS) {
-    return { error: "That is a lot of writing for one go. Please send up to four pages at a time." };
+    return { error: "That is a lot of writing for one go. Please send up to two pages at a time." };
   }
   const powerUps = (Array.isArray(raw.powerUps) ? raw.powerUps : [])
     .filter((p) => p && typeof p === "object" && text(p.skill))
@@ -523,7 +523,7 @@ export async function handleFeedback(body, { fetchImpl, env }) {
     return { status: 400, payload: { error: "Please take a photo of your writing first." } };
   }
   if (images.length > MAX_PAGES) {
-    return { status: 400, payload: { error: "You can send up to four pages at a time." } };
+    return { status: 400, payload: { error: "You can send up to two pages at a time." } };
   }
   const BAD_PHOTO = { status: 400, payload: { error: "That photo didn't come through properly. Please try again." } };
   let totalChars = 0;
@@ -539,7 +539,7 @@ export async function handleFeedback(body, { fetchImpl, env }) {
   }
   if (!images.every(looksLikeImage)) return BAD_PHOTO;
   if (transcript.length > MAX_TRANSCRIPT_CHARS) {
-    return { status: 400, payload: { error: "That is a lot of writing for one go. Please send up to four pages at a time." } };
+    return { status: 400, payload: { error: "That is a lot of writing for one go. Please send up to two pages at a time." } };
   }
 
   if (!env?.OPENAI_API_KEY) {

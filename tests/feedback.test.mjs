@@ -126,10 +126,10 @@ test("provider calls carry a timeout signal and follow OPENAI_BASE_URL", async (
   assert.ok(seen.every((s) => s.signal instanceof AbortSignal), "every upstream call can time out");
 });
 
-test("rejects more than four pages", async () => {
-  const r = await handleFeedback({ images: [IMG, IMG, IMG, IMG, IMG], yearLevel: 3 }, { fetchImpl: mockFetch("{}"), env: ENV });
+test("rejects more than two pages", async () => {
+  const r = await handleFeedback({ images: [IMG, IMG, IMG], yearLevel: 3 }, { fetchImpl: mockFetch("{}"), env: ENV });
   assert.equal(r.status, 400);
-  assert.match(r.payload.error, /four/i);
+  assert.match(r.payload.error, /two/i);
 });
 
 test("rejects a non-image data url", async () => {
@@ -147,13 +147,13 @@ test("rejects missing api key", async () => {
 test("photos go to a transcription-only call and return just the transcript", async () => {
   const capture = {};
   const r = await handleFeedback(
-    { images: [IMG, IMG, IMG], yearLevel: 3, genre: "narrative" },
+    { images: [IMG, IMG], yearLevel: 3, genre: "narrative" },
     { fetchImpl: mockFetch(JSON.stringify({ transcript: "I dont like peas.\nThey are green." }), { capture }), env: ENV },
   );
   assert.equal(r.status, 200);
   assert.deepEqual(r.payload, { transcript: "I dont like peas.\nThey are green." });
   const userParts = capture.body.messages[1].content;
-  assert.equal(userParts.filter((p) => p.type === "image_url").length, 3, "every page is sent, in order");
+  assert.equal(userParts.filter((p) => p.type === "image_url").length, 2, "every page is sent, in order");
   assert.ok(userParts.every((p) => p.type !== "image_url" || p.image_url.detail === "original"), "original detail keeps small marks");
   assert.equal(capture.body.verbosity, "high");
   assert.equal(capture.body.model, "gpt-5.4", "transcription uses the stronger model by default");

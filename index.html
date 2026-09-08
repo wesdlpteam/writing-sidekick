@@ -50,18 +50,16 @@
 
     <section id="screen-camera" class="screen">
       <h1><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span><span id="camera-title">Photo time</span></h1>
-      <p id="round-note" class="lead round-note" hidden>Round 2: snap the page with your changes on it, and I'll tell you what got better.</p>
       <div class="reminder">
         <p class="reminder-title">Before you snap:</p>
         <ul>
           <li>&#x1F91A; Cover your name with your hand or a card</li>
           <li>&#x1F4C4; Lay the page flat</li>
           <li>&#x1F4A1; Find good light, no shadows</li>
-          <li>&#x1F4DA; More than one page? Snap them one at a time, in order</li>
+          <li>&#x1F4DA; Up to two pages. Snap them one at a time, in order</li>
         </ul>
       </div>
       <p id="privacy-line" class="privacy-line">Your photo goes to an AI helper to read your writing, then it is forgotten. <a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">For adults: how your writing is handled</a></p>
-      <div id="camera-listen" class="screen-listen"></div>
       <label id="first-photo" class="primary big file-btn">
         Take the photo
         <input id="photo-input" type="file" accept="image/*" capture="environment">
@@ -109,7 +107,7 @@
         <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Power up here</h2>
         <p class="lead fb-lead">Revise first. These writing strategies will lift this piece the most. Try each one, then use it in other spots too.</p>
         <section class="strength-card" aria-labelledby="strength-title">
-          <div class="title-row"><h3 id="strength-title" class="practice-title">Writing strength</h3><span id="strength-listen"></span></div>
+          <div class="title-row"><h3 id="strength-title" class="practice-title">Writing strength</h3></div>
           <p class="visual-caption">Your writing skills at a glance</p>
           <div id="strength-bar" class="strength-bar" role="img"></div>
           <p id="strength-summary" class="strength-summary"></p>
@@ -119,7 +117,7 @@
         <div id="power-ups" class="power-ups"></div>
         <div class="pencil-card">
           <p class="pencil-title"><span class="h-emoji" aria-hidden="true">&#x270D;&#xFE0F; </span>Pick up your pencil</p>
-          <p>Go back to your book and make these changes in your own writing. When you're done, come back for Level up and show me.</p>
+          <p>Go back to your book and make these changes in your own writing. Read your writing again to check your changes.</p>
         </div>
       </section>
 
@@ -129,7 +127,6 @@
         <div id="boost-card" class="practice-card boost-card" hidden>
           <div class="title-row">
             <h3 class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F4AA; </span>Word power</h3>
-            <span id="boost-listen"></span>
           </div>
           <ul id="boost-swaps"></ul>
           <div id="boost-example" hidden>
@@ -140,7 +137,6 @@
         <div id="practice-card" class="practice-card" hidden>
           <div class="title-row">
             <h3 class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F4DD; </span>Editing</h3>
-            <span id="practice-listen"></span>
           </div>
           <p class="visual-caption">Errors to find in your writing</p>
           <ul id="practice-words"></ul>
@@ -148,13 +144,12 @@
         </div>
       </section>
 
-      <section class="fb-slide" data-slide="levelup">
+      <section class="fb-slide" data-slide="finish">
         <div class="stage stage-scan">
           <img class="stage-art" src="art/heroscan.jpg" alt="">
         </div>
-        <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Level up</h2>
-        <p class="lead fb-lead">Made your changes in your book? Take a new photo of your writing and I'll tell you exactly what got better.</p>
-        <button id="btn-level-up" class="primary big" type="button"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Take a new photo &#8594;</button>
+        <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Finish your writing</h2>
+        <p class="lead fb-lead">Use your feedback to improve your writing in your book. You can save or print the feedback before you finish.</p>
         <label class="check-row export-photos"><input id="include-photos" type="checkbox"> Include the photos of my writing in the picture and print-out</label>
         <div class="btn-row">
           <button id="btn-save-pic" class="secondary"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Save picture</button>
@@ -168,26 +163,6 @@
         <button id="btn-slide-next" class="primary big" type="button">Next: Word lab &#8594;</button>
         <button id="btn-finish-feedback" class="ghost btn-finish" type="button">Finish and clear</button>
       </div>
-    </section>
-
-    <section id="screen-levelup" class="screen">
-      <h1><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Level up!</h1>
-      <div class="stage stage-power">
-        <img class="stage-art" src="art/powerup.jpg" alt="">
-      </div>
-      <div class="cheer-card">
-        <p id="cheer" class="cheer"></p>
-        <div id="cheer-listen" class="card-actions"></div>
-      </div>
-      <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x1F525; </span>What got better</h2>
-      <ul id="wins" class="wins"></ul>
-      <div id="spelling-fixed-card" class="practice-card" hidden>
-        <h3 class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F4DD; </span>Spelling fixed</h3>
-        <ul id="spelling-fixed" class="fixed-words"></ul>
-      </div>
-      <p id="next-tip" class="next-tip" hidden></p>
-      <button id="btn-finish-levelup" class="primary big btn-finish" type="button">Finish and clear</button>
-      <p class="privacy-note">Your photos and typed writing went to an AI helper to be read. This iPad forgets them when you tap Finish, leave, or stop for ten minutes. The app itself keeps nothing.</p>
     </section>
 
     <div id="loading" class="overlay" role="status" aria-live="polite" hidden>
