@@ -1,7 +1,7 @@
-import { writingStrength } from "./feedback-visuals.js?v=20260909-text-types";
-import { prepareScan, rotate90 } from "./scan.js?v=20260909-text-types";
-import { transcribePage, getFeedback } from "./api.js?v=20260909-text-types";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-text-types";
+import { writingStrength } from "./feedback-visuals.js?v=20260909-wide-review";
+import { prepareScan, rotate90 } from "./scan.js?v=20260909-wide-review";
+import { transcribePage, getFeedback } from "./api.js?v=20260909-wide-review";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-wide-review";
 
 const MAX_PAGES = 2;
 
@@ -17,6 +17,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 function show(screenId) {
+  $("app").classList.toggle("review-wide", screenId === "screen-review");
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === screenId));
   window.scrollTo(0, 0);
   focusHeading(document.querySelector(`#${screenId} h1`));

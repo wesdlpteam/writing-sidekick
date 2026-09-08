@@ -368,12 +368,14 @@ h1[tabindex="-1"]:focus-visible, h2[tabindex="-1"]:focus-visible, h3[tabindex="-
 
 #print-pages img { width: 100%; max-height: 45vh; object-fit: contain; object-position: top; margin-bottom: 8px; display: block; }
 
-/* The typing check (Year 4 and up) breaks out of the app's reading column so a page of
-   handwriting is not squeezed into half the screen. It stays centred because #app is. */
-#screen-review.active {
-  width: min(1180px, calc(100vw - 32px));
-  margin-left: calc(50% - min(1180px, calc(100vw - 32px)) / 2);
+/* Give the typing screen the viewport width without overflowing a narrow parent. */
+#app.review-wide {
+  max-width: none;
+  width: 100%;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
 }
+#screen-review.active { width: 100%; }
 
 /* The typed copy: one page at a time, full width, a plain document page that grows with the
    writing. The page label and Next/Previous buttons only show for 2+ pages. */
