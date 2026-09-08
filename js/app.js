@@ -1,7 +1,8 @@
-import { writingStrength } from "./feedback-visuals.js?v=20260909-wide-review";
-import { prepareScan, rotate90 } from "./scan.js?v=20260909-wide-review";
-import { transcribePage, getFeedback } from "./api.js?v=20260909-wide-review";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-wide-review";
+import { reflowTranscript } from "./transcript.js?v=20260909-reflow";
+import { writingStrength } from "./feedback-visuals.js?v=20260909-reflow";
+import { prepareScan, rotate90 } from "./scan.js?v=20260909-reflow";
+import { transcribePage, getFeedback } from "./api.js?v=20260909-reflow";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-reflow";
 
 const MAX_PAGES = 2;
 
@@ -173,7 +174,7 @@ $("btn-read").addEventListener("click", async () => {
     // One request per page, read side by side, then joined in page order with a blank line
     // between pages. One big request for all pages used to trip the server's upload limit.
     const pages = await Promise.all(state.pages.map((image) => transcribePage({ image, yearLevel: state.yearLevel })));
-    state.transcripts = pages.map((page) => page.transcript.trim());
+    state.transcripts = pages.map((page) => reflowTranscript(page.transcript));
     state.reviewIndex = 0;
     // Years 1 to 3 do not check the typing: it is a lot of reading for a young writer, so the
     // feedback comes straight back. Year 4 and up still get to fix anything the app misread.

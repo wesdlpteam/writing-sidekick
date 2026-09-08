@@ -178,6 +178,8 @@ test("transcription rules cover apostrophes, crossed-out words and page order", 
   await handleFeedback({ image: IMG, yearLevel: 2 }, { fetchImpl: mockFetch(JSON.stringify({ transcript: "x" }), { capture }), env: ENV });
   const sys = capture.body.messages[0].content;
   assert.match(sys, /apostrophe/i);
+  assert.match(sys, /Reflow physical handwriting lines/);
+  assert.match(sys, /Preserve genuine paragraph boundaries/);
   assert.match(sys, /crossed out|crossed-out/i);
   assert.match(sys, /~~/, "crossed-out words are marked, not silently dropped");
   assert.match(sys, /before you copy each word|check whether a line/i, "the model is told to check every word for a strike-through");
