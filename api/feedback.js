@@ -101,8 +101,7 @@ const outputSpec = (powerUpCount) => `The child has already checked the typed co
       "now_you": "a tiny task the child can do right now on their own writing, e.g. 'Find your sentence about the waves and add one sound you heard.'"
     }
   ],
-  "practice_words": [ { "correct": "family", "wrote": "famly" } ],
-  "spelling_tip": "one spelling generalisation, or empty string",
+  "error_totals": { "spelling": 0, "punctuation": 0, "capital_letters": 0 },
   "word_boost": {
     "swaps": [ { "from": "big", "to": ["enormous", "towering"] } ],
     "before": "one exact sentence the child wrote",
@@ -110,16 +109,15 @@ const outputSpec = (powerUpCount) => `The child has already checked the typed co
   }
 }
 Rules for areas: include an entry for every area key listed above (and only those keys). "strength" quotes the child's actual words and names the skill (for example "You used a transition word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
-Rules for power_ups: ${powerUpCount}, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "try_this" must keep the child's meaning, be correct natural English a teacher would accept, and be something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task on their own writing that uses the move (often: find the other places in your writing where this move fits and use it there too), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in practice_words and the spelling and punctuation areas.
-Rules for practice_words: only genuinely misspelt words the child actually wrote (never punctuation or grammar slips); at most 5, choosing the words most worth learning at this year level (everyday high-frequency words first); "correct" is the right spelling, "wrote" is exactly what the child wrote. Use [] if spelling is all correct.
-Rules for spelling_tip: one child-friendly spelling generalisation only if it genuinely fits two or more of the practice words (for example "When you add -ing to a word ending in e, drop the e: make -> making", or "Say tricky words in syllables: fam-i-ly"). Word it so a child of this year level can read it. Use "" if no pattern fits.
+Rules for power_ups: ${powerUpCount}, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "try_this" must keep the child's meaning, be correct natural English a teacher would accept, and be something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task on their own writing that uses the move (often: find the other places in your writing where this move fits and use it there too), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in error_totals.
+Rules for error_totals: inspect the WHOLE transcript and return non-negative integer totals for ALL errors, with no five-error limit. Count each occurrence, including repeated misspellings. "spelling" counts misspelt words, excluding case-only errors and apostrophe errors. "punctuation" counts missing, incorrect or unnecessary punctuation marks (including apostrophes), excluding capital letters. "capital_letters" counts missing or unnecessary capitals. Count a single error in only one category. Do not count crossed-out writing, [unclear] text, acceptable Australian English spellings or deliberate poetic choices as errors. Return 0 when a category has no errors. Students must find the errors themselves: do not list incorrect words, corrections, locations or spelling tips anywhere in the feedback. In the spelling and punctuation areas, give general checking strategies without pointing out the errors; this overrides the requirement to quote specific errors. Keep writing-craft examples focused on their chosen strategy.
 Rules for word_boost: pick 1-3 plain words the child actually wrote that could be stronger; for each, suggest 1-3 richer but year-appropriate alternatives. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". Use null if their word choices are already strong.
 Be very specific everywhere: every comment must quote or point to actual words, phrases or sentences from this child's writing, never generic advice that could apply to anyone's work.`;
 
 // Step 3: the child revised in their book and photographed the new version. Compare the two,
 // celebrate what really changed, name the power-ups and spelling fixes that show up, and leave
 // one gentle next step. Nothing may be claimed that is not in the new version.
-const LEVEL_UP_SPEC = `A child was given power-ups (revising strategies) and spelling words to practise on a piece of writing. They went back to their book, made changes, and photographed the new version. You are given the ORIGINAL writing, the power-ups and practice words they were given, and the NEW writing. Your job is positive, specific reinforcement for what they actually changed, in a warm coach's voice, worded so a child of this year level can read it themselves.
+const LEVEL_UP_SPEC = `A child was given power-ups (revising strategies) and totals of spelling, punctuation and capital letter errors to find in their writing. They went back to their book, made changes, and photographed the new version. You are given the ORIGINAL writing, the power-ups (and any legacy practice words), and the NEW writing. Your job is positive, specific reinforcement for what they actually changed, in a warm coach's voice, worded so a child of this year level can read it themselves.
 Rules:
 1. Compare the two versions carefully. Only celebrate changes that are really there in the NEW version and were not in the original. Never claim a change that did not happen.
 2. For each real improvement give a short "what" (for example "Power-up 1 used: Expand your sentence", "Spelling fixed: family", "New detail added", "Two sentences joined") and "evidence": the exact new words copied from the NEW writing, one sentence or phrase. If a power-up's strategy appears, say which power-up.
@@ -268,6 +266,10 @@ function validateFeedback(data, { areas, yearLevel, transcript }) {
   }
 
   return {
+    errorTotals: Object.fromEntries(["spelling", "punctuation", "capital_letters"].map((key) => {
+      const value = data.error_totals?.[key];
+      return [key, Number.isSafeInteger(value) && value >= 0 ? value : null];
+    })),
     headline,
     criteria,
     powerUps,

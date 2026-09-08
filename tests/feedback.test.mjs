@@ -258,8 +258,8 @@ test("feedback prompt: year guide, rules, the ten areas, skill bank, writing mov
   assert.match(sys, /now_you/);
   assert.match(sys, /never use a power-up for spelling/i);
   assert.match(sys, /different line/i);
-  assert.match(sys, /practice_words/);
-  assert.match(sys, /spelling_tip/);
+  assert.match(sys, /error_totals/);
+  assert.match(sys, /error_totals/);
   assert.match(sys, /word_boost/);
   assert.match(sys, /not just a one-word swap/i);
   assert.doesNotMatch(sys, /NAPLAN/, "the marking guide itself is not in the prompt");
@@ -702,4 +702,22 @@ test("upstream error -> 502 without leaking details", async () => {
   const r = await handleFeedback({ transcript: TEXT, yearLevel: 3 }, { fetchImpl: failFetch, env: ENV });
   assert.equal(r.status, 502);
   assert.doesNotMatch(r.payload.error, /429|rate/i);
+});
+
+
+test("error totals cover every occurrence without a five-error cap", async () => {
+  const capture = {};
+  const r = await feedbackFor({ ...GOOD_PAYLOAD, error_totals: { spelling: 12, punctuation: 3, capital_letters: 0 } }, undefined, capture);
+  assert.deepEqual(r.payload.errorTotals, { spelling: 12, punctuation: 3, capital_letters: 0 });
+  const prompt = capture.body.messages[0].content;
+  assert.match(prompt, /Count each occurrence, including repeated misspellings/);
+  assert.match(prompt, /excluding capital letters/);
+  assert.doesNotMatch(prompt, /at most 5/);
+});
+
+test("missing or invalid totals are unavailable, never reported as zero errors", async () => {
+  for (const error_totals of [undefined, { spelling: -1, punctuation: 2.5, capital_letters: "3" }]) {
+    const r = await feedbackFor({ ...GOOD_PAYLOAD, error_totals });
+    assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null });
+  }
 });

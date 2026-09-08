@@ -926,3 +926,34 @@ body.senior .year-btn.selected::after { content: ""; }
   #print-doc ul { margin: 4pt 0; }
   #print-doc li, #print-doc p { font-size: 11pt; line-height: 1.5; }
 }
+
+/* At-a-glance feedback: one segment per writing skill, exact editing counts. */
+.strength-card { background: #fff; color: var(--ink); border: var(--border); border-radius: 16px; padding: 22px; margin: 0 0 28px; box-shadow: var(--pop-shadow); }
+.visual-caption { margin: 6px 0 20px; color: var(--muted); font-size: .95rem; }
+.strength-bar { display: flex; gap: 5px; height: 24px; border-radius: 8px; overflow: hidden; background: #e6e5ec; }
+.strength-segment { flex: 1; min-width: 0; }
+.strength-segment.strength, .legend-strength::before { background: #26805b; }
+.strength-segment.steady, .legend-steady::before { background: #5298ba; }
+.strength-segment.next_step, .legend-next_step::before { background: #dfa52b; }
+.strength-summary { font-weight: 800; font-size: 1.18rem; margin: 14px 0 10px; }
+.strength-legend { display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: .85rem; }
+.strength-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.strength-legend span::before { content: ''; width: 10px; height: 10px; border-radius: 3px; }
+.strength-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #dcdce5; }
+.strength-notes p { margin: 0; }
+.strength-notes span { display: block; font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+.strength-notes strong { font-size: 1rem; }
+#practice-words { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+#practice-words li { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 16px 8px; border: 1px solid #d8cc9f; border-radius: 14px; font-size: 1rem; }
+.editing-symbol { color: #594273; font-weight: 800; font-size: .95rem; }
+.editing-ring { display: grid; place-items: center; width: 88px; height: 88px; border: 7px solid #d4a13b; border-radius: 50%; font-weight: 800; font-size: 2rem; background: #fffaf0; }
+.editing-clear .editing-ring { border-color: #26805b; background: #f0faf4; }
+.editing-caption { color: var(--muted); font-size: .8rem; }
+@media (max-width: 520px) {
+  .strength-card { padding: 18px; }
+  #practice-words { gap: 7px; }
+  #practice-words li { padding: 12px 3px; font-size: .78rem; }
+  .editing-ring { width: 64px; height: 64px; border-width: 5px; font-size: 1.65rem; }
+  .editing-caption { font-size: .72rem; }
+  #practice-card { padding: 18px 12px; }
+}

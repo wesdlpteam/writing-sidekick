@@ -42,7 +42,7 @@ const MOCK_PAYLOAD = {
     crit("paragraphing", "Paragraphing", "chunking your ideas", "steady", "", "One paragraph is fine for three sentences. When you write more, start a new one for the fish and chips."),
     crit("sentence_structure", "Sentence structure", "building good sentences", "next_step", "All three of your sentences are complete.", "Start one sentence with a W word.", 2),
     crit("punctuation", "Punctuation", "capitals, full stops and more", "strength", "Capital letters and full stops are all in place, and your exclamation mark lands on the exciting bit.", "Try a comma after an opener, like 'After that,'."),
-    crit("spelling", "Spelling", "getting words right", "steady", "'weekend', 'beach' and 'waves' are all spelt right.", "Practise 'family' below: say it in parts, fam-i-ly."),
+    crit("spelling", "Spelling", "getting words right", "steady", "'weekend', 'beach' and 'waves' are all spelt right.", "Read your writing slowly and check each word."),
   ],
   powerUps: [
     {
@@ -76,8 +76,7 @@ const MOCK_PAYLOAD = {
       nowYou: "Rewrite your first sentence so it starts with 'When' or 'While'.",
     },
   ],
-  practiceWords: [{ correct: "family", wrote: "famly" }],
-  spellingTip: "Say tricky words in syllables to hear every part: fam-i-ly.",
+  errorTotals: { spelling: 1, punctuation: 0, capital_letters: 0 },
   wordBoost: {
     swaps: [
       { from: "huge", to: ["gigantic", "towering"] },

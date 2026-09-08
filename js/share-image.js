@@ -130,12 +130,12 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
         boost.before && boost.after && `With word power: ${boost.after}`,
       ]);
     }
-    if (feedback.practiceWords?.length) {
-      addCard(YELLOW, "Word lab: spelling to practise", [
-        feedback.practiceWords.map((w) => `${w.correct} (you wrote: ${w.wrote})`).join("   "),
-        feedback.spellingTip && `Tip: ${feedback.spellingTip}`,
-      ]);
-    }
+    addCard(YELLOW, "Find and fix", [
+      `Spelling errors: ${feedback.errorTotals?.spelling ?? "Not available"}`,
+      `Punctuation errors: ${feedback.errorTotals?.punctuation ?? "Not available"}`,
+      `Capital letter errors: ${feedback.errorTotals?.capital_letters ?? "Not available"}`,
+      "Go back to your writing. Find and fix the errors, then read it again to check.",
+    ]);
   }
   if (include.detail && Array.isArray(feedback.criteria)) {
     const goal = feedback.powerUps?.[0];

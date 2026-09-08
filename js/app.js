@@ -1,3 +1,4 @@
+import { writingStrength } from "./feedback-visuals.js";
 import { prepareScan, rotate90 } from "./scan.js";
 import { transcribePage, getFeedback, getLevelUp } from "./api.js";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js";
@@ -298,28 +299,42 @@ async function submitWriting() {
   }
 }
 
+const errorTotalLines = (feedback) => [
+  ["Spelling errors", "spelling"],
+  ["Punctuation errors", "punctuation"],
+  ["Capital letter errors", "capital_letters"],
+].map(([label, key]) => `${label}: ${feedback.errorTotals?.[key] ?? "Not available"}`);
+const editingTask = "Go back to your writing. Find and fix the errors, then read it again to check.";
+
 function renderPractice() {
-  const words = state.feedback.practiceWords || [];
-  const tip = state.feedback.spellingTip || "";
-  const card = $("practice-card");
-  card.hidden = words.length === 0;
-  if (!words.length) return;
+  const lines = errorTotalLines(state.feedback);
+  $("practice-card").hidden = false;
   const list = $("practice-words");
   list.innerHTML = "";
-  for (const { correct, wrote } of words) {
+  for (const [label, key, symbol] of [["Capitals", "capital_letters", "Aa"], ["Spelling", "spelling", "abc"], ["Punctuation", "punctuation", "?!"]]) {
+    const value = state.feedback.errorTotals?.[key];
+    const valid = Number.isSafeInteger(value) && value >= 0;
     const li = document.createElement("li");
-    const strong = document.createElement("strong");
-    strong.textContent = correct;
-    const small = document.createElement("span");
-    small.className = "wrote";
-    small.textContent = `you wrote: ${wrote}`;
-    li.append(strong, small);
+    li.className = valid && value === 0 ? "editing-clear" : "editing-find";
+    const icon = document.createElement("span");
+    icon.className = "editing-symbol";
+    icon.textContent = symbol;
+    icon.setAttribute("aria-hidden", "true");
+    const title = document.createElement("strong");
+    title.textContent = label;
+    const ring = document.createElement("span");
+    ring.className = "editing-ring";
+    ring.textContent = valid ? value : "?";
+    const caption = document.createElement("span");
+    caption.className = "editing-caption";
+    caption.textContent = !valid ? "Not available" : value === 0 ? "No errors found" : value === 1 ? "error to find" : "errors to find";
+    li.append(icon, title, ring, caption);
     list.appendChild(li);
   }
-  $("practice-tip").hidden = !tip;
-  $("practice-tip").textContent = tip;
-  mountListen($("practice-listen"), () => `Spelling to practise: ${words.map((w) => w.correct).join(", ")}.${tip ? ` Tip: ${tip}` : ""}`, {
-    label: "Listen to spelling to practise",
+  $("practice-tip").hidden = false;
+  $("practice-tip").textContent = editingTask;
+  mountListen($("practice-listen"), () => `Find and fix. ${lines.join(". ")}. ${editingTask}`, {
+    label: "Listen to error totals",
   });
 }
 
@@ -490,9 +505,29 @@ const STATUS = {
 // The ten-area check-up is no longer shown to the child; it goes into the teacher report
 // (print and saved picture) with the highest-impact goal.
 
+function renderStrength() {
+  const summary = writingStrength(state.feedback.criteria);
+  const bar = $("strength-bar");
+  bar.replaceChildren();
+  const labels = { strength: "Strength", steady: "On track", next_step: "Next step" };
+  for (const area of summary.areas) {
+    const segment = document.createElement("span");
+    segment.className = `strength-segment ${area.status}`;
+    segment.title = `${area.label}: ${labels[area.status]}`;
+    bar.appendChild(segment);
+  }
+  bar.setAttribute("aria-label", summary.areas.length ? summary.areas.map((area) => `${area.label}: ${labels[area.status]}`).join(". ") : "Writing strength not available");
+  const description = summary.areas.length ? `${summary.strong} of ${summary.areas.length} writing skills showing strength` : "Writing strength not available";
+  $("strength-summary").textContent = description;
+  $("strength-key").textContent = summary.keyStrength;
+  $("strength-focus").textContent = summary.focus;
+  mountListen($("strength-listen"), () => `Writing strength. ${description}. Key strength: ${summary.keyStrength}. Next focus: ${summary.focus}.`, { label: "Listen to writing strength" });
+}
+
 function renderFeedback() {
   const { powerUps } = state.feedback;
   clearSpeechCache();
+  renderStrength();
   renderPractice();
   renderBoost();
   $("save-brief").checked = true;
@@ -524,7 +559,7 @@ let slideIndex = 0;
 // The words slide only exists when there is word power or spelling to show.
 function activeSlides() {
   const fb = state.feedback;
-  const hasWords = Boolean(fb && (fb.wordBoost || (fb.practiceWords || []).length));
+  const hasWords = Boolean(fb);
   return SLIDES.filter((s) => s.key !== "words" || hasWords);
 }
 
@@ -678,23 +713,17 @@ $("btn-print").addEventListener("click", () => {
   }
   const practiceBox = $("print-practice");
   practiceBox.innerHTML = "";
-  const practiceWords = state.feedback.practiceWords || [];
-  if (practiceWords.length) {
-    const h = document.createElement("h2");
-    h.textContent = "Spelling to practise";
-    const ul = document.createElement("ul");
-    for (const { correct, wrote } of practiceWords) {
-      const li = document.createElement("li");
-      li.textContent = `${correct} (you wrote: ${wrote})`;
-      ul.appendChild(li);
-    }
-    practiceBox.append(h, ul);
-    if (state.feedback.spellingTip) {
-      const p = document.createElement("p");
-      p.textContent = `Tip: ${state.feedback.spellingTip}`;
-      practiceBox.appendChild(p);
-    }
+  const h = document.createElement("h2");
+  h.textContent = "Find and fix";
+  const ul = document.createElement("ul");
+  for (const line of errorTotalLines(state.feedback)) {
+    const li = document.createElement("li");
+    li.textContent = line;
+    ul.appendChild(li);
   }
+  const task = document.createElement("p");
+  task.textContent = editingTask;
+  practiceBox.append(h, ul, task);
   const boostBox = $("print-boost");
   boostBox.innerHTML = "";
   const boost = state.feedback.wordBoost;
@@ -735,10 +764,10 @@ function clearEverything() {
   $("include-photos").checked = false;
   $("camera-title").textContent = "Photo time";
   $("round-note").hidden = true;
-  for (const id of ["power-ups", "practice-words", "boost-swaps", "wins", "spelling-fixed", "print-pages", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
+  for (const id of ["strength-bar", "power-ups", "practice-words", "boost-swaps", "wins", "spelling-fixed", "print-pages", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
     $(id).innerHTML = "";
   }
-  for (const id of ["print-transcript", "print-goal", "cheer", "next-tip"]) $(id).textContent = "";
+  for (const id of ["strength-summary", "strength-key", "strength-focus", "print-transcript", "print-goal", "cheer", "next-tip"]) $(id).textContent = "";
   renderPages();
 }
 
