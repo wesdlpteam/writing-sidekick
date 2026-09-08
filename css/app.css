@@ -417,9 +417,10 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
      arriving late, say), the text scrolls instead of being silently cut off halfway. */
   overflow-y: auto;
   field-sizing: content;
-  /* Faint ruled lines, one per line of text, like a lined page. */
+  /* Match each rule to the Nunito text baseline, not the bottom of its line box.
+     Repeat at the same 1.8em spacing as the text, including wrapped lines. */
   background-color: #fff;
-  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.8em - 1px), #ece6f5 calc(1.8em - 1px), #ece6f5 1.8em);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.35em - 1px), #d8cfe7 calc(1.35em - 1px), #d8cfe7 1.35em, transparent 1.35em, transparent 1.8em);
   background-origin: content-box;
   background-attachment: local;
 }

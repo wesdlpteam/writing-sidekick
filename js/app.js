@@ -1,8 +1,8 @@
-import { reflowTranscript } from "./transcript.js?v=20260909-reflow";
-import { writingStrength } from "./feedback-visuals.js?v=20260909-reflow";
-import { prepareScan, rotate90 } from "./scan.js?v=20260909-reflow";
-import { transcribePage, getFeedback } from "./api.js?v=20260909-reflow";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-reflow";
+import { reflowTranscript } from "./transcript.js?v=20260909-ruled";
+import { writingStrength } from "./feedback-visuals.js?v=20260909-ruled";
+import { prepareScan, rotate90 } from "./scan.js?v=20260909-ruled";
+import { transcribePage, getFeedback } from "./api.js?v=20260909-ruled";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-ruled";
 
 const MAX_PAGES = 2;
 
