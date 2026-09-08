@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css?v=20260909-startup">
 </head>
 <body>
   <main id="app">
@@ -45,7 +45,9 @@
         <button class="chip" data-genre="poetry">Poem</button>
         <button class="chip selected" data-genre="">Not sure</button>
       </div>
-      <button id="btn-start" class="primary big" disabled>Let's go &#8594;</button>
+      <button id="btn-start" class="primary big" disabled>Loading Sidekick...</button>
+      <p id="startup-status" class="privacy-note" role="status">Loading your sidekick...</p>
+      <a id="startup-reload" class="ghost" href="./" hidden>Reload Sidekick</a>
     </section>
 
     <section id="screen-camera" class="screen">
@@ -207,6 +209,28 @@
     <div id="print-boost"></div>
   </div>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module">
+    const status = document.getElementById("startup-status");
+    const reload = document.getElementById("startup-reload");
+    const fresh = new URL(location.href);
+    fresh.searchParams.set("reload", Date.now());
+    reload.href = fresh.href;
+    const slow = setTimeout(() => {
+      status.textContent = "Taking longer than usual. Check your internet connection, or reload Sidekick.";
+      reload.hidden = false;
+    }, 12000);
+    try {
+      await import("./js/app.js?v=20260909-startup");
+      clearTimeout(slow);
+      status.textContent = "Choose your year to begin.";
+      reload.hidden = true;
+    } catch {
+      clearTimeout(slow);
+      status.textContent = "Sidekick could not start. Check your internet connection, then tap Reload Sidekick.";
+      document.getElementById("btn-start").disabled = true;
+      document.getElementById("btn-start").textContent = "Unable to start";
+      reload.hidden = false;
+    }
+  </script>
 </body>
 </html>

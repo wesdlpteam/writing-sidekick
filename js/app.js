@@ -1,7 +1,7 @@
-import { writingStrength } from "./feedback-visuals.js";
-import { prepareScan, rotate90 } from "./scan.js";
-import { transcribePage, getFeedback } from "./api.js";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js";
+import { writingStrength } from "./feedback-visuals.js?v=20260909-startup";
+import { prepareScan, rotate90 } from "./scan.js?v=20260909-startup";
+import { transcribePage, getFeedback } from "./api.js?v=20260909-startup";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-startup";
 
 const MAX_PAGES = 2;
 
@@ -53,6 +53,7 @@ function showError(message) {
 
 function refreshStartButton() {
   $("btn-start").disabled = !state.yearLevel;
+  $("btn-start").textContent = state.yearLevel ? "Let's go →" : "Choose your year first";
 }
 
 function setSeniorLook() {
@@ -736,3 +737,5 @@ $("btn-error-close").addEventListener("click", () => {
 
 
 renderPages();
+
+refreshStartButton();
