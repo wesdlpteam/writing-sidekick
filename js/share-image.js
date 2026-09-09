@@ -112,22 +112,29 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
     });
 
   if (include.brief) {
+    const powers = (feedback.criteria || []).filter((c) => c.strength && c.status === "strength").slice(0, 3);
+    if (powers.length) {
+      addCard(GREEN, "🔥 Your hero powers", powers.map((c) => `${c.label}: ${c.strength}`));
+    }
     feedback.powerUps.forEach((p, index) => {
       const m = p.move;
       addCard("#ffffff", `⚡ Power-up ${index + 1}: ${p.skill}`, [
         p.why,
-        p.yourLine && `Your line: ${p.yourLine}`,
-        `Try this: ${p.tryThis}`,
+        p.example && `See it work on a sentence like yours. Before: ${p.example.before}`,
+        p.example && `After: ${p.example.after}`,
         m && `Writing strategy: ${m.name}. ${m.rule} Another one: ${m.example}`,
+        p.yourLine && `Your line: ${p.yourLine}`,
         p.nowYou && `Now you: ${p.nowYou}`,
       ]);
     });
     if (feedback.wordBoost) {
       const boost = feedback.wordBoost;
+      const challenge = (boost.challenge || []).map((c) => c.word);
       addCard(DETAIL, "Word power", [
         ...boost.swaps.map((s) => `${s.from} → ${s.to.join(", ")}`),
         boost.before && boost.after && `Your sentence: ${boost.before}`,
         boost.before && boost.after && `With word power: ${boost.after}`,
+        challenge.length && `Synonym challenge: ${challenge.join(", ")}`,
       ]);
     }
     addCard(YELLOW, "Find and fix", [

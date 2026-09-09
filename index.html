@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260909-ruled">
+  <link rel="stylesheet" href="css/app.css?v=20260909-powers">
 </head>
 <body>
   <main id="app">
@@ -107,11 +107,30 @@
         <p class="lead fb-lead">Revise first. These writing strategies will lift this piece the most. Try each one, then use it in other spots too.</p>
         <section class="strength-card" aria-labelledby="strength-title">
           <div class="title-row"><h3 id="strength-title" class="practice-title">Writing strength</h3></div>
-          <p class="visual-caption">Your writing skills at a glance</p>
-          <div id="strength-bar" class="strength-bar" role="img"></div>
+          <p class="visual-caption">Your writing skills at a glance. Tap a skill to see what it means and how you went.</p>
+          <div id="strength-bar" class="skill-chips" role="group" aria-label="Your writing skills"></div>
+          <div class="strength-legend"><span class="legend-strength">Strength</span><span class="legend-steady">On track</span><span class="legend-next_step">Next step</span></div>
+          <div id="skill-detail" class="skill-detail" data-key="" hidden>
+            <div class="skill-detail-head">
+              <h4 id="skill-detail-title" class="skill-detail-title"></h4>
+              <span id="skill-detail-status" class="crit-status"></span>
+            </div>
+            <p id="skill-detail-what" class="skill-detail-what"></p>
+            <p id="skill-detail-how" class="skill-detail-how"></p>
+            <p id="skill-detail-strength" class="skill-detail-line" hidden><span class="power-label">In your writing:</span> <span></span></p>
+            <p id="skill-detail-next" class="skill-detail-line" hidden><span class="power-label">Next step:</span> <span></span></p>
+            <button id="skill-detail-close" class="ghost small skill-detail-close" type="button">Close</button>
+          </div>
           <p id="strength-summary" class="strength-summary"></p>
-          <div class="strength-legend" aria-hidden="true"><span class="legend-strength">Strength</span><span class="legend-steady">On track</span><span class="legend-next_step">Next step</span></div>
-          <div class="strength-notes"><p><span>Key strength</span><strong id="strength-key"></strong></p><p><span>Next focus</span><strong id="strength-focus"></strong></p></div>
+          <div class="strength-notes">
+            <p><span>Key strength</span><button id="strength-key" class="strength-note-btn" type="button"></button></p>
+            <p><span>Next focus</span><button id="strength-focus" class="strength-note-btn" type="button"></button></p>
+          </div>
+        </section>
+        <section id="powers-card" class="powers-card" aria-labelledby="powers-title" hidden>
+          <div class="title-row"><h3 id="powers-title" class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F525; </span>Your hero powers</h3></div>
+          <p class="visual-caption">What you are already doing well. Keep doing these on purpose.</p>
+          <ul id="powers-list" class="powers-list"></ul>
         </section>
         <div id="power-ups" class="power-ups"></div>
         <div class="pencil-card">
@@ -127,10 +146,16 @@
           <div class="title-row">
             <h3 class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F4AA; </span>Word power</h3>
           </div>
+          <p class="visual-caption boost-caption">Each word gets four upgrades, from a small step up to a big one. Pick the one that fits your sentence best.</p>
           <ul id="boost-swaps"></ul>
           <div id="boost-example" hidden>
             <p class="boost-line"><span class="boost-label">Your sentence:</span> <span id="boost-before"></span></p>
             <p class="boost-line"><span class="boost-label">With word power:</span> <strong id="boost-after"></strong></p>
+          </div>
+          <div id="boost-challenge" class="boost-challenge" hidden>
+            <p class="challenge-title"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Your turn: synonym challenge</p>
+            <p class="challenge-lead">Here are three more words from your writing. Type a synonym (a word that means the same thing) for each one, then tap Check. Even one is a win.</p>
+            <ul id="challenge-list" class="challenge-list"></ul>
           </div>
         </div>
         <div id="practice-card" class="practice-card" hidden>
@@ -144,11 +169,18 @@
       </section>
 
       <section class="fb-slide" data-slide="finish">
-        <div class="stage stage-scan">
-          <img class="stage-art" src="art/heroscan.jpg" alt="">
+        <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x1F525; </span>Mission complete</h2>
+        <p class="lead fb-lead">Your sidekick has done its part. Now it is over to you, hero: take your power-ups back to your book and write your own destiny!</p>
+        <div class="mission-card">
+          <p class="mission-title"><span class="h-emoji" aria-hidden="true">&#x1F4A5; </span>Your mission</p>
+          <ol class="mission-steps">
+            <li><strong>Revise.</strong> Find each power-up line in your book and improve it yourself.</li>
+            <li><strong>Word power.</strong> Swap in stronger words where they fit.</li>
+            <li><strong>Edit.</strong> Hunt down the spelling, punctuation and capital letter errors.</li>
+            <li><strong>Read it again</strong> like a reader would. Does it sound even better?</li>
+          </ol>
         </div>
-        <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Finish your writing</h2>
-        <p class="lead fb-lead">Use your feedback to improve your writing in your book. You can save or print the feedback before you finish.</p>
+        <p class="lead fb-lead mission-save">Want to keep this feedback? Save a picture or print it before you finish.</p>
         <label class="check-row export-photos"><input id="include-photos" type="checkbox"> Include the photos of my writing in the picture and print-out</label>
         <div class="btn-row">
           <button id="btn-save-pic" class="secondary"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Save picture</button>
@@ -197,6 +229,7 @@
     <div id="print-pages"></div>
     <h2>My writing</h2>
     <pre id="print-transcript"></pre>
+    <div id="print-powers"></div>
     <h2>Power-ups</h2>
     <div id="print-powerups"></div>
     <h2>Teacher report</h2>
@@ -217,7 +250,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20260909-ruled");
+      await import("./js/app.js?v=20260909-powers");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

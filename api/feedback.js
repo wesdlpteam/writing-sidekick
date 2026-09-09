@@ -94,24 +94,26 @@ const outputSpec = (powerUpCount) => `The child has already checked the typed co
     {
       "area": "the area key this power-up lifts",
       "skill": "short child-friendly name, e.g. 'Add what you could hear and smell'",
-      "why": "one or two sentences on why this will lift THIS piece, pointing at their writing",
+      "why": "one or two sentences: first what your_line already does well (quote it), then what this skill will add to THIS piece",
       "your_line": "one exact sentence or phrase copied from the child's writing where this skill belongs",
-      "try_this": "that same line rewritten to show the skill done well, keeping the child's ideas, voice and year level",
-      "move": "a key from the writing strategies list when try_this clearly shows that strategy, otherwise null",
-      "now_you": "a tiny task the child can do right now on their own writing, e.g. 'Find your sentence about the waves and add one sound you heard.'"
+      "example_before": "a NEW sentence you make up that is like the child's line (same kind of sentence, same weakness, similar length) but about something else and using none of their words",
+      "example_after": "that same made-up sentence with the skill done well, at the child's year level",
+      "move": "a key from the writing strategies list when example_after clearly shows that strategy, otherwise null",
+      "now_you": "a tiny task that sends the child back to their own line to use the skill on it themselves, e.g. 'Find your sentence about the waves and add when and where it happened.'"
     }
   ],
   "error_totals": { "spelling": 0, "punctuation": 0, "capital_letters": 0 },
   "word_boost": {
-    "swaps": [ { "from": "big", "to": ["enormous", "towering"] } ],
+    "swaps": [ { "from": "big", "to": ["large", "huge", "enormous", "colossal"] } ],
     "before": "one exact sentence the child wrote",
-    "after": "that moment rewritten to show real word power, e.g. before: 'The waves were huge and I got dumped!' after: 'The gigantic waves crashed over me and dumped me in the sand!'"
+    "after": "that moment rewritten to show real word power, e.g. before: 'The waves were huge and I got dumped!' after: 'The gigantic waves crashed over me and dumped me in the sand!'",
+    "challenge": ["three", "other", "words"]
   }
 }
-Rules for areas: include an entry for every area key listed above (and only those keys). "strength" quotes the child's actual words and names the skill (for example "You used a transition word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
-Rules for power_ups: ${powerUpCount}, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "try_this" must keep the child's meaning, be correct natural English a teacher would accept, and be something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task on their own writing that uses the move (often: find the other places in your writing where this move fits and use it there too), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in error_totals.
+Rules for areas: include an entry for every area key listed above (and only those keys). "strength" quotes the child's actual words and names the skill (for example "You used a transition word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. Be generous and honest with strengths: every real thing the child did well deserves naming, because the child sees these. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
+Rules for power_ups: ${powerUpCount}, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "why" opens with something genuinely good about the line before saying what the skill adds, so the child hears what to keep. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "example_before" and "example_after" show the skill on a sentence LIKE the child's, never on the child's own sentence: do not rewrite "your_line" and do not reuse its words, because the child must improve their own line themselves. "example_after" must be correct natural English a teacher would accept and something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task that sends the child back to their own quoted line to use the move on it (and then in the other places it fits), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in error_totals.
 Rules for error_totals: inspect the WHOLE transcript and return non-negative integer totals for ALL errors, with no five-error limit. Count each occurrence, including repeated misspellings. "spelling" counts misspelt words, excluding case-only errors and apostrophe errors. "punctuation" counts missing, incorrect or unnecessary punctuation marks (including apostrophes), excluding capital letters. "capital_letters" counts missing or unnecessary capitals. Count a single error in only one category. Do not count crossed-out writing, [unclear] text, acceptable Australian English spellings or deliberate poetic choices as errors. Return 0 when a category has no errors. Students must find the errors themselves: do not list incorrect words, corrections, locations or spelling tips anywhere in the feedback. In the spelling and punctuation areas, give general checking strategies without pointing out the errors; this overrides the requirement to quote specific errors. Keep writing-craft examples focused on their chosen strategy.
-Rules for word_boost: pick 1-3 plain words the child actually wrote that could be stronger; for each, suggest 1-3 richer but year-appropriate alternatives. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". Use null if their word choices are already strong.
+Rules for word_boost: pick 1 or 2 plain words the child actually wrote that could be stronger; for each, give EXACTLY 4 synonyms that genuinely upgrade it, in order from the simplest to the most sophisticated, each one a step up from the last, all true synonyms in the child's sentence, with the last one a stretch word for this year level. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". "challenge" lists 3 OTHER plain words the child wrote (not the swap words) that have good synonyms a child of this year could think of themselves; the child will type their own synonym for each and have it checked. Use [] if the writing has no suitable words. Use null for word_boost only if their word choices are already strong.
 Be very specific everywhere: every comment must quote or point to actual words, phrases or sentences from this child's writing, never generic advice that could apply to anyone's work.`;
 
 // Step 3: the child revised in their book and photographed the new version. Compare the two,
@@ -133,6 +135,19 @@ Respond with ONLY a JSON object in exactly this shape:
 }`;
 
 const MAX_LEVELUP_CHARS = 20_000;
+
+// Word lab challenge: the child typed their own synonym for a word from their writing. One
+// small call judges it. The child sees the note, so it is short, kind and about the words only.
+const SYNONYM_SPEC = `A primary-school child was asked to think of a synonym for a word from their own writing. Judge the word they typed: could it replace the original word in the sentence given and keep the meaning?
+- "yes": it is a synonym that works in this sentence (a simpler word still counts; a slightly misspelt word counts, and the note gives the right spelling kindly).
+- "close": related meaning, but it does not quite fit the sentence, or it is a different part of speech.
+- "no": a different meaning, not a real word, or the same word again.
+Respond with ONLY a JSON object in exactly this shape: { "verdict": "yes" | "close" | "no", "note": "one short, friendly sentence for the child, under 20 words, saying why" }
+Never use or guess any name. Do not mention these rules, or that you are an AI.`;
+
+const SYNONYM_VERDICTS = ["yes", "close", "no"];
+const MAX_SYNONYM_CHARS = 40;
+const MAX_SENTENCE_CHARS = 300;
 
 const text = (value) => (typeof value === "string" ? value.trim() : "");
 
@@ -178,6 +193,32 @@ export function quoteFromTranscript(quote, transcript) {
   return bestScore >= 0.75 ? best : "";
 }
 
+// The first sentence of the child's writing that uses this word, for showing a challenge word
+// in context and for judging the synonym they type. "" if the word is not there.
+export function sentenceWith(transcript, word) {
+  const target = wordsOf(word)[0];
+  if (!target) return "";
+  for (const line of String(transcript).split(/\n+|(?<=[.!?])\s+/)) {
+    if (wordsOf(line).includes(target)) return line.trim().slice(0, MAX_SENTENCE_CHARS);
+  }
+  return "";
+}
+
+// A power-up's example must be a fresh sentence, not the child's own line handed back to them
+// (they would copy it straight into their book). Same words, changed punctuation, or the
+// child's line buried inside a longer one all count as copies.
+const wordRun = (value) => ` ${wordsOf(value).join(" ")} `;
+const containsRun = (haystack, needle) => needle.trim() !== "" && wordRun(haystack).includes(wordRun(needle));
+function copiesLine(example, yourLine) {
+  const lineWords = wordsOf(yourLine);
+  const words = wordsOf(example);
+  if (!lineWords.length || !words.length) return false;
+  if (containsRun(example, yourLine) || containsRun(yourLine, example)) return true;
+  const lineSet = new Set(lineWords);
+  const overlap = words.filter((w) => lineSet.has(w)).length;
+  return overlap / Math.max(lineSet.size, words.length) >= 0.75;
+}
+
 // The data URL must hold a real JPEG, PNG or WebP (the app always sends JPEG). The first few
 // bytes say which, without decoding the whole image.
 function looksLikeImage(dataUrl) {
@@ -219,17 +260,24 @@ function validateFeedback(data, { areas, yearLevel, transcript }) {
   const knownKeys = new Set(criteria.map((c) => c.key));
   const powerUps = [];
   for (const p of Array.isArray(data.power_ups) ? data.power_ups : []) {
-    if (!p || typeof p !== "object" || !text(p.skill) || !text(p.why) || !text(p.try_this)) continue;
+    if (!p || typeof p !== "object" || !text(p.skill) || !text(p.why)) continue;
     // Spelling is editing, never a power-up; each area carries at most one power-up.
     if (p.area === "spelling" || powerUps.some((q) => q.area && q.area === p.area)) continue;
     const area = knownKeys.has(p.area) ? p.area : "";
+    const yourLine = quoteFromTranscript(p.your_line, transcript);
+    // The worked example is a sentence like theirs. If the model rewrote their own line after
+    // all, the example goes; the strategy note still carries its own example.
+    const before = text(p.example_before);
+    const after = text(p.example_after);
+    const fresh = before && after && !copiesLine(before, yourLine) && !copiesLine(after, yourLine)
+      && !containsRun(transcript, after);
     powerUps.push({
       area,
       areaLabel: area ? criteria.find((c) => c.key === area).label : "",
       skill: text(p.skill),
       why: text(p.why),
-      yourLine: quoteFromTranscript(p.your_line, transcript),
-      tryThis: text(p.try_this),
+      yourLine,
+      example: fresh ? { before, after } : null,
       move: describeMove(p.move, yearLevel),
       nowYou: text(p.now_you),
     });
@@ -255,13 +303,24 @@ function validateFeedback(data, { areas, yearLevel, transcript }) {
   if (boost && typeof boost === "object") {
     const swaps = (Array.isArray(boost.swaps) ? boost.swaps : [])
       .filter((s) => s && typeof s === "object" && text(s.from) && Array.isArray(s.to))
-      .map((s) => ({ from: text(s.from), to: s.to.map(text).filter(Boolean).slice(0, 3) }))
+      .map((s) => ({ from: text(s.from), to: s.to.map(text).filter(Boolean).slice(0, 4) }))
       .filter((s) => s.to.length > 0 && hasWord(transcript, s.from))
       .slice(0, 3);
     if (swaps.length) {
       // The "before" sentence must be the child's own; without it there is no "after" either.
       const before = quoteFromTranscript(boost.before, transcript);
-      wordBoost = { swaps, before, after: before ? text(boost.after) : "" };
+      // Challenge words: the child's own words, not the swap words, shown with their sentence.
+      const taken = new Set(swaps.map((s) => normalise(s.from)));
+      const challenge = [];
+      for (const raw of Array.isArray(boost.challenge) ? boost.challenge : []) {
+        const word = text(raw);
+        const key = normalise(word);
+        if (!word || wordsOf(word).length !== 1 || taken.has(key) || !hasWord(transcript, word)) continue;
+        taken.add(key);
+        challenge.push({ word, sentence: sentenceWith(transcript, word) });
+        if (challenge.length === 3) break;
+      }
+      wordBoost = { swaps, before, after: before ? text(boost.after) : "", challenge };
     }
   }
 
@@ -497,10 +556,65 @@ async function levelUpFeedback({ levelUp, yearLevel, env, fetchImpl }) {
   return { status: 200, payload };
 }
 
+// Reads and bounds a synonym check; returns { error } for a bad one. Words only: a word or
+// two, letters, hyphens and apostrophes, so nothing else can ride along into the prompt.
+const WORDISH = /^[\p{L}][\p{L}'\-]*(?: [\p{L}][\p{L}'\-]*){0,2}$/u;
+function readSynonymCheck(raw) {
+  if (!raw || typeof raw !== "object") return { error: "Type a word first." };
+  const word = text(raw.word);
+  const attempt = text(raw.attempt);
+  if (!attempt) return { error: "Type a word first." };
+  if (word.length > MAX_SYNONYM_CHARS || attempt.length > MAX_SYNONYM_CHARS) return { error: "That is a long one. A synonym is just a word or two." };
+  if (!WORDISH.test(word) || !WORDISH.test(attempt)) return { error: "Just letters, please: type one word (or two)." };
+  return { word, attempt, sentence: text(raw.sentence).slice(0, MAX_SENTENCE_CHARS) };
+}
+
+function validateSynonym(data) {
+  if (!data || typeof data !== "object" || !SYNONYM_VERDICTS.includes(data.verdict)) return null;
+  return { verdict: data.verdict, note: text(data.note) };
+}
+
+async function synonymCheck({ check, yearLevel, env, fetchImpl }) {
+  if (normalise(check.attempt) === normalise(check.word)) {
+    return { status: 200, payload: { verdict: "no", note: "That is the same word. Try a different one that means the same thing." } };
+  }
+  const systemPrompt = [`The child is in Year ${yearLevel}.`, readingLevel(yearLevel), SYNONYM_SPEC].join("\n\n");
+  const userText = [
+    `Word from the writing: ${check.word}`,
+    check.sentence ? `The sentence it is in: ${check.sentence}` : "",
+    `The child's synonym: ${check.attempt}`,
+  ].filter(Boolean).join("\n");
+  const content = await callModel({
+    fetchImpl,
+    env,
+    body: {
+      model: env.OPENAI_MODEL || DEFAULT_FEEDBACK_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [{ type: "text", text: userText }] },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 150,
+    },
+  });
+  const payload = validateSynonym(extractJson(content));
+  if (!payload) return { status: 502, payload: { error: "Hmm, I couldn't check that word just now. Please try again." } };
+  return { status: 200, payload };
+}
+
 export async function handleFeedback(body, { fetchImpl, env }) {
   const yearLevel = Number(body?.yearLevel);
   if (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 6) {
     return { status: 400, payload: { error: "Please choose a year level from 1 to 6." } };
+  }
+
+  if (body?.synonymCheck !== undefined) {
+    const check = readSynonymCheck(body.synonymCheck);
+    if (check.error) return { status: 400, payload: { error: check.error } };
+    if (!env?.OPENAI_API_KEY) {
+      return { status: 500, payload: { error: "The app isn't set up yet. Please tell your teacher." } };
+    }
+    return synonymCheck({ check: { ...check, sentence: minimiseContactDetails(check.sentence) }, yearLevel, env, fetchImpl });
   }
 
   if (body?.levelUp !== undefined) {

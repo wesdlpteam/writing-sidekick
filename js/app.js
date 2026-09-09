@@ -1,8 +1,8 @@
-import { reflowTranscript } from "./transcript.js?v=20260909-ruled";
-import { writingStrength } from "./feedback-visuals.js?v=20260909-ruled";
-import { prepareScan, rotate90 } from "./scan.js?v=20260909-ruled";
-import { transcribePage, getFeedback } from "./api.js?v=20260909-ruled";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-ruled";
+import { reflowTranscript } from "./transcript.js?v=20260909-powers";
+import { writingStrength, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260909-powers";
+import { prepareScan, rotate90 } from "./scan.js?v=20260909-powers";
+import { transcribePage, getFeedback, checkSynonym } from "./api.js?v=20260909-powers";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-powers";
 
 const MAX_PAGES = 2;
 
@@ -307,6 +307,8 @@ function renderPractice() {
   $("practice-tip").textContent = editingTask;
 }
 
+// Word power: each plain word climbs a ladder of four synonyms, from a small step up to a
+// stretch word, so the child can pick the rung that fits their sentence.
 function renderBoost() {
   const boost = state.feedback.wordBoost;
   const card = $("boost-card");
@@ -315,10 +317,12 @@ function renderBoost() {
   const list = $("boost-swaps");
   list.innerHTML = "";
   for (const { from, to } of boost.swaps) {
-    const li = document.createElement("li");
-    const strong = document.createElement("strong");
-    strong.textContent = from;
-    li.append(strong, ` → ${to.join(", ")}`);
+    const li = el("li", "boost-swap");
+    li.appendChild(el("strong", "boost-from", from));
+    const ladder = el("ol", "synonym-ladder");
+    ladder.setAttribute("aria-label", `Stronger words for ${from}, from a small step up to a big one`);
+    to.forEach((word, index) => ladder.appendChild(el("li", `rung rung-${index + 1}`, word)));
+    li.appendChild(ladder);
     list.appendChild(li);
   }
   const hasExample = boost.before && boost.after;
@@ -326,6 +330,74 @@ function renderBoost() {
   if (hasExample) {
     $("boost-before").textContent = boost.before;
     $("boost-after").textContent = boost.after;
+  }
+  renderChallenge(boost.challenge || []);
+}
+
+// The synonym challenge: three more of the child's own words, a box and a Check button each.
+// One good synonym is a win; nothing has to be filled in.
+function renderChallenge(challenge) {
+  const box = $("boost-challenge");
+  const list = $("challenge-list");
+  list.innerHTML = "";
+  box.hidden = challenge.length === 0;
+  challenge.forEach(({ word, sentence }, index) => {
+    const li = el("li", "challenge-item");
+    const label = el("label", "challenge-label");
+    label.htmlFor = `challenge-input-${index}`;
+    label.append("A synonym for ", el("strong", "", word));
+    const input = el("input", "challenge-input");
+    input.id = `challenge-input-${index}`;
+    input.type = "text";
+    input.maxLength = 40;
+    input.autocomplete = "off";
+    input.autocapitalize = "none";
+    input.spellcheck = false;
+    input.placeholder = "Type your word";
+    const btn = el("button", "secondary challenge-check", "Check");
+    btn.type = "button";
+    const result = el("p", "challenge-result");
+    result.hidden = true;
+    result.setAttribute("role", "status");
+    btn.addEventListener("click", () => checkChallenge({ word, sentence, input, btn, result, li }));
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      btn.click();
+    });
+    li.append(label, input, btn, result);
+    list.appendChild(li);
+  });
+}
+
+const VERDICTS = {
+  yes: { css: "is-yes", lead: "Synonym!" },
+  close: { css: "is-close", lead: "Close!" },
+  no: { css: "is-no", lead: "Not quite." },
+};
+
+async function checkChallenge({ word, sentence, input, btn, result, li }) {
+  const attempt = input.value.trim();
+  if (!attempt) {
+    input.focus();
+    return;
+  }
+  li.classList.remove("is-yes", "is-close", "is-no");
+  result.hidden = true;
+  btn.disabled = true;
+  btn.textContent = "Checking…";
+  try {
+    const reply = await checkSynonym({ yearLevel: state.yearLevel, word, attempt, sentence });
+    const verdict = VERDICTS[reply.verdict] || VERDICTS.no;
+    li.classList.add(verdict.css);
+    result.replaceChildren(el("strong", "", `${verdict.lead} `), reply.note || "");
+    result.hidden = false;
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Check";
+    resetIdle();
   }
 }
 
@@ -370,8 +442,9 @@ function emoji(char) {
   return node;
 }
 
-// Each power-up: the skill, why it matters here, the child's own line, that line done well
-// (named as a sentence type when it is one), and a tiny task to do now.
+// Each power-up: the skill, why it matters here, the skill shown on a sentence LIKE the
+// child's (before and after, never their own line rewritten, so there is nothing to copy),
+// the strategy note, then their own quoted line and a task that sends them back to it.
 function renderPowerUps(powerUps) {
   const box = $("power-ups");
   box.innerHTML = "";
@@ -382,12 +455,21 @@ function renderPowerUps(powerUps) {
     head.appendChild(el("h3", "power-title", `Power-up ${index + 1}: ${p.skill}`));
     if (p.areaLabel) head.appendChild(el("span", "power-area", p.areaLabel));
     card.append(head, el("p", "power-why", p.why));
-    if (p.yourLine) card.appendChild(labelledLine("Your line:", p.yourLine, "q"));
-    card.appendChild(labelledLine("Try this:", p.tryThis, "strong"));
+    if (p.example) {
+      const demo = el("div", "power-demo");
+      demo.appendChild(el("p", "demo-title", "See it work on a sentence like yours"));
+      demo.appendChild(labelledLine("Before:", p.example.before, "span"));
+      demo.appendChild(labelledLine("After:", p.example.after, "strong"));
+      card.appendChild(demo);
+    }
     if (p.move) card.appendChild(moveNote(p.move));
-    if (p.nowYou) {
-      const task = el("p", "power-task");
-      task.append(emoji("✍️"), el("strong", "", "Now you: "), p.nowYou);
+    if (p.yourLine || p.nowYou) {
+      const task = el("div", "power-task");
+      const title = el("p", "task-title");
+      title.append(emoji("✍️"), el("strong", "", "Now you"));
+      task.appendChild(title);
+      if (p.yourLine) task.appendChild(labelledLine("Your line:", p.yourLine, "q"));
+      if (p.nowYou) task.appendChild(el("p", "task-text", p.nowYou));
       card.appendChild(task);
     }
     box.appendChild(card);
@@ -403,27 +485,107 @@ const STATUS = {
 // The ten-area check-up is no longer shown to the child; it goes into the teacher report
 // (print and saved picture) with the highest-impact goal.
 
+// The writing strength card: one tappable chip per skill, coloured by how it went. A tap
+// opens the explanation (what the skill means, in a child's words) with what the sidekick saw
+// in their own writing. "Key strength" and "Next focus" open the same panel.
 function renderStrength() {
   const summary = writingStrength(state.feedback.criteria);
   const bar = $("strength-bar");
   bar.replaceChildren();
-  const labels = { strength: "Strength", steady: "On track", next_step: "Next step" };
   for (const area of summary.areas) {
-    const segment = document.createElement("span");
-    segment.className = `strength-segment ${area.status}`;
-    segment.title = `${area.label}: ${labels[area.status]}`;
-    bar.appendChild(segment);
+    const chip = el("button", `skill-chip ${area.status}`);
+    chip.type = "button";
+    chip.dataset.key = area.key;
+    chip.setAttribute("aria-expanded", "false");
+    chip.setAttribute("aria-controls", "skill-detail");
+    const dot = el("span", "skill-dot");
+    dot.setAttribute("aria-hidden", "true");
+    chip.append(dot, area.label, el("span", "sr-only", `: ${STATUS[area.status].label}`));
+    chip.addEventListener("click", () => showSkill(area.key));
+    bar.appendChild(chip);
   }
-  bar.setAttribute("aria-label", summary.areas.length ? summary.areas.map((area) => `${area.label}: ${labels[area.status]}`).join(". ") : "Writing strength not available");
   const description = summary.areas.length ? `${summary.strong} of ${summary.areas.length} writing skills showing strength` : "Writing strength not available";
   $("strength-summary").textContent = description;
-  $("strength-key").textContent = summary.keyStrength;
-  $("strength-focus").textContent = summary.focus;
+  for (const [id, label, key] of [["strength-key", summary.keyStrength, summary.keyStrengthKey], ["strength-focus", summary.focus, summary.focusKey]]) {
+    const btn = $(id);
+    btn.textContent = label;
+    btn.dataset.key = key;
+    btn.disabled = !key;
+  }
+  closeSkill();
+}
+
+function closeSkill() {
+  const detail = $("skill-detail");
+  detail.hidden = true;
+  detail.dataset.key = "";
+  document.querySelectorAll(".skill-chip").forEach((chip) => {
+    chip.classList.remove("is-open");
+    chip.setAttribute("aria-expanded", "false");
+  });
+}
+
+function showSkill(key) {
+  const area = state.feedback?.criteria.find((c) => c.key === key);
+  const detail = $("skill-detail");
+  if (!area || (detail.dataset.key === key && !detail.hidden)) {
+    closeSkill();
+    return;
+  }
+  closeSkill();
+  const status = STATUS[area.status] || STATUS.steady;
+  const guide = skillExplanation(area.key);
+  detail.dataset.key = key;
+  detail.className = `skill-detail ${status.css}`;
+  $("skill-detail-title").textContent = area.label;
+  $("skill-detail-status").textContent = status.label;
+  $("skill-detail-what").textContent = guide.what;
+  $("skill-detail-how").textContent = guide.how;
+  $("skill-detail-how").hidden = !guide.how;
+  const strength = $("skill-detail-strength");
+  strength.hidden = !area.strength;
+  strength.lastElementChild.textContent = area.strength;
+  const next = $("skill-detail-next");
+  const nextText = area.powerUp ? `See Power-up ${area.powerUp} below.` : area.nextStep;
+  next.hidden = !nextText;
+  next.lastElementChild.textContent = nextText || "";
+  detail.hidden = false;
+  document.querySelectorAll(`.skill-chip[data-key="${key}"]`).forEach((chip) => {
+    chip.classList.add("is-open");
+    chip.setAttribute("aria-expanded", "true");
+  });
+  focusHeading($("skill-detail-title"));
+  resetIdle();
+}
+
+for (const id of ["strength-key", "strength-focus"]) {
+  $(id).addEventListener("click", () => showSkill($(id).dataset.key));
+}
+$("skill-detail-close").addEventListener("click", closeSkill);
+
+// What is already working, quoting the child's writing: the positive half of the feedback.
+function renderHeroPowers() {
+  const powers = heroPowers(state.feedback.criteria);
+  $("powers-card").hidden = powers.length === 0;
+  const list = $("powers-list");
+  list.innerHTML = "";
+  for (const power of powers) {
+    const li = el("li", "power-item");
+    const chip = el("button", "power-area", power.label);
+    chip.type = "button";
+    chip.addEventListener("click", () => {
+      showSkill(power.key);
+      $("skill-detail").scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    li.append(chip, el("span", "power-text", power.text));
+    list.appendChild(li);
+  }
 }
 
 function renderFeedback() {
   const { powerUps } = state.feedback;
   renderStrength();
+  renderHeroPowers();
   renderPractice();
   renderBoost();
   $("save-brief").checked = true;
@@ -448,7 +610,7 @@ function highestImpactGoal() {
 const SLIDES = [
   { key: "power", label: "Power-ups" },
   { key: "words", label: "Word lab" },
-  { key: "finish", label: "Finish" },
+  { key: "finish", label: "Mission complete" },
 ];
 let slideIndex = 0;
 
@@ -572,6 +734,20 @@ $("btn-print").addEventListener("click", () => {
     pagesBox.appendChild(img);
   });
   $("print-transcript").textContent = fullTranscript();
+  const powersBox = $("print-powers");
+  powersBox.innerHTML = "";
+  const powers = heroPowers(criteria);
+  if (powers.length) {
+    const h = document.createElement("h2");
+    h.textContent = "Hero powers: what is already working";
+    const ul = document.createElement("ul");
+    for (const power of powers) {
+      const li = document.createElement("li");
+      li.textContent = `${power.label}: ${power.text}`;
+      ul.appendChild(li);
+    }
+    powersBox.append(h, ul);
+  }
   const powerBox = $("print-powerups");
   powerBox.innerHTML = "";
   powerUps.forEach((p, index) => {
@@ -580,9 +756,9 @@ $("btn-print").addEventListener("click", () => {
     powerBox.appendChild(h);
     for (const line of [
       p.why,
-      p.yourLine && `Your line: ${p.yourLine}`,
-      `Try this: ${p.tryThis}`,
+      p.example && `See it work on a sentence like yours. Before: ${p.example.before} After: ${p.example.after}`,
       moveSpeech(p.move),
+      p.yourLine && `Your line: ${p.yourLine}`,
       p.nowYou && `Now you: ${p.nowYou}`,
     ]) {
       if (!line) continue;
@@ -638,6 +814,11 @@ $("btn-print").addEventListener("click", () => {
       p.textContent = `Your sentence: ${boost.before} With word power: ${boost.after}`;
       boostBox.appendChild(p);
     }
+    if (boost.challenge?.length) {
+      const p = document.createElement("p");
+      p.textContent = `Synonym challenge: think of a synonym for ${joinOr(boost.challenge.map((c) => c.word))}.`;
+      boostBox.appendChild(p);
+    }
   }
   window.print();
 });
@@ -655,10 +836,16 @@ function clearEverything() {
   $("transcript").value = "";
   $("include-photos").checked = false;
   $("camera-title").textContent = "Photo time";
-  for (const id of ["strength-bar", "power-ups", "practice-words", "boost-swaps", "print-pages", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
+  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "boost-swaps", "challenge-list", "print-pages", "print-powers", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
     $(id).innerHTML = "";
   }
-  for (const id of ["strength-summary", "strength-key", "strength-focus", "print-transcript", "print-goal"]) $(id).textContent = "";
+  for (const id of ["strength-summary", "strength-key", "strength-focus", "skill-detail-title", "skill-detail-what", "skill-detail-how", "print-transcript", "print-goal"]) $(id).textContent = "";
+  for (const id of ["skill-detail-strength", "skill-detail-next"]) $(id).lastElementChild.textContent = "";
+  $("boost-before").textContent = "";
+  $("boost-after").textContent = "";
+  $("powers-card").hidden = true;
+  $("boost-challenge").hidden = true;
+  closeSkill();
   renderPages();
 }
 

@@ -12,18 +12,27 @@ Level up. Every word of it is pitched at the child's year: Years 1 and 2 get pic
 sentences, Years 3 and 4 plain words with a hint for any term, Years 5 and 6 the proper names
 of strategies.
 
+- Writing strength: one tappable chip per writing skill (audience, ideas, cohesion and so on),
+  coloured by how it went. A tap explains what the skill means in a child's words and shows
+  what the sidekick saw in their own writing. "Your hero powers" then lists the real strengths,
+  quoting the child, so the positives are as visible as the next steps.
 - One to three power-ups (one or two for Years 1 and 2): the areas with the biggest payoff for
-  this piece, each with the child's own line, that line rewritten to show the skill, and a tiny
-  "now you" task that sends them back into their own writing. The rewrite is named as one of
-  the writing strategies the school teaches (because/but/so, subordinating conjunction start,
-  sentence expansion, sentence combining, elaborating with a detail sentence, transition words,
-  appositives, topic and concluding sentences, sentence types, vary vocabulary, and for older
-  years general-to-specific introductions and their mirror conclusions), with a plain
-  explanation and a fresh example. Strategies are only offered from the year they suit.
-  Revising comes first; spelling is labelled as editing and comes after. The slide ends with
-  "Pick up your pencil": the child revises in their book, not on the iPad.
-- The word lab: word power (stronger words for plain ones, with the child's sentence rewritten)
-  and spelling to practise.
+  this piece. Each opens with what the child's line already does well, shows the skill on a
+  fresh sentence like theirs (before and after, never their own sentence rewritten, so there is
+  nothing to copy), names the writing strategy the school teaches (because/but/so,
+  subordinating conjunction start, sentence expansion, sentence combining, elaborating with a
+  detail sentence, transition words, appositives, topic and concluding sentences, sentence
+  types, vary vocabulary, and for older years general-to-specific introductions and their
+  mirror conclusions) with a plain explanation and another example, then quotes the child's
+  own line with a tiny "now you" task that sends them back to improve it themselves.
+  Strategies are only offered from the year they suit. Revising comes first; spelling is
+  labelled as editing and comes after. The slide ends with "Pick up your pencil": the child
+  revises in their book, not on the iPad.
+- The word lab: word power (four synonyms for each plain word, climbing from a small step up
+  to a stretch word, with the child's sentence rewritten), a synonym challenge (three more of
+  the child's own words, a box and a Check button each; a tiny AI call says whether the word
+  they typed really is a synonym), and the editing counts to find and fix.
+- Mission complete: the send-off back to the book, with Save picture and Print.
 - Level up: the child photographs the revised page. The app compares the two versions and
   gives specific praise for what really changed (which power-ups show up, quoting the new
   words; which practice words are now spelt right, checked by the server), plus one gentle

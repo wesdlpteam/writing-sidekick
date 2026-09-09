@@ -51,14 +51,14 @@ const MOCK_PAYLOAD = {
       skill: "Expand your sentence: add when and where",
       why: "Your beach has waves but no picture of the place yet. Adding when and where puts your reader on the sand with you.",
       yourLine: "The waves were huge and I got dumped!",
-      tryThis: "Under a blazing sun, the huge waves roared and dumped me in the foam!",
+      example: { before: "The dog ran off.", after: "After lunch, the dog ran off down the muddy track." },
       move: {
         key: "sentence_expansion",
         name: "Sentence expansion",
         rule: "Start with a bare kernel sentence like 'The surfer paddled out.' and add when, where, why or how. The when usually goes at the front, followed by a comma.",
         example: "At sunrise, the surfer paddled out past the break to catch the first wave.",
       },
-      nowYou: "Find your first sentence and expand it: add when and where.",
+      nowYou: "Find this line in your book and expand it: add when and where.",
     },
     {
       area: "sentence_structure",
@@ -66,26 +66,47 @@ const MOCK_PAYLOAD = {
       skill: "Start with a subordinating conjunction",
       why: "Two of your three sentences start with a plain word. A When or While start makes your writing flow like a story.",
       yourLine: "After that we had fish and chips.",
-      tryThis: "While the sun dried our towels, we munched hot fish and chips.",
+      example: { before: "Then we played a game.", after: "While the rain poured down, we played a game inside." },
       move: {
         key: "subordinating_conjunction",
         name: "Subordinating conjunction start",
         rule: "Begin with a subordinating conjunction like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
         example: "When the bell rang, we sprinted to the oval.",
       },
-      nowYou: "Rewrite your first sentence so it starts with 'When' or 'While'.",
+      nowYou: "Find this line in your book and start it with 'When' or 'While'.",
     },
   ],
   errorTotals: { spelling: 1, punctuation: 0, capital_letters: 0 },
   wordBoost: {
     swaps: [
-      { from: "huge", to: ["gigantic", "towering"] },
-      { from: "went", to: ["raced", "wandered"] },
+      { from: "huge", to: ["big", "enormous", "gigantic", "colossal"] },
+      { from: "went", to: ["walked", "raced", "wandered", "trekked"] },
     ],
     before: "The waves were huge and I got dumped!",
     after: "The gigantic waves crashed over me and dumped me in the sand!",
+    challenge: [
+      { word: "dumped", sentence: "The waves were huge and I got dumped!" },
+      { word: "beach", sentence: "On the weekend I went to the beach with my famly." },
+      { word: "had", sentence: "After that we had fish and chips." },
+    ],
   },
 };
+
+// Practice mode judges a synonym with a tiny word list, so the challenge can be tried offline.
+const MOCK_SYNONYMS = {
+  dumped: ["dropped", "tossed", "thrown", "slammed", "tumbled", "flung"],
+  beach: ["shore", "seaside", "coast", "sand", "seashore"],
+  had: ["ate", "munched", "enjoyed", "devoured", "shared", "gobbled"],
+};
+function mockSynonym({ word, attempt }) {
+  const w = String(word || "").trim().toLowerCase();
+  const a = String(attempt || "").trim().toLowerCase();
+  if (!a) return { status: 400, payload: { error: "Type a word first." } };
+  if (a === w) return { verdict: "no", note: "That is the same word. Try a different one that means the same thing." };
+  if ((MOCK_SYNONYMS[w] || []).includes(a)) return { verdict: "yes", note: `'${a}' means the same as '${w}' here. Nice one!` };
+  if (a.length > 3 && (MOCK_SYNONYMS[w] || []).some((s) => s.startsWith(a.slice(0, 3)))) return { verdict: "close", note: `'${a}' is close. Check the spelling, or try another word.` };
+  return { verdict: "no", note: `'${a}' means something different from '${w}'. Have another go.` };
+}
 
 function collectBody(req) {
   return new Promise((resolve, reject) => {
@@ -178,6 +199,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (MOCK) {
+      if (body.synonymCheck) {
+        await new Promise((r) => setTimeout(r, 500));
+        const result = mockSynonym(body.synonymCheck);
+        res.writeHead(result.status || 200).end(JSON.stringify(result.payload || result));
+        return;
+      }
       await new Promise((r) => setTimeout(r, 1200)); // simulate thinking time
       if (body.levelUp) {
         // Practice mode: celebrate the first line of the new version as the change.

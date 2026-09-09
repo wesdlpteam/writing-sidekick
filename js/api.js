@@ -46,6 +46,11 @@ export function getFeedback({ transcript, yearLevel, genre }) {
   return post({ transcript, yearLevel, genre });
 }
 
+// Word lab challenge: the child's own synonym for one of their words -> { verdict, note }
+export function checkSynonym({ yearLevel, word, attempt, sentence }) {
+  return post({ yearLevel, synonymCheck: { word, attempt, sentence } });
+}
+
 // Step 3: the child revised in their book and photographed the new version. Both versions,
 // the power-ups and practice words they were given -> { cheer, wins, spellingFixed, next }
 export function getLevelUp({ yearLevel, genre, levelUp }) {
