@@ -44,10 +44,10 @@ of strategies.
   next tip. Nothing is claimed that is not in the new writing.
 - The ten-area check-up (audience, text structure, ideas, characters and setting or persuasive
   devices, vocabulary, cohesion, paragraphing, sentence structure, punctuation, spelling; nine
-  for reports and poems) is not shown to the child as a list: it drives the writing strength
-  chips and the "What you did well" card. The full check-up, with the highest-impact goal,
-  appears only as the teacher report on the print-out. The saved picture is the child's
-  feedback alone.
+  for reports and poems) is never shown as a list: it drives the writing strength chips
+  (tap one to see that area's strength and next step) and the "What you did well" card.
+  The saved picture and the print-out hold the child's feedback alone; there is no
+  teacher report.
 - A Listen button on every card reads it aloud in a warm, sincere voice (OpenAI's "marin"
   voice), so younger readers can hear their feedback.
 

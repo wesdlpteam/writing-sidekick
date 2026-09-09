@@ -637,14 +637,6 @@ function renderFeedback() {
   resetIdle();
 }
 
-// The teacher's one-line takeaway: the first power-up is the most useful change, so it is the
-// highest-impact goal for this student on this piece.
-function highestImpactGoal() {
-  const goal = state.feedback?.powerUps?.[0];
-  if (!goal) return "";
-  return `${goal.skill}${goal.areaLabel ? ` (${goal.areaLabel})` : ""}. ${goal.why}`;
-}
-
 // ---- feedback slides: one part at a time -----------------------------------
 
 // The server's one-line headline is not shown: Nathan found it doubled up on the rest.
@@ -749,7 +741,6 @@ $("btn-save-pic").addEventListener("click", async () => {
 
 $("btn-print").addEventListener("click", () => {
   const { criteria, powerUps } = state.feedback;
-  $("print-goal").textContent = highestImpactGoal() ? `Highest-impact goal for this student: ${highestImpactGoal()}` : "";
   $("print-date").textContent = new Date().toLocaleDateString("en-AU", {
     day: "numeric", month: "long", year: "numeric",
   });
@@ -788,25 +779,10 @@ $("btn-print").addEventListener("click", () => {
       powerBox.appendChild(para);
     }
   });
-  const checkupBox = $("print-checkup");
-  checkupBox.innerHTML = "";
-  {
-    const h = document.createElement("h2");
-    h.textContent = "Hero scan: writing check-up";
-    const ul = document.createElement("ul");
-    for (const c of criteria) {
-      const li = document.createElement("li");
-      const status = (STATUS[c.status] || STATUS.steady).label;
-      const next = c.powerUp ? `See Power-up ${c.powerUp}.` : c.nextStep;
-      li.textContent = `${c.label} (${status}): ${[c.strength, next].filter(Boolean).join(" ")}`;
-      ul.appendChild(li);
-    }
-    checkupBox.append(h, ul);
-  }
   const practiceBox = $("print-practice");
   practiceBox.innerHTML = "";
   const h = document.createElement("h2");
-  h.textContent = "Find and fix";
+  h.textContent = "Editing: errors to find";
   const ul = document.createElement("ul");
   for (const line of errorTotalLines(state.feedback)) {
     const li = document.createElement("li");
@@ -856,10 +832,10 @@ function clearEverything() {
   $("transcript").value = "";
   $("include-photos").checked = false;
   $("camera-title").textContent = "Photo time";
-  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "boost-swaps", "challenge-list", "print-pages", "print-powers", "print-powerups", "print-checkup", "print-practice", "print-boost"]) {
+  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "boost-swaps", "challenge-list", "print-pages", "print-powers", "print-powerups", "print-practice", "print-boost"]) {
     $(id).innerHTML = "";
   }
-  for (const id of ["strength-summary", "strength-key", "strength-focus", "skill-detail-title", "skill-detail-what", "skill-detail-how", "print-transcript", "print-goal"]) $(id).textContent = "";
+  for (const id of ["strength-summary", "strength-key", "strength-focus", "skill-detail-title", "skill-detail-what", "skill-detail-how", "print-transcript"]) $(id).textContent = "";
   for (const id of ["skill-detail-strength", "skill-detail-next"]) $(id).lastElementChild.textContent = "";
   $("boost-before").textContent = "";
   $("boost-after").textContent = "";
