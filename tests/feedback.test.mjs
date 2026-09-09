@@ -189,6 +189,14 @@ test("transcription rules cover apostrophes, crossed-out words and page order", 
   assert.match(sys, /caret|inserted|added above/i);
   assert.match(sys, /page 1, then page 2|in order/i);
   assert.match(sys, /sideways or upside down/, "a rotated page is still read");
+  // Patterns from a real Year 5 page (2026-09-09): comma chosen before a capital, a missed
+  // final full stop, a ruled-line dash read as a comma, squeezed and joined letters.
+  assert.match(sys, /before a word that starts with a capital letter is a full stop, not a comma/);
+  assert.match(sys, /end of every sentence and every paragraph for a small full stop/);
+  assert.match(sys, /ruled lines, including their dots and dashes, are not punctuation/);
+  assert.match(sys, /count its letters/);
+  assert.match(sys, /Two words written touching each other are still two words/);
+  assert.match(sys, /never fix a word that is clearly written wrong/, "faithful misspellings still win");
   assert.match(sys, /misspell/i);
   assert.doesNotMatch(sys, /power-up|power_ups/i, "the transcription call is not asked for feedback");
 });
