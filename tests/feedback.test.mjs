@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleFeedback, dropCrossedOut, sentenceWith } from "../api/feedback.js";
+import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask } from "../api/feedback.js";
 
 const area = (status, strength, next_step) => ({ status, strength, next_step });
 
@@ -26,20 +26,22 @@ const GOOD_PAYLOAD = {
       skill: "Start with a subordinating conjunction",
       why: "Both of your sentences start with 'The' and 'It'. A When or While start makes the reader lean in.",
       your_line: "The dog ran fast.",
+      move: "subordinating_conjunction",
+      rule: "Begin with When or While, add a comma, then finish the sentence.",
       example_before: "The cat slept.",
       example_after: "When the fire crackled, the cat slept.",
-      move: "subordinating_conjunction",
-      now_you: "Find your dog sentence and start it with 'While' or 'When'.",
+      now_you: "Start your line with While or When.",
     },
     {
       area: "vocabulary",
       skill: "Show how fast with a strong verb",
       why: "'ran fast' tells us; a strong verb shows us.",
       your_line: "The dog ran fast.",
+      move: null,
+      rule: "Swap a plain verb and its helper word for one exact verb.",
       example_before: "The boy went quickly.",
       example_after: "The boy sprinted across the oval.",
-      move: null,
-      now_you: "Find 'ran fast' and swap it for one strong verb.",
+      now_you: "Swap 'ran fast' for one strong verb.",
     },
   ],
   practice_words: [
@@ -305,7 +307,10 @@ test("feedback prompt: year guide, rules, the ten areas, skill bank, writing mov
   assert.match(sys, /example_before/);
   assert.match(sys, /never on the child's own sentence/, "the worked example is a sentence like theirs, never their line rewritten");
   assert.doesNotMatch(sys, /try_this/, "the old rewrite-their-line field is gone");
-  assert.match(sys, /sends the child back to their own quoted line/);
+  assert.match(sys, /"rule": "one short line telling the child how to do that strategy/);
+  assert.match(sys, /Every part of a power-up is about ONE line and ONE strategy/, "no more three sentences for one job");
+  assert.match(sys, /a task to split a long sentence is never sentence_combining/);
+  assert.match(sys, /under 15 words/);
   assert.match(sys, /opens with something genuinely good about the line/, "every power-up starts positive");
   assert.match(sys, /Be generous and honest with strengths/);
   assert.match(sys, /error_totals/);
@@ -527,6 +532,7 @@ test("feedback response is normalised: headline, ten areas in marker order, powe
     skill: "Start with a subordinating conjunction",
     why: "Both of your sentences start with 'The' and 'It'. A When or While start makes the reader lean in.",
     yourLine: "The dog ran fast.",
+    rule: "Begin with When or While, add a comma, then finish the sentence.",
     example: { before: "The cat slept.", after: "When the fire crackled, the cat slept." },
     move: {
       key: "subordinating_conjunction",
@@ -534,9 +540,10 @@ test("feedback response is normalised: headline, ten areas in marker order, powe
       rule: "Begin with a subordinating conjunction like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
       example: "When the bell rang, we sprinted to the oval.",
     },
-    nowYou: "Find your dog sentence and start it with 'While' or 'When'.",
+    nowYou: "Start your line with While or When.",
   });
   assert.equal(r.payload.powerUps[1].move, null);
+  assert.equal(r.payload.powerUps[1].rule, "Swap a plain verb and its helper word for one exact verb.");
   assert.equal(r.payload.stars, undefined, "old shape is gone");
   assert.equal(r.payload.detail, undefined);
 });
@@ -604,6 +611,24 @@ test("areas: one missing is tolerated, most missing -> 502, unknown status becom
   assert.equal(r3.payload.criteria.find((c) => c.key === "ideas").status, "steady");
   assert.ok(!r3.payload.criteria.some((c) => c.key === "audience"));
   assert.ok(!r3.payload.criteria.some((c) => c.key === "paragraphing"), "an area with no text at all is dropped");
+});
+
+test("a strategy label that contradicts the job is dropped; a missing how-to falls back to the strategy's rule", async () => {
+  assert.equal(moveFitsTask("sentence_combining", "Break up the long backstory sentence", "Split it into two or three clearer sentences.", ""), false);
+  assert.equal(moveFitsTask("sentence_combining", "Join your short sentences", "Combine sentences 2 and 3.", ""), true);
+  assert.equal(moveFitsTask("sentence_expansion", "Break up the long sentence", "Split it.", ""), true, "only the contradiction is caught");
+  const fixture = {
+    ...GOOD_PAYLOAD,
+    power_ups: [
+      { ...GOOD_PAYLOAD.power_ups[0], skill: "Break up the long backstory sentence", move: "sentence_combining", now_you: "Split your line into two clearer sentences." },
+      { ...GOOD_PAYLOAD.power_ups[1], move: "vary_vocabulary", rule: "" },
+    ],
+  };
+  const r = await feedbackFor(fixture);
+  assert.equal(r.payload.powerUps[0].move, null, "better no label than the opposite one");
+  assert.equal(r.payload.powerUps[0].rule, "Begin with When or While, add a comma, then finish the sentence.", "the how-to line stays");
+  assert.equal(r.payload.powerUps[1].move.name, "Vary vocabulary");
+  assert.equal(r.payload.powerUps[1].rule, r.payload.powerUps[1].move.rule, "no how-to given, so the strategy's own rule stands in");
 });
 
 test("moves: unknown or too advanced for the year -> null", async () => {

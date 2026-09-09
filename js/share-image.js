@@ -117,14 +117,12 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
       addCard(GREEN, "🔥 Your hero powers", powers.map((c) => `${c.label}: ${c.strength}`));
     }
     feedback.powerUps.forEach((p, index) => {
-      const m = p.move;
       addCard("#ffffff", `⚡ Power-up ${index + 1}: ${p.skill}`, [
         p.why,
-        p.example && `See it work on a sentence like yours. Before: ${p.example.before}`,
-        p.example && `After: ${p.example.after}`,
-        m && `Writing strategy: ${m.name}. ${m.rule} Another one: ${m.example}`,
-        p.yourLine && `Your line: ${p.yourLine}`,
-        p.nowYou && `Now you: ${p.nowYou}`,
+        p.yourLine && `1. Find this line in your book: ${p.yourLine}`,
+        (p.move || p.rule || p.example) && `2. ${p.move ? `Use the strategy: ${p.move.name}.` : "See it done."}${p.rule ? ` ${p.rule}` : ""}`,
+        p.example && `   ${p.example.before} → ${p.example.after}`,
+        p.nowYou && `3. Do this: ${p.nowYou}`,
       ]);
     });
     if (feedback.wordBoost) {

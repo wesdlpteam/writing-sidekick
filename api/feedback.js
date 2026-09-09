@@ -102,13 +102,14 @@ const outputSpec = (powerUpCount, { challenge }) => `The child has already check
   "power_ups": [
     {
       "area": "the area key this power-up lifts",
-      "skill": "short child-friendly name, e.g. 'Add what you could hear and smell'",
-      "why": "one or two sentences: first what your_line already does well (quote it), then what this skill will add to THIS piece",
+      "skill": "the job in four to six child-friendly words, e.g. 'Finish the big moment'",
+      "why": "ONE short sentence: what your_line already does well, then what this strategy will add",
       "your_line": "one exact sentence or phrase copied from the child's writing where this skill belongs",
+      "move": "the key of the writing strategy the task asks the child to use on that line, or null if none of the listed strategies fits",
+      "rule": "one short line telling the child how to do that strategy on this kind of sentence, e.g. 'Finish the sentence with so and say what happened next.'",
       "example_before": "a NEW sentence you make up that is like the child's line (same kind of sentence, same weakness, similar length) but about something else and using none of their words",
-      "example_after": "that same made-up sentence with the skill done well, at the child's year level",
-      "move": "a key from the writing strategies list when example_after clearly shows that strategy, otherwise null",
-      "now_you": "a tiny task that sends the child back to their own line to use the skill on it themselves, e.g. 'Find your sentence about the waves and add when and where it happened.'"
+      "example_after": "that same made-up sentence with the strategy in rule done to it, at the child's year level",
+      "now_you": "the job as one short instruction (under 15 words) to do on your_line, e.g. 'Add so to your line and say what happened next.' Do not repeat the line."
     }
   ],
   "error_totals": { "spelling": 0, "punctuation": 0, "capital_letters": 0 },
@@ -120,7 +121,7 @@ const outputSpec = (powerUpCount, { challenge }) => `The child has already check
   }
 }
 Rules for areas: include an entry for every area key listed above (and only those keys). "strength" quotes the child's actual words and names the skill (for example "You used a transition word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. Be generous and honest with strengths: every real thing the child did well deserves naming, because the child sees these. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
-Rules for power_ups: ${powerUpCount}, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "why" opens with something genuinely good about the line before saying what the skill adds, so the child hears what to keep. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "example_before" and "example_after" show the skill on a sentence LIKE the child's, never on the child's own sentence: do not rewrite "your_line" and do not reuse its words, because the child must improve their own line themselves. "example_after" must be correct natural English a teacher would accept and something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task that sends the child back to their own quoted line to use the move on it (and then in the other places it fits), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in error_totals.
+Rules for power_ups: ${powerUpCount}, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. Every part of a power-up is about ONE line and ONE strategy: "why", "rule", the example and "now_you" all use the strategy named in "move" on the line in "your_line", so the child never has to hold two sentences or two ideas at once. Name in "move" the strategy the task actually asks for: a task to split a long sentence is never sentence_combining, and a task to add a transition is transition. "why" opens with something genuinely good about the line before saying what the strategy adds, so the child hears what to keep. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "example_before" and "example_after" show the strategy on a sentence LIKE the child's, never on the child's own sentence: do not rewrite "your_line" and do not reuse its words, because the child must improve their own line themselves. "example_after" must keep every idea of "example_before", be correct natural English a teacher would accept, and be something a child of this year level could realistically write. "now_you" is one short, concrete instruction to use the strategy on their own line (they can then use it in the other places it fits), never a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in error_totals.
 Rules for error_totals: inspect the WHOLE transcript and return non-negative integer totals for ALL errors, with no five-error limit. Count each occurrence, including repeated misspellings. "spelling" counts misspelt words, excluding case-only errors and apostrophe errors. "punctuation" counts missing, incorrect or unnecessary punctuation marks (including apostrophes), excluding capital letters. "capital_letters" counts missing or unnecessary capitals. Count a single error in only one category. Do not count crossed-out writing, [unclear] text, acceptable Australian English spellings or deliberate poetic choices as errors. Return 0 when a category has no errors. Students must find the errors themselves: do not list incorrect words, corrections, locations or spelling tips anywhere in the feedback. In the spelling and punctuation areas, give general checking strategies without pointing out the errors; this overrides the requirement to quote specific errors. Keep writing-craft examples focused on their chosen strategy.
 Rules for word_boost: pick 1 or 2 plain words the child actually wrote that could be stronger; for each, give EXACTLY 4 synonyms that genuinely upgrade it, in order from the simplest to the most sophisticated, each one a step up from the last, all true synonyms in the child's sentence, with the last one a stretch word for this year level. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". ${challenge ? `"challenge" lists 3 OTHER plain words the child wrote (not the swap words) that have good synonyms a child of this year could think of themselves; the child will type their own synonym for each and have it checked. Use [] if the writing has no suitable words.` : `"challenge" must be [] for this Year 1 writer.`} Use null for word_boost only if their word choices are already strong.
 Be very specific everywhere: every comment must quote or point to actual words, phrases or sentences from this child's writing, never generic advice that could apply to anyone's work.`;
@@ -225,6 +226,15 @@ export function sentenceWith(transcript, word) {
 // A power-up's example must be a fresh sentence, not the child's own line handed back to them
 // (they would copy it straight into their book). Same words, changed punctuation, or the
 // child's line buried inside a longer one all count as copies.
+// A strategy label must match the job it sits beside. The one contradiction seen in the wild:
+// "split this long sentence" labelled as sentence combining (its opposite). Better no label
+// than a wrong one.
+const SPLIT_TASK = /\b(split|break (?:it |this |that |the sentence )?up|separate|shorter sentences|two or three (?:clearer |shorter )?sentences)\b/i;
+export function moveFitsTask(moveKey, ...texts) {
+  if (moveKey === "sentence_combining" && texts.some((t) => SPLIT_TASK.test(String(t || "")))) return false;
+  return true;
+}
+
 const wordRun = (value) => ` ${wordsOf(value).join(" ")} `;
 const containsRun = (haystack, needle) => needle.trim() !== "" && wordRun(haystack).includes(wordRun(needle));
 function copiesLine(example, yourLine) {
@@ -289,15 +299,20 @@ function validateFeedback(data, { areas, yearLevel, transcript }) {
     const after = text(p.example_after);
     const fresh = before && after && !copiesLine(before, yourLine) && !copiesLine(after, yourLine)
       && !containsRun(transcript, after);
+    const skill = text(p.skill);
+    const nowYou = text(p.now_you);
+    const move = moveFitsTask(p.move, skill, nowYou, p.rule) ? describeMove(p.move, yearLevel) : null;
     powerUps.push({
       area,
       areaLabel: area ? criteria.find((c) => c.key === area).label : "",
-      skill: text(p.skill),
+      skill,
       why: text(p.why),
       yourLine,
+      // The one-line how-to for this job; the strategy's general rule stands in if it is missing.
+      rule: text(p.rule) || move?.rule || "",
       example: fresh ? { before, after } : null,
-      move: describeMove(p.move, yearLevel),
-      nowYou: text(p.now_you),
+      move,
+      nowYou,
     });
     if (powerUps.length === 3) break;
   }

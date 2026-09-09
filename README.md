@@ -19,17 +19,20 @@ of strategies.
   what the sidekick saw in their own writing. "Your hero powers" then lists the real strengths,
   quoting the child, so the positives are as visible as the next steps.
 - One to three power-ups (one or two for Years 1 and 2): the areas with the biggest payoff for
-  this piece. Each opens with what the child's line already does well, shows the skill on a
-  fresh sentence like theirs (before and after, never their own sentence rewritten, so there is
-  nothing to copy), names the writing strategy the school teaches (because/but/so,
-  subordinating conjunction start, sentence expansion, sentence combining, elaborating with a
-  detail sentence, transition words, appositives, topic and concluding sentences, sentence
-  types, vary vocabulary, and for older years general-to-specific introductions and their
-  mirror conclusions) with a plain explanation and another example, then quotes the child's
-  own line with a tiny "now you" task that sends them back to improve it themselves.
-  Strategies are only offered from the year they suit. Revising comes first; spelling is
-  labelled as editing and comes after. The slide ends with "Pick up your pencil": the child
-  revises in their book, not on the iPad.
+  this piece. Each card is one line and one strategy, laid out as three numbered steps in
+  the order the child works: 1 find this line in your book (their own words, quoted); 2 use
+  the strategy (its name, a one-line how-to for this kind of sentence, and the strategy done
+  on a fresh sentence like theirs, before and after, never their own sentence rewritten, so
+  there is nothing to copy, with the full explanation behind a "What is this strategy?" tap);
+  3 do this (one short instruction). A one-line opener says what the line already does well.
+  The strategies are the ones the school teaches (because/but/so, subordinating conjunction
+  start, sentence expansion, sentence combining, elaborating with a detail sentence,
+  transition words, appositives, topic and concluding sentences, sentence types, vary
+  vocabulary, and for older years general-to-specific introductions and their mirror
+  conclusions), only offered from the year they suit; a label that contradicts the job (a
+  "split it up" task named as sentence combining) is dropped rather than shown. Revising
+  comes first; spelling is labelled as editing and comes after. The slide ends with "Pick up
+  your pencil": the child revises in their book, not on the iPad.
 - The word lab: word power (four synonyms for each plain word, climbing from a small step up
   to a stretch word, with the child's sentence rewritten), a synonym challenge from Year 2 up
   (three more of the child's own words, a box and a Check button each; a tiny AI call says

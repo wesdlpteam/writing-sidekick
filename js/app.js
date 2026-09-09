@@ -1,8 +1,8 @@
-import { reflowTranscript } from "./transcript.js?v=20260909-powers";
-import { writingStrength, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260909-powers";
-import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260909-powers";
-import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260909-powers";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-powers";
+import { reflowTranscript } from "./transcript.js?v=20260909-steps";
+import { writingStrength, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260909-steps";
+import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260909-steps";
+import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260909-steps";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-steps";
 
 const MAX_PAGES = 2;
 
@@ -395,18 +395,6 @@ async function checkChallenge({ word, sentence, input, btn, result, li }) {
   }
 }
 
-function labelledLine(label, value, tag) {
-  const p = document.createElement("p");
-  p.className = "power-line";
-  const span = document.createElement("span");
-  span.className = "power-label";
-  span.textContent = label;
-  const el = document.createElement(tag);
-  el.textContent = value;
-  p.append(span, " ", el);
-  return p;
-}
-
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -414,20 +402,21 @@ function el(tag, className, text) {
   return node;
 }
 
-// A named writing strategy (The Writing Revolution's word, and the school's): its name, the
-// rule, and a fresh example, so the child can recognise the strategy and use it again.
-function moveNote(move) {
-  const box = el("div", "move-note");
-  const title = el("p", "st-title");
-  title.append(emoji("⚡"), "Writing strategy: ", el("strong", "", move.name));
-  const rule = el("p", "st-rule", move.rule);
-  const example = el("p", "st-example");
-  example.append("Another one: ", el("em", "", move.example));
-  box.append(title, rule, example);
-  return box;
+// The three lines of a power-up as plain text, for the print-out: find the line, use the
+// strategy (how, then before and after), do this.
+export function powerUpLines(p) {
+  const how = [
+    p.move ? `Use the strategy: ${p.move.name}.` : p.rule || p.example ? "See it done." : "",
+    p.rule,
+    p.example && `${p.example.before} -> ${p.example.after}`,
+  ].filter(Boolean).join(" ");
+  return [
+    p.why,
+    p.yourLine && `1. Find this line in your book: ${p.yourLine}`,
+    how && `2. ${how}`,
+    p.nowYou && `3. Do this: ${p.nowYou}`,
+  ].filter(Boolean);
 }
-
-const moveSpeech = (move) => (move ? `Writing strategy: ${move.name}. ${move.rule} Another one: ${move.example}` : "");
 
 // Emoji live in a span so the senior look (Years 5 and 6) can hide them; screen readers skip them.
 function emoji(char) {
@@ -436,36 +425,55 @@ function emoji(char) {
   return node;
 }
 
-// Each power-up: the skill, why it matters here, the skill shown on a sentence LIKE the
-// child's (before and after, never their own line rewritten, so there is nothing to copy),
-// the strategy note, then their own quoted line and a task that sends them back to it.
+// One numbered step of a power-up card: a label, then its content.
+function step(label, nodes) {
+  const li = el("li", "step");
+  const body = el("div", "step-body");
+  const heading = el("p", "step-label");
+  heading.append(...(Array.isArray(label) ? label : [label]));
+  body.append(heading, ...nodes);
+  li.appendChild(body);
+  return li;
+}
+
+// Each power-up is one line and one strategy, laid out in the order the child works:
+// 1 find the line in your book, 2 the strategy (a one-line how-to, then before and after
+// on a sentence LIKE theirs, never their own line rewritten), 3 the job. The strategy's
+// full explanation waits behind a tap for the child who wants it.
 function renderPowerUps(powerUps) {
   const box = $("power-ups");
   box.innerHTML = "";
   powerUps.forEach((p, index) => {
     const card = el("section", "power-card");
     card.id = `power-up-${index + 1}`;
-    const head = el("div", "power-head");
-    head.appendChild(el("h3", "power-title", `Power-up ${index + 1}: ${p.skill}`));
-    if (p.areaLabel) head.appendChild(el("span", "power-area", p.areaLabel));
-    card.append(head, el("p", "power-why", p.why));
+    const eyebrow = el("p", "power-eyebrow");
+    eyebrow.append(emoji("⚡"), `Power-up ${index + 1}`);
+    if (p.areaLabel) eyebrow.appendChild(el("span", "power-area", p.areaLabel));
+    card.append(eyebrow, el("h3", "power-title", p.skill));
+    if (p.why) card.appendChild(el("p", "power-why", p.why));
+    const steps = el("ol", "power-steps");
+    if (p.yourLine) steps.appendChild(step("Find this line in your book", [el("q", "step-line", p.yourLine)]));
+    const how = [];
+    if (p.rule) how.push(el("p", "step-rule", p.rule));
     if (p.example) {
-      const demo = el("div", "power-demo");
-      demo.appendChild(el("p", "demo-title", "See it work on a sentence like yours"));
-      demo.appendChild(labelledLine("Before:", p.example.before, "span"));
-      demo.appendChild(labelledLine("After:", p.example.after, "strong"));
-      card.appendChild(demo);
+      const example = el("p", "step-example");
+      const arrow = el("span", "ex-arrow", "→");
+      arrow.setAttribute("aria-hidden", "true");
+      example.append(el("span", "ex-before", p.example.before), arrow, el("span", "sr-only", "becomes"), el("strong", "ex-after", p.example.after));
+      how.push(example);
     }
-    if (p.move) card.appendChild(moveNote(p.move));
-    if (p.yourLine || p.nowYou) {
-      const task = el("div", "power-task");
-      const title = el("p", "task-title");
-      title.append(emoji("✍️"), el("strong", "", "Now you"));
-      task.appendChild(title);
-      if (p.yourLine) task.appendChild(labelledLine("Your line:", p.yourLine, "q"));
-      if (p.nowYou) task.appendChild(el("p", "task-text", p.nowYou));
-      card.appendChild(task);
+    if (p.move) {
+      const more = el("details", "step-more");
+      more.appendChild(el("summary", "", "What is this strategy?"));
+      more.appendChild(el("p", "", p.move.rule));
+      const another = el("p", "st-example");
+      another.append("Another one: ", el("em", "", p.move.example));
+      more.appendChild(another);
+      how.push(more);
     }
+    if (how.length) steps.appendChild(step(p.move ? ["Use the strategy: ", el("strong", "", p.move.name)] : "See it done", how));
+    if (p.nowYou) steps.appendChild(step("Do this", [el("p", "step-task", p.nowYou)]));
+    card.appendChild(steps);
     box.appendChild(card);
   });
 }
@@ -748,14 +756,7 @@ $("btn-print").addEventListener("click", () => {
     const h = document.createElement("h3");
     h.textContent = `Power-up ${index + 1}: ${p.skill}${p.areaLabel ? ` (${p.areaLabel})` : ""}`;
     powerBox.appendChild(h);
-    for (const line of [
-      p.why,
-      p.example && `See it work on a sentence like yours. Before: ${p.example.before} After: ${p.example.after}`,
-      moveSpeech(p.move),
-      p.yourLine && `Your line: ${p.yourLine}`,
-      p.nowYou && `Now you: ${p.nowYou}`,
-    ]) {
-      if (!line) continue;
+    for (const line of powerUpLines(p)) {
       const para = document.createElement("p");
       para.textContent = line;
       powerBox.appendChild(para);
