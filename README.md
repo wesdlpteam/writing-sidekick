@@ -1,9 +1,11 @@
 # Writing Sidekick (Years 1 to 6)
 
 An iPad web app for primary students. A student picks their year level, photographs
-their handwritten writing (up to four pages), checks the typed-out version by tapping
-any word to fix it, and gets specific, improvement-first feedback matched to the
-Australian Curriculum (ACARA v9) expectations for their year. Nothing is ever stored.
+their handwritten writing (up to two pages; a page snapped sideways or upside down is
+turned upright automatically before it is read), checks the typed-out version (both pages
+together in one box) by tapping any word to fix it, and gets specific, improvement-first
+feedback matched to the Australian Curriculum (ACARA v9) expectations for their year.
+Nothing is ever stored.
 
 ## What the feedback looks like
 
@@ -29,9 +31,9 @@ of strategies.
   labelled as editing and comes after. The slide ends with "Pick up your pencil": the child
   revises in their book, not on the iPad.
 - The word lab: word power (four synonyms for each plain word, climbing from a small step up
-  to a stretch word, with the child's sentence rewritten), a synonym challenge (three more of
-  the child's own words, a box and a Check button each; a tiny AI call says whether the word
-  they typed really is a synonym), and the editing counts to find and fix.
+  to a stretch word, with the child's sentence rewritten), a synonym challenge from Year 2 up
+  (three more of the child's own words, a box and a Check button each; a tiny AI call says
+  whether the word they typed really is a synonym), and the editing counts to find and fix.
 - Mission complete: the send-off back to the book, with Save picture and Print.
 - Level up: the child photographs the revised page. The app compares the two versions and
   gives specific praise for what really changed (which power-ups show up, quoting the new
@@ -63,6 +65,10 @@ the child something to do.
 
 Two separate steps, so each has one job:
 
+0. Which way up? A small copy of each page goes to the model at low detail, which answers
+   with the turn (0, 90, 180 or 270 degrees) that makes the writing upright. The app turns
+   the page itself before reading it, so a photo taken sideways reads as well as one taken
+   straight. An unclear answer means no turn, and the Rotate button is still there.
 1. Reading the handwriting. The photos go to a vision model at full image detail with
    strict copy rules: keep every misspelling, keep every apostrophe and punctuation mark,
    leave out crossed-out words, put inserted words where the caret points, keep line

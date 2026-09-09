@@ -35,6 +35,12 @@ async function post(body) {
   return data;
 }
 
+// Before step 1: a small copy of a page -> { rotate: 0 | 90 | 180 | 270 }, the clockwise
+// turn that makes the writing upright. 0 also comes back when the check cannot tell.
+export function detectOrientation({ image, yearLevel }) {
+  return post({ yearLevel, orientation: { image } });
+}
+
 // Step 1: one page photo -> { transcript }. Pages go one per request so the total never trips
 // the server's 4.5MB request limit (Vercel), whatever the photos weigh; the app joins them in order.
 export function transcribePage({ image, yearLevel }) {

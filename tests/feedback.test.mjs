@@ -188,6 +188,7 @@ test("transcription rules cover apostrophes, crossed-out words and page order", 
   assert.match(sys, /before you copy each word|check whether a line/i, "the model is told to check every word for a strike-through");
   assert.match(sys, /caret|inserted|added above/i);
   assert.match(sys, /page 1, then page 2|in order/i);
+  assert.match(sys, /sideways or upside down/, "a rotated page is still read");
   assert.match(sys, /misspell/i);
   assert.doesNotMatch(sys, /power-up|power_ups/i, "the transcription call is not asked for feedback");
 });
@@ -227,6 +228,36 @@ test("garbled transcription output -> 502 child-safe error", async () => {
   const r = await handleFeedback({ image: IMG, yearLevel: 2 }, { fetchImpl: mockFetch("sorry no"), env: ENV });
   assert.equal(r.status, 502);
   assert.doesNotMatch(r.payload.error, /json|parse|model/i);
+});
+
+// ---- before step 1: which way up is the page? ---------------------------------
+
+test("orientation check: a small low-detail call returns the clockwise turn; odd or failed answers mean no turn; bad images -> 400", async () => {
+  const capture = {};
+  const r = await handleFeedback({ yearLevel: 3, orientation: { image: IMG } }, { fetchImpl: mockFetch(JSON.stringify({ rotate: 90 }), { capture }), env: ENV });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.payload, { rotate: 90 });
+  const parts = capture.body.messages[1].content;
+  assert.equal(parts.find((p) => p.type === "image_url").image_url.detail, "low", "a cheap look is enough to see which way the lines run");
+  assert.match(capture.body.messages[0].content, /clockwise rotation in degrees, one of 0, 90, 180 or 270/);
+  assert.equal(capture.body.model, "gpt-5.4");
+  assert.doesNotMatch(capture.body.messages[0].content, /transcri/i, "this call is not asked to read the page");
+
+  const odd = await handleFeedback({ yearLevel: 3, orientation: { image: IMG } }, { fetchImpl: mockFetch(JSON.stringify({ rotate: 45 })), env: ENV });
+  assert.deepEqual(odd.payload, { rotate: 0 });
+  const failing = async () => ({ ok: false, status: 500, json: async () => ({}) });
+  const fail = await handleFeedback({ yearLevel: 3, orientation: { image: IMG } }, { fetchImpl: failing, env: ENV });
+  assert.equal(fail.status, 200);
+  assert.deepEqual(fail.payload, { rotate: 0 }, "a failed check never blocks the reading");
+
+  const bad = await handleFeedback({ yearLevel: 3, orientation: { image: "data:text/plain;base64,QUJD" } }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(bad.status, 400);
+  const fake = await handleFeedback({ yearLevel: 3, orientation: { image: "data:image/jpeg;base64,QUJDRA==" } }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(fake.status, 400);
+  const big = await handleFeedback({ yearLevel: 3, orientation: { image: "data:image/jpeg;base64,/9j/" + "A".repeat(700_000) } }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(big.status, 413, "the check takes a small copy, not the full page");
+  const noKey = await handleFeedback({ yearLevel: 3, orientation: { image: IMG } }, { fetchImpl: mockFetch("{}"), env: {} });
+  assert.equal(noKey.status, 500);
 });
 
 // ---- step 2: checked transcript -> feedback --------------------------------
@@ -343,6 +374,22 @@ test("synonym challenge: three of the child's own words with their sentence, nev
   ]);
   assert.equal(sentenceWith(TEXT, "dog"), "The dog ran fast.");
   assert.equal(sentenceWith(TEXT, "zebra"), "");
+});
+
+test("the synonym challenge starts in Year 2: Year 1 is not asked for it, gets none, and cannot check one", async () => {
+  const capture = {};
+  const r1 = await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 1, genre: "narrative" }, capture);
+  assert.equal(r1.status, 200);
+  assert.deepEqual(r1.payload.wordBoost.challenge, [], "words the model offers anyway are dropped");
+  assert.match(capture.body.messages[0].content, /"challenge" must be \[\] for this Year 1 writer/);
+  assert.doesNotMatch(capture.body.messages[0].content, /lists 3 OTHER plain words/);
+  const c2 = {};
+  const r2 = await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 2, genre: "narrative" }, c2);
+  assert.equal(r2.payload.wordBoost.challenge.length, 3, "Year 2 gets the challenge");
+  assert.match(c2.body.messages[0].content, /lists 3 OTHER plain words/);
+  const check = await handleFeedback({ yearLevel: 1, synonymCheck: { word: "fast", attempt: "speedy" } }, { fetchImpl: mockFetch("{}"), env: ENV });
+  assert.equal(check.status, 400);
+  assert.match(check.payload.error, /Year 2/);
 });
 
 test("a power-up example that is really the child's line rewritten is dropped; a fresh one is kept", async () => {

@@ -137,19 +137,48 @@ export async function prepareScan(file, { maxEdge = DEFAULT_MAX_EDGE, maxChars =
   }
 }
 
-export async function rotate90(dataUrl) {
+async function loadImage(dataUrl) {
   const img = new Image();
   await new Promise((resolve, reject) => {
     img.onload = resolve;
     img.onerror = reject;
     img.src = dataUrl;
   });
+  return img;
+}
+
+// Degrees clockwise -> whole quarter turns (0 to 3). Anything odd rounds to the nearest turn.
+export function quarterTurns(degrees) {
+  const turns = Math.round(Number(degrees) / 90) % 4;
+  return Number.isFinite(turns) ? (turns + 4) % 4 : 0;
+}
+
+// Turns a page clockwise by 0, 90, 180 or 270 degrees.
+export async function rotateBy(dataUrl, degrees) {
+  const turns = quarterTurns(degrees);
+  if (!turns) return dataUrl;
+  const img = await loadImage(dataUrl);
+  const sideways = turns % 2 === 1;
   const canvas = document.createElement("canvas");
-  canvas.width = img.height;
-  canvas.height = img.width;
+  canvas.width = sideways ? img.height : img.width;
+  canvas.height = sideways ? img.width : img.height;
   const ctx = canvas.getContext("2d");
   ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(Math.PI / 2);
+  ctx.rotate((turns * Math.PI) / 2);
   ctx.drawImage(img, -img.width / 2, -img.height / 2);
   return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+}
+
+export const rotate90 = (dataUrl) => rotateBy(dataUrl, 90);
+
+// A small copy of a page for the "which way up?" check: the model only needs to see which
+// way the lines of writing run, so this stays a few tens of kilobytes.
+export async function thumbnail(dataUrl, maxEdge = 512) {
+  const img = await loadImage(dataUrl);
+  const ratio = Math.min(1, maxEdge / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.width * ratio));
+  canvas.height = Math.max(1, Math.round(img.height * ratio));
+  canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.7);
 }

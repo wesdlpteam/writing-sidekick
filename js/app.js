@@ -1,7 +1,7 @@
 import { reflowTranscript } from "./transcript.js?v=20260909-powers";
 import { writingStrength, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260909-powers";
-import { prepareScan, rotate90 } from "./scan.js?v=20260909-powers";
-import { transcribePage, getFeedback, checkSynonym } from "./api.js?v=20260909-powers";
+import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260909-powers";
+import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260909-powers";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-powers";
 
 const MAX_PAGES = 2;
@@ -10,8 +10,7 @@ const state = {
   yearLevel: null,
   genre: "narrative",
   pages: [], // cleaned-up page photos as data URLs, in order
-  transcripts: [], // the typed copy of each page, kept up to date as the child edits
-  reviewIndex: 0, // which page is open on the check-the-typing screen
+  transcript: "", // the typed copy of the whole piece (pages joined), kept up to date as the child edits
   feedback: null,
 };
 
@@ -162,9 +161,24 @@ for (const id of ["photo-input", "photo-add"]) {
 
 // ---- step 1: pages -> transcript -> review screen ---------------------------
 
+// A page photographed sideways or upside down reads badly, so before the reading each page
+// is checked with a small copy and turned upright. If the check fails, the page goes as it is
+// (the Rotate button is still there).
+async function straighten(dataUrl) {
+  try {
+    const { rotate } = await detectOrientation({ image: await thumbnail(dataUrl), yearLevel: state.yearLevel });
+    return rotate ? await rotateBy(dataUrl, rotate) : dataUrl;
+  } catch {
+    return dataUrl;
+  }
+}
+
 $("btn-read").addEventListener("click", async () => {
   if (!state.pages.length) return;
   try {
+    setLoading(true, state.pages.length === 1 ? "Checking your page is the right way up…" : "Checking your pages are the right way up…");
+    state.pages = await Promise.all(state.pages.map(straighten));
+    renderPages();
     setLoading(
       true,
       state.pages.length === 1
@@ -174,15 +188,17 @@ $("btn-read").addEventListener("click", async () => {
     // One request per page, read side by side, then joined in page order with a blank line
     // between pages. One big request for all pages used to trip the server's upload limit.
     const pages = await Promise.all(state.pages.map((image) => transcribePage({ image, yearLevel: state.yearLevel })));
-    state.transcripts = pages.map((page) => reflowTranscript(page.transcript));
-    state.reviewIndex = 0;
+    state.transcript = pages
+      .map((page) => reflowTranscript(page.transcript).trim())
+      .filter(Boolean)
+      .join("\n\n");
     // Years 1 to 3 do not check the typing: it is a lot of reading for a young writer, so the
     // feedback comes straight back. Year 4 and up still get to fix anything the app misread.
     // An unreadable photo always shows the typing screen, whatever the year, so the writing
     // can be typed in rather than the child being stuck.
     if (checksTyping() || !fullTranscript()) {
       show("screen-review");
-      showReviewPage();
+      showReview();
       return;
     }
     await submitWriting();
@@ -193,7 +209,7 @@ $("btn-read").addEventListener("click", async () => {
   }
 });
 
-// ---- the typed copy: one page at a time in a document-style box that grows with the writing --
+// ---- the typed copy: the whole piece in one document-style box that grows with the writing --
 
 function autosizeTranscript() {
   const box = $("transcript");
@@ -206,45 +222,22 @@ function autosizeTranscript() {
 document.fonts?.ready.then(autosizeTranscript).catch(() => {});
 window.addEventListener("resize", autosizeTranscript);
 
-// Shows the current page's typing. Next page moves through the pages; the feedback button
-// only appears on the last page, so every page gets checked.
-function showReviewPage() {
-  const count = state.transcripts.length;
-  const index = state.reviewIndex;
-  const last = index >= count - 1;
-  $("transcript").value = state.transcripts[index] || "";
-  $("review-page-label").textContent = `Page ${index + 1} of ${count}`;
-  $("review-page-label").hidden = count < 2;
-  $("btn-prev-page").hidden = index === 0;
-  $("btn-next-page").hidden = last;
-  $("btn-confirm").hidden = !last;
+// Shows the whole piece, every page joined in order with a blank line between pages, so a
+// two-page piece reads as one document.
+function showReview() {
+  $("transcript").value = state.transcript;
   autosizeTranscript();
   window.scrollTo(0, 0);
-  if (count > 1) focusHeading($("review-page-label"));
   resetIdle();
 }
 
 $("transcript").addEventListener("input", () => {
-  state.transcripts[state.reviewIndex] = $("transcript").value;
+  state.transcript = $("transcript").value;
   autosizeTranscript();
 });
 
-$("btn-prev-page").addEventListener("click", () => {
-  state.reviewIndex = Math.max(0, state.reviewIndex - 1);
-  showReviewPage();
-});
-
-$("btn-next-page").addEventListener("click", () => {
-  state.reviewIndex = Math.min(state.transcripts.length - 1, state.reviewIndex + 1);
-  showReviewPage();
-});
-
-// All pages joined in order, with a blank line between pages; empty pages are skipped.
 function fullTranscript() {
-  return state.transcripts
-    .map((page) => page.trim())
-    .filter(Boolean)
-    .join("\n\n");
+  return state.transcript.trim();
 }
 
 // ---- step 2: the writing -> feedback ---------------------------------------
@@ -331,7 +324,8 @@ function renderBoost() {
     $("boost-before").textContent = boost.before;
     $("boost-after").textContent = boost.after;
   }
-  renderChallenge(boost.challenge || []);
+  // The synonym challenge starts in Year 2 (the server sends none for Year 1 anyway).
+  renderChallenge(state.yearLevel >= 2 ? boost.challenge || [] : []);
 }
 
 // The synonym challenge: three more of the child's own words, a box and a Check button each.
@@ -829,8 +823,7 @@ $("btn-print").addEventListener("click", () => {
 // the prepared share picture, and the copies drawn on screen.
 function clearEverything() {
   state.pages = [];
-  state.transcripts = [];
-  state.reviewIndex = 0;
+  state.transcript = "";
   state.feedback = null;
   shareCache = { key: "", blob: null };
   $("transcript").value = "";
@@ -883,7 +876,7 @@ const IDLE_CLEAR_MS = IDLE_TEST_SECONDS ? 4_000 : 60_000;
 let idleWarnTimer = null;
 let idleClearTimer = null;
 
-const hasWork = () => state.pages.length > 0 || state.transcripts.length > 0 || state.feedback !== null;
+const hasWork = () => state.pages.length > 0 || state.transcript.length > 0 || state.feedback !== null;
 
 function resetIdle() {
   clearTimeout(idleWarnTimer);

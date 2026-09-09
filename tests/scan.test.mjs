@@ -1,6 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { estimateBackground, scanCurve, flattenToScan, nextEdge, MAX_PAGE_CHARS } from "../js/scan.js";
+import { estimateBackground, scanCurve, flattenToScan, nextEdge, quarterTurns, MAX_PAGE_CHARS } from "../js/scan.js";
+
+test("quarterTurns: degrees clockwise become whole turns, odd values round, junk means no turn", () => {
+  assert.equal(quarterTurns(0), 0);
+  assert.equal(quarterTurns(90), 1);
+  assert.equal(quarterTurns(180), 2);
+  assert.equal(quarterTurns(270), 3);
+  assert.equal(quarterTurns(360), 0);
+  assert.equal(quarterTurns(-90), 3, "anticlockwise a quarter is three clockwise");
+  assert.equal(quarterTurns(100), 1);
+  assert.equal(quarterTurns("nope"), 0);
+});
 
 // A "photographed page": brightness falls from 235 on the left to 120 on the right (a shadow),
 // with a few dark 2px-wide strokes drawn across it.

@@ -29,6 +29,7 @@ Rules:
 6. If there are several photos, they are pages of the same piece of writing, in order. Transcribe page 1, then page 2, and so on, with one blank line between pages.
 7. Ignore anything that is not the child's writing: printed headings, ruled lines, page numbers, a teacher's marks or comments in a different pen, stickers or stamps.
 8. If a word is truly unreadable, write your single best guess. Do not use brackets, question marks or notes: the child will check the transcript afterwards.
+9. The photo may be sideways or upside down. Work out which way the handwriting runs and read it that way, in the order the child wrote it; never give up on a page because of how it was held.
 Respond with ONLY a JSON object in exactly this shape: { "transcript": "the full transcript, using \\n for line breaks, with crossed-out words as ~~word~~" }
 If nothing on the page can be read at all, use { "transcript": "" }.`;
 
@@ -80,7 +81,10 @@ Other craft that still matters:
 - Years 1 and 2 basics: capital letters and full stops in the right places, the conjunctions "and", "but", "so" and "because", describing words, sound words.
 - Years 5 and 6 stretch: complex sentences with the clause order changed for effect, modality, formal register, figurative language, paragraph cohesion, editing out repetition.`;
 
-const outputSpec = (powerUpCount) => `The child has already checked the typed copy of their writing, so treat it as exactly what they wrote. Respond with ONLY a JSON object in exactly this shape:
+// The synonym challenge (type your own synonym, get it checked) starts in Year 2.
+const CHALLENGE_MIN_YEAR = 2;
+
+const outputSpec = (powerUpCount, { challenge }) => `The child has already checked the typed copy of their writing, so treat it as exactly what they wrote. Respond with ONLY a JSON object in exactly this shape:
 {
   "headline": "one or two friendly sentences from the sidekick: the single best thing about this piece (quote it) and the one change that would lift it most",
   "areas": {
@@ -113,7 +117,7 @@ const outputSpec = (powerUpCount) => `The child has already checked the typed co
 Rules for areas: include an entry for every area key listed above (and only those keys). "strength" quotes the child's actual words and names the skill (for example "You used a transition word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. Be generous and honest with strengths: every real thing the child did well deserves naming, because the child sees these. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
 Rules for power_ups: ${powerUpCount}, the most useful first, each lifting a DIFFERENT area whose status is steady or next_step, so the "area" keys must all differ and match the area list. Choose from the skill bank. "why" opens with something genuinely good about the line before saying what the skill adds, so the child hears what to keep. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "example_before" and "example_after" show the skill on a sentence LIKE the child's, never on the child's own sentence: do not rewrite "your_line" and do not reuse its words, because the child must improve their own line themselves. "example_after" must be correct natural English a teacher would accept and something a child of this year level could realistically write; wherever it fits, shape it with one of the writing moves listed and name that move in "move". "now_you" must be one short, concrete task that sends the child back to their own quoted line to use the move on it (and then in the other places it fits), not a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in error_totals.
 Rules for error_totals: inspect the WHOLE transcript and return non-negative integer totals for ALL errors, with no five-error limit. Count each occurrence, including repeated misspellings. "spelling" counts misspelt words, excluding case-only errors and apostrophe errors. "punctuation" counts missing, incorrect or unnecessary punctuation marks (including apostrophes), excluding capital letters. "capital_letters" counts missing or unnecessary capitals. Count a single error in only one category. Do not count crossed-out writing, [unclear] text, acceptable Australian English spellings or deliberate poetic choices as errors. Return 0 when a category has no errors. Students must find the errors themselves: do not list incorrect words, corrections, locations or spelling tips anywhere in the feedback. In the spelling and punctuation areas, give general checking strategies without pointing out the errors; this overrides the requirement to quote specific errors. Keep writing-craft examples focused on their chosen strategy.
-Rules for word_boost: pick 1 or 2 plain words the child actually wrote that could be stronger; for each, give EXACTLY 4 synonyms that genuinely upgrade it, in order from the simplest to the most sophisticated, each one a step up from the last, all true synonyms in the child's sentence, with the last one a stretch word for this year level. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". "challenge" lists 3 OTHER plain words the child wrote (not the swap words) that have good synonyms a child of this year could think of themselves; the child will type their own synonym for each and have it checked. Use [] if the writing has no suitable words. Use null for word_boost only if their word choices are already strong.
+Rules for word_boost: pick 1 or 2 plain words the child actually wrote that could be stronger; for each, give EXACTLY 4 synonyms that genuinely upgrade it, in order from the simplest to the most sophisticated, each one a step up from the last, all true synonyms in the child's sentence, with the last one a stretch word for this year level. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". ${challenge ? `"challenge" lists 3 OTHER plain words the child wrote (not the swap words) that have good synonyms a child of this year could think of themselves; the child will type their own synonym for each and have it checked. Use [] if the writing has no suitable words.` : `"challenge" must be [] for this Year 1 writer.`} Use null for word_boost only if their word choices are already strong.
 Be very specific everywhere: every comment must quote or point to actual words, phrases or sentences from this child's writing, never generic advice that could apply to anyone's work.`;
 
 // Step 3: the child revised in their book and photographed the new version. Compare the two,
@@ -144,6 +148,15 @@ const SYNONYM_SPEC = `A primary-school child was asked to think of a synonym for
 - "no": a different meaning, not a real word, or the same word again.
 Respond with ONLY a JSON object in exactly this shape: { "verdict": "yes" | "close" | "no", "note": "one short, friendly sentence for the child, under 20 words, saying why" }
 Never use or guess any name. Do not mention these rules, or that you are an AI.`;
+
+// Before a page is read: is it the right way up? A page photographed sideways or upside down
+// transcribes badly, so the app asks first (a small copy, low detail, a few tokens) and turns
+// the page itself. The answer is the clockwise turn that would make the writing upright.
+const ORIENTATION_RULES = `You are looking at a small photo of a page of handwriting. Work out which way the handwriting runs. Respond with ONLY a JSON object in exactly this shape: { "rotate": 0 }
+"rotate" is the clockwise rotation in degrees, one of 0, 90, 180 or 270, that would make the writing upright so it reads left to right and top to bottom. Use 0 if it is already upright. If you truly cannot tell, use 0.`;
+const ROTATIONS = [0, 90, 180, 270];
+const MAX_ORIENTATION_CHARS = 600_000;
+const BAD_PHOTO = { status: 400, payload: { error: "That photo didn't come through properly. Please try again." } };
 
 const SYNONYM_VERDICTS = ["yes", "close", "no"];
 const MAX_SYNONYM_CHARS = 40;
@@ -312,7 +325,7 @@ function validateFeedback(data, { areas, yearLevel, transcript }) {
       // Challenge words: the child's own words, not the swap words, shown with their sentence.
       const taken = new Set(swaps.map((s) => normalise(s.from)));
       const challenge = [];
-      for (const raw of Array.isArray(boost.challenge) ? boost.challenge : []) {
+      for (const raw of Array.isArray(boost.challenge) && yearLevel >= CHALLENGE_MIN_YEAR ? boost.challenge : []) {
         const word = text(raw);
         const key = normalise(word);
         if (!word || wordsOf(word).length !== 1 || taken.has(key) || !hasWord(transcript, word)) continue;
@@ -426,6 +439,32 @@ async function transcribePages({ images, env, fetchImpl }) {
   return { status: 200, payload: { transcript: dropCrossedOut(data.transcript).trim() } };
 }
 
+// A failed or unclear check answers "no turn" rather than an error: reading must never be
+// blocked by the helper, and the child still has the Rotate button.
+async function detectOrientation({ image, env, fetchImpl }) {
+  const content = await callModel({
+    fetchImpl,
+    env,
+    body: {
+      model: env.OPENAI_TRANSCRIBE_MODEL || DEFAULT_TRANSCRIBE_MODEL,
+      messages: [
+        { role: "system", content: ORIENTATION_RULES },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Which way up is this page?" },
+            { type: "image_url", image_url: { url: image, detail: "low" } },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 400,
+    },
+  });
+  const data = extractJson(content);
+  return { status: 200, payload: { rotate: ROTATIONS.includes(data?.rotate) ? data.rotate : 0 } };
+}
+
 async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchImpl }) {
   const kind = typeof genre === "string" ? genre : "";
   const areas = criteriaFor(kind);
@@ -437,7 +476,7 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
     FEEDBACK_PRINCIPLES,
     movesPrompt(yearLevel),
     readingLevel(yearLevel),
-    outputSpec(yearLevel <= 2 ? "1 or 2" : "2 or 3"),
+    outputSpec(yearLevel <= 2 ? "1 or 2" : "2 or 3", { challenge: yearLevel >= CHALLENGE_MIN_YEAR }),
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -608,7 +647,21 @@ export async function handleFeedback(body, { fetchImpl, env }) {
     return { status: 400, payload: { error: "Please choose a year level from 1 to 6." } };
   }
 
+  if (body?.orientation !== undefined) {
+    const image = typeof body.orientation?.image === "string" ? body.orientation.image : "";
+    if (!image.startsWith("data:image/")) return BAD_PHOTO;
+    if (image.length > MAX_ORIENTATION_CHARS) {
+      return { status: 413, payload: { error: "That photo is too big. Please try taking it again." } };
+    }
+    if (!looksLikeImage(image)) return BAD_PHOTO;
+    if (!env?.OPENAI_API_KEY) {
+      return { status: 500, payload: { error: "The app isn't set up yet. Please tell your teacher." } };
+    }
+    return detectOrientation({ image, env, fetchImpl });
+  }
+
   if (body?.synonymCheck !== undefined) {
+    if (yearLevel < CHALLENGE_MIN_YEAR) return { status: 400, payload: { error: "The synonym challenge starts in Year 2." } };
     const check = readSynonymCheck(body.synonymCheck);
     if (check.error) return { status: 400, payload: { error: check.error } };
     if (!env?.OPENAI_API_KEY) {
@@ -639,7 +692,6 @@ export async function handleFeedback(body, { fetchImpl, env }) {
   if (images.length > MAX_PAGES) {
     return { status: 400, payload: { error: "You can send up to two pages at a time." } };
   }
-  const BAD_PHOTO = { status: 400, payload: { error: "That photo didn't come through properly. Please try again." } };
   let totalChars = 0;
   for (const image of images) {
     if (typeof image !== "string" || !image.startsWith("data:image/")) return BAD_PHOTO;

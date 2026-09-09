@@ -377,16 +377,9 @@ h1[tabindex="-1"]:focus-visible, h2[tabindex="-1"]:focus-visible, h3[tabindex="-
 }
 #screen-review.active { width: 100%; }
 
-/* The typed copy: one page at a time, full width, a plain document page that grows with the
-   writing. The page label and Next/Previous buttons only show for 2+ pages. */
+/* The typed copy: the whole piece (pages joined) full width, a plain document page that grows
+   with the writing. */
 .typed-box { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
-.review-page-label {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  letter-spacing: 0.04em;
-  color: var(--gold);
-}
 /* A row with a ghost Back/Previous on the left and one big primary button that takes the rest. */
 .step-actions { flex-wrap: wrap; align-items: stretch; }
 .step-actions > * { margin-top: 0; }

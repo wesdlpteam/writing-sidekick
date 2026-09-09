@@ -199,6 +199,10 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (MOCK) {
+      if (body.orientation) {
+        res.writeHead(200).end(JSON.stringify({ rotate: 0 }));
+        return;
+      }
       if (body.synonymCheck) {
         await new Promise((r) => setTimeout(r, 500));
         const result = mockSynonym(body.synonymCheck);
