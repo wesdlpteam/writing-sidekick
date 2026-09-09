@@ -16,7 +16,7 @@ of strategies.
 
 - Writing strength: one tappable chip per writing skill (audience, ideas, cohesion and so on),
   coloured by how it went. A tap explains what the skill means in a child's words and shows
-  what the sidekick saw in their own writing. "Your hero powers" then lists the real strengths,
+  what the sidekick saw in their own writing. "What you did well" then lists the real strengths,
   quoting the child, so the positives are as visible as the next steps.
 - One to three power-ups (one or two for Years 1 and 2): the areas with the biggest payoff for
   this piece. Each card is one line and one strategy, laid out as three numbered steps in
@@ -44,8 +44,10 @@ of strategies.
   next tip. Nothing is claimed that is not in the new writing.
 - The ten-area check-up (audience, text structure, ideas, characters and setting or persuasive
   devices, vocabulary, cohesion, paragraphing, sentence structure, punctuation, spelling; nine
-  for reports and poems) is no longer shown to the child. It goes into the teacher report,
-  with the highest-impact goal, on the print-out and the saved picture.
+  for reports and poems) is not shown to the child as a list: it drives the writing strength
+  chips and the "What you did well" card. The full check-up, with the highest-impact goal,
+  appears only as the teacher report on the print-out. The saved picture is the child's
+  feedback alone.
 - A Listen button on every card reads it aloud in a warm, sincere voice (OpenAI's "marin"
   voice), so younger readers can hear their feedback.
 

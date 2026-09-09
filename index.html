@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260909-steps">
+  <link rel="stylesheet" href="css/app.css?v=20260909-well">
 </head>
 <body>
   <main id="app">
@@ -125,8 +125,8 @@
           </div>
         </section>
         <section id="powers-card" class="powers-card" aria-labelledby="powers-title" hidden>
-          <div class="title-row"><h3 id="powers-title" class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F525; </span>Your hero powers</h3></div>
-          <p class="visual-caption">What you are already doing well. Keep doing these on purpose.</p>
+          <div class="title-row"><h3 id="powers-title" class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F525; </span>What you did well</h3></div>
+          <p class="visual-caption">Things already working in your writing. Keep doing them on purpose.</p>
           <ul id="powers-list" class="powers-list"></ul>
         </section>
         <div id="power-ups" class="power-ups"></div>
@@ -207,17 +207,6 @@
       <button id="btn-error-close" class="ghost small">OK</button>
     </div>
 
-    <dialog id="save-dialog" aria-labelledby="save-title">
-      <h2 id="save-title">Save a picture</h2>
-      <p class="lead">Tick what goes in the picture.</p>
-      <label class="check-row"><input id="save-brief" type="checkbox" checked> Power-ups, with word power and spelling</label>
-      <label class="check-row" id="save-detail-row"><input id="save-detail" type="checkbox" checked> Teacher report: highest-impact goal and the ten-area check-up</label>
-      <div class="btn-row">
-        <button id="btn-save-cancel" class="ghost" type="button">Cancel</button>
-        <button id="btn-save-go" class="primary" type="button">Save picture</button>
-      </div>
-    </dialog>
-
   </main>
 
   <div id="print-doc" aria-hidden="true">
@@ -247,7 +236,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20260909-steps");
+      await import("./js/app.js?v=20260909-well");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

@@ -1,8 +1,8 @@
-import { reflowTranscript } from "./transcript.js?v=20260909-steps";
-import { writingStrength, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260909-steps";
-import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260909-steps";
-import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260909-steps";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-steps";
+import { reflowTranscript } from "./transcript.js?v=20260909-well";
+import { writingStrength, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260909-well";
+import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260909-well";
+import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260909-well";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-well";
 
 const MAX_PAGES = 2;
 
@@ -340,6 +340,12 @@ function renderChallenge(challenge) {
     const label = el("label", "challenge-label");
     label.htmlFor = `challenge-input-${index}`;
     label.append("A synonym for ", el("strong", "", word));
+    const context = el("p", "challenge-context");
+    if (sentence) {
+      const quote = el("q", "");
+      quote.appendChild(sentenceWithWord(sentence, word));
+      context.append("In your writing: ", quote);
+    }
     const input = el("input", "challenge-input");
     input.id = `challenge-input-${index}`;
     input.type = "text";
@@ -359,7 +365,9 @@ function renderChallenge(challenge) {
       event.preventDefault();
       btn.click();
     });
-    li.append(label, input, btn, result);
+    li.append(label);
+    if (sentence) li.append(context);
+    li.append(input, btn, result);
     list.appendChild(li);
   });
 }
@@ -565,7 +573,38 @@ for (const id of ["strength-key", "strength-focus"]) {
 }
 $("skill-detail-close").addEventListener("click", closeSkill);
 
-// What is already working, quoting the child's writing: the positive half of the feedback.
+// The child's own words inside a sentence of praise, picked out: quoted text becomes a <q>,
+// which draws its own curly quotes, so the quotes stand out from the comment. Single quotes
+// only count when they open after a space and close before a space or punctuation, so the
+// apostrophes in can't and I'm are left alone.
+function withQuotes(text) {
+  const frag = document.createDocumentFragment();
+  const re = /“([^”]+)”|"([^"]+)"|‘([^’]+)’|(?:^|(?<=[\s(]))'([^'\n]+?)'(?=[\s.,;:!?)]|$)/g;
+  let last = 0;
+  let match;
+  while ((match = re.exec(text))) {
+    if (match.index > last) frag.append(text.slice(last, match.index));
+    frag.append(el("q", "quote", match[1] ?? match[2] ?? match[3] ?? match[4]));
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) frag.append(text.slice(last));
+  return frag;
+}
+
+// The sentence a challenge word came from, with the word itself in bold, so the child can
+// think of a synonym that fits the way they used it.
+function sentenceWithWord(sentence, word) {
+  const frag = document.createDocumentFragment();
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = sentence.split(new RegExp(`(?<![\\p{L}\\p{N}])(${escaped})(?![\\p{L}\\p{N}])`, "iu"));
+  parts.forEach((part, index) => {
+    if (!part) return;
+    frag.append(index % 2 ? el("strong", "", part) : part);
+  });
+  return frag;
+}
+
+// What the child did well, quoting their writing: the positive half of the feedback.
 function renderHeroPowers() {
   const powers = heroPowers(state.feedback.criteria);
   $("powers-card").hidden = powers.length === 0;
@@ -579,7 +618,9 @@ function renderHeroPowers() {
       showSkill(power.key);
       $("skill-detail").scrollIntoView({ behavior: "smooth", block: "center" });
     });
-    li.append(chip, el("span", "power-text", power.text));
+    const text = el("p", "power-text");
+    text.appendChild(withQuotes(power.text));
+    li.append(chip, text);
     list.appendChild(li);
   }
 }
@@ -590,8 +631,6 @@ function renderFeedback() {
   renderHeroPowers();
   renderPractice();
   renderBoost();
-  $("save-brief").checked = true;
-  $("save-detail").checked = true;
   rebuildShareImage();
   renderPowerUps(powerUps);
   showSlide(0);
@@ -673,48 +712,35 @@ $("btn-slide-next").addEventListener("click", () => showSlide(slideIndex + 1));
 
 // ---- save picture / print / restart ---------------------------------------
 
-// The picture is pre-built for the ticked options so the save tap can share it instantly
-// (Safari only allows sharing right after a tap).
+// The picture is pre-built so the save tap can share it instantly (Safari only allows
+// sharing right after a tap). It is the child's feedback only: nothing for the teacher.
 let shareCache = { key: "", blob: null };
-
-function shareOptions() {
-  return { brief: $("save-brief").checked, detail: $("save-detail").checked };
-}
 
 // Photos of the writing only leave the app when the child ticks the box (off by default).
 const includePhotos = () => $("include-photos").checked;
 
-function shareImageInputs(include) {
-  return { pages: includePhotos() ? state.pages : [], feedback: state.feedback, yearLevel: state.yearLevel, include };
+function shareImageInputs() {
+  return { pages: includePhotos() ? state.pages : [], feedback: state.feedback, yearLevel: state.yearLevel };
 }
 
 function rebuildShareImage() {
   if (!state.feedback) return;
-  const include = shareOptions();
-  const key = `${include.brief}|${include.detail}`;
+  const key = `photos:${includePhotos()}`;
   shareCache = { key, blob: null };
-  $("btn-save-go").disabled = !include.brief && !include.detail;
-  if (!include.brief && !include.detail) return;
-  buildFeedbackImage(shareImageInputs(include))
+  buildFeedbackImage(shareImageInputs())
     .then((blob) => {
       if (shareCache.key === key) shareCache.blob = blob;
     })
     .catch(() => {});
 }
 
-$("save-brief").addEventListener("change", rebuildShareImage);
-$("save-detail").addEventListener("change", rebuildShareImage);
 $("include-photos").addEventListener("change", rebuildShareImage);
-$("btn-save-pic").addEventListener("click", () => $("save-dialog").showModal());
-$("btn-save-cancel").addEventListener("click", () => $("save-dialog").close());
 
-$("btn-save-go").addEventListener("click", async () => {
-  const include = shareOptions();
-  if (!include.brief && !include.detail) return;
-  $("save-dialog").close();
+$("btn-save-pic").addEventListener("click", async () => {
+  if (!state.feedback) return;
   try {
-    const key = `${include.brief}|${include.detail}`;
-    const blob = (shareCache.key === key && shareCache.blob) || (await buildFeedbackImage(shareImageInputs(include)));
+    const key = `photos:${includePhotos()}`;
+    const blob = (shareCache.key === key && shareCache.blob) || (await buildFeedbackImage(shareImageInputs()));
     await saveFeedbackImage(blob);
   } catch {
     showError("Hmm, the picture didn't save. You can use Print instead, or try again.");
@@ -741,7 +767,7 @@ $("btn-print").addEventListener("click", () => {
   const powers = heroPowers(criteria);
   if (powers.length) {
     const h = document.createElement("h2");
-    h.textContent = "Hero powers: what is already working";
+    h.textContent = "What you did well";
     const ul = document.createElement("ul");
     for (const power of powers) {
       const li = document.createElement("li");

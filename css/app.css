@@ -639,6 +639,9 @@ body.senior .practice-tip::before { content: ""; }
 .challenge-item.is-no { background: var(--purple-soft); }
 .challenge-label { font-size: 0.95rem; line-height: 1.4; }
 .challenge-label strong { display: block; font-size: 1.2rem; font-weight: 800; }
+.challenge-context { margin: 0; font-size: 0.92rem; line-height: 1.45; color: var(--muted); }
+.challenge-context q { font-style: italic; color: var(--ink); }
+.challenge-context strong { font-weight: 800; color: var(--purple); }
 .challenge-input {
   width: 100%;
   min-height: 48px;
@@ -771,11 +774,28 @@ body.senior .power-title { font-size: 1.35rem; }
   box-shadow: var(--pop-shadow);
 }
 .powers-card[hidden] { display: none; }
-.powers-card .visual-caption { margin-bottom: 12px; }
-.powers-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.power-item { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 10px; font-size: 1.05rem; line-height: 1.5; }
-.power-item .power-area { background: #fff; min-height: 32px; cursor: pointer; font-family: var(--font-body); }
-.power-text { flex: 1 1 240px; }
+.powers-card .visual-caption { margin-bottom: 4px; }
+/* One shared column for the skill chips (the widest chip sets it, via subgrid), so every
+   line of praise starts at the same place. Narrow screens stack the chip above its line. */
+.powers-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0 14px; }
+.power-item {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 14px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 2px dashed rgba(19, 26, 48, 0.18);
+}
+@supports (grid-template-columns: subgrid) { .power-item { grid-template-columns: subgrid; } }
+.power-item:first-child { border-top: 0; padding-top: 4px; }
+.power-item .power-area { justify-self: start; background: #fff; min-height: 32px; cursor: pointer; font-family: var(--font-body); }
+.power-text { margin: 0; font-size: 1.05rem; line-height: 1.5; padding-top: 2px; }
+.power-text .quote { font-style: italic; font-weight: 700; color: var(--purple); }
+@media (max-width: 560px) {
+  .powers-list, .power-item { grid-template-columns: minmax(0, 1fr); }
+  .power-item { gap: 6px; }
+}
 
 /* Revise it: the child's own go at the move, checked on the spot. */
 .revise { margin-top: 14px; padding-top: 12px; border-top: 2px dashed #d9cbe6; }

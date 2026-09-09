@@ -11,13 +11,11 @@ const GOLD = "#ffc233";
 const VIOLET = "#c77dff";
 const SKY_MUTED = "#aab6da";
 const GREEN = "#b8ecc7";
-const BLUE = "#e6d4f0";
 const YELLOW = "#ffe9a8";
 const DETAIL = "#f4f0fa";
 const MUTED = "#4a5570";
 
-const STATUS_LABEL = { strength: "Strength", steady: "On track", next_step: "Next step" };
-const STATUS_FILL = { strength: GREEN, steady: YELLOW, next_step: BLUE };
+const PARA_GAP = 16; // extra space before each new part of a card
 
 // Breaks text into lines that fit maxWidth in the font currently set on ctx.
 function wrapText(ctx, text, maxWidth) {
@@ -50,12 +48,13 @@ function roundedRect(ctx, x, y, w, h, r) {
 
 function cardHeight(section, lineHeight) {
   const titleHeight = section.titleLines.length ? section.titleLines.length * lineHeight + 8 : 0;
-  return titleHeight + section.lines.length * lineHeight + 44;
+  const bodyHeight = section.lines.reduce((sum, line) => sum + lineHeight + line.gap, 0);
+  return titleHeight + bodyHeight + 44;
 }
 
-// Draws one card. Title lines and body lines were wrapped with the same fonts used here,
-// so nothing runs past the border.
-function drawCard(ctx, y, section, lineHeight, titleFont, bodyFont) {
+// Draws one card. Every line was wrapped with the same font it is drawn in, so nothing runs
+// past the border. Each part of the card starts after a gap, with its label in bold.
+function drawCard(ctx, y, section, lineHeight, titleFont) {
   const height = cardHeight(section, lineHeight);
   roundedRect(ctx, PAD, y, INNER, height, 18);
   ctx.fillStyle = section.fill;
@@ -73,9 +72,10 @@ function drawCard(ctx, y, section, lineHeight, titleFont, bodyFont) {
     }
     textY += 8;
   }
-  ctx.font = bodyFont;
   for (const line of section.lines) {
-    ctx.fillText(line, PAD + 28, textY);
+    textY += line.gap;
+    ctx.font = line.font;
+    ctx.fillText(line.text, PAD + 28, textY);
     textY += lineHeight;
   }
   return y + height + 28;
@@ -91,10 +91,11 @@ async function loadImage(src) {
   return img;
 }
 
-// include.brief = the power-ups, word power and spelling;
-// include.detail = the teacher report: the highest-impact goal, then the check-up (one card per area).
-export async function buildFeedbackImage({ pages = [], feedback, yearLevel, include = { brief: true, detail: false } }) {
+// The child's feedback as a picture: what they did well, the power-ups (as their three
+// steps), word power and the editing counts. Nothing here is for the teacher.
+export async function buildFeedbackImage({ pages = [], feedback, yearLevel }) {
   const bodyFont = `30px Nunito, sans-serif`;
+  const labelFont = `800 30px Nunito, sans-serif`;
   const titleFont = `800 34px Nunito, sans-serif`;
   const lineHeight = 42;
 
@@ -104,57 +105,56 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
     return wrapText(measure, text, TEXT_W);
   };
   const sections = [];
-  const addCard = (fill, title, bodyTexts) =>
-    sections.push({
-      fill,
-      titleLines: title ? wrap(title, titleFont) : [],
-      lines: bodyTexts.filter(Boolean).flatMap((t) => wrap(t, bodyFont)),
-    });
+  // Each item is a paragraph: a plain string, or { label, text } with the label in bold on
+  // its own line. Paragraphs are separated by a gap so the card does not read as one block.
+  const addCard = (fill, title, items) => {
+    const lines = [];
+    for (const item of items.filter(Boolean)) {
+      const { label, text } = typeof item === "string" ? { label: "", text: item } : item;
+      let gap = lines.length ? PARA_GAP : 0;
+      if (label) {
+        for (const line of wrap(label, labelFont)) {
+          lines.push({ text: line, font: labelFont, gap });
+          gap = 0;
+        }
+      }
+      if (text) {
+        for (const line of wrap(text, bodyFont)) {
+          lines.push({ text: line, font: bodyFont, gap });
+          gap = 0;
+        }
+      }
+    }
+    sections.push({ fill, titleLines: title ? wrap(title, titleFont) : [], lines });
+  };
 
-  if (include.brief) {
-    const powers = (feedback.criteria || []).filter((c) => c.strength && c.status === "strength").slice(0, 3);
-    if (powers.length) {
-      addCard(GREEN, "🔥 Your hero powers", powers.map((c) => `${c.label}: ${c.strength}`));
-    }
-    feedback.powerUps.forEach((p, index) => {
-      addCard("#ffffff", `⚡ Power-up ${index + 1}: ${p.skill}`, [
-        p.why,
-        p.yourLine && `1. Find this line in your book: ${p.yourLine}`,
-        (p.move || p.rule || p.example) && `2. ${p.move ? `Use the strategy: ${p.move.name}.` : "See it done."}${p.rule ? ` ${p.rule}` : ""}`,
-        p.example && `   ${p.example.before} → ${p.example.after}`,
-        p.nowYou && `3. Do this: ${p.nowYou}`,
-      ]);
-    });
-    if (feedback.wordBoost) {
-      const boost = feedback.wordBoost;
-      const challenge = (boost.challenge || []).map((c) => c.word);
-      addCard(DETAIL, "Word power", [
-        ...boost.swaps.map((s) => `${s.from} → ${s.to.join(", ")}`),
-        boost.before && boost.after && `Your sentence: ${boost.before}`,
-        boost.before && boost.after && `With word power: ${boost.after}`,
-        challenge.length && `Synonym challenge: ${challenge.join(", ")}`,
-      ]);
-    }
-    addCard(YELLOW, "Find and fix", [
-      `Spelling errors: ${feedback.errorTotals?.spelling ?? "Not available"}`,
-      `Punctuation errors: ${feedback.errorTotals?.punctuation ?? "Not available"}`,
-      `Capital letter errors: ${feedback.errorTotals?.capital_letters ?? "Not available"}`,
-      "Go back to your writing. Find and fix the errors, then read it again to check.",
+  const powers = (feedback.criteria || []).filter((c) => c.strength && c.status === "strength").slice(0, 3);
+  if (powers.length) {
+    addCard(GREEN, "🔥 What you did well", powers.map((c) => ({ label: c.label, text: c.strength })));
+  }
+  feedback.powerUps.forEach((p, index) => {
+    const how = [p.rule, p.example && `${p.example.before} → ${p.example.after}`].filter(Boolean).join("\n");
+    addCard("#ffffff", `⚡ Power-up ${index + 1}: ${p.skill}`, [
+      p.why,
+      p.yourLine && { label: "1. Find this line in your book", text: `“${p.yourLine}”` },
+      how && { label: p.move ? `2. Use the strategy: ${p.move.name}` : "2. See it done", text: how },
+      p.nowYou && { label: "3. Do this", text: p.nowYou },
+    ]);
+  });
+  if (feedback.wordBoost) {
+    const boost = feedback.wordBoost;
+    const challenge = (boost.challenge || []).map((c) => c.word);
+    addCard(DETAIL, "💪 Word power", [
+      { label: "Stronger words", text: boost.swaps.map((s) => `${s.from} → ${s.to.join(", ")}`).join("\n") },
+      boost.before && boost.after && { label: "Your sentence", text: boost.before },
+      boost.before && boost.after && { label: "With word power", text: boost.after },
+      challenge.length && { label: "Synonym challenge", text: `Think of a synonym for: ${challenge.join(", ")}` },
     ]);
   }
-  if (include.detail && Array.isArray(feedback.criteria)) {
-    const goal = feedback.powerUps?.[0];
-    if (goal) {
-      addCard(GOLD, "Teacher report: highest-impact goal", [`${goal.skill}${goal.areaLabel ? ` (${goal.areaLabel})` : ""}.`, goal.why]);
-    }
-    for (const c of feedback.criteria) {
-      const next = c.powerUp ? `See Power-up ${c.powerUp}.` : c.nextStep;
-      addCard(STATUS_FILL[c.status] || YELLOW, `${c.label}: ${STATUS_LABEL[c.status] || STATUS_LABEL.steady}`, [
-        c.strength && `✅ ${c.strength}`,
-        next && `➡️ ${next}`,
-      ]);
-    }
-  }
+  addCard(YELLOW, "📝 Editing: errors to find", [
+    `Spelling: ${feedback.errorTotals?.spelling ?? "Not available"}\nPunctuation: ${feedback.errorTotals?.punctuation ?? "Not available"}\nCapital letters: ${feedback.errorTotals?.capital_letters ?? "Not available"}`,
+    "Go back to your writing. Find and fix the errors, then read it again to check.",
+  ]);
 
   // Every page is shown at full width; tall pages are cropped at the bottom rather than squashed.
   const pageImages = [];
@@ -206,7 +206,7 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel, incl
   }
 
   for (const section of sections) {
-    y = drawCard(ctx, y, section, lineHeight, titleFont, bodyFont);
+    y = drawCard(ctx, y, section, lineHeight, titleFont);
   }
 
   ctx.fillStyle = MUTED;
