@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writingStrength, SKILL_GUIDE, skillExplanation, heroPowers } from '../js/feedback-visuals.js';
+import { writingStrength, writingStrengthLines, SKILL_GUIDE, skillExplanation, heroPowers } from '../js/feedback-visuals.js';
 import { CRITERIA } from '../api/_criteria.js';
 
 test('writing strength excludes editing and chooses the first power-up as the focus', () => {
@@ -23,6 +23,25 @@ test('missing writing ratings do not invent a score', () => {
   assert.equal(writingStrength([{key:'ideas',status:'unknown'}]).areas.length, 0);
   assert.equal(writingStrength().keyStrengthKey, '', 'nothing to open');
   assert.equal(writingStrength().focusKey, '');
+});
+
+test('unassessed skills stay visible without becoming assessed scores, strengths or focus', () => {
+  const criteria = [
+    {key:'ideas',label:'Ideas',status:'strength',strength:'Your example explains the reason.'},
+    {key:'paragraphing',label:'Paragraphing',status:'not_assessed',assessmentNote:'This is one sentence.',powerUp:1,strength:'Untrusted praise'},
+  ];
+  const summary = writingStrength(criteria);
+  assert.equal(summary.areas.length, 2);
+  assert.equal(summary.assessed, 1);
+  assert.equal(summary.unassessed, 1);
+  assert.equal(summary.strong, 1);
+  assert.equal(summary.focusKey, '');
+  assert.deepEqual(heroPowers(criteria).map(c=>c.key), ['ideas']);
+  assert.ok(writingStrengthLines(criteria).includes('Paragraphing: Need more writing. This is one sentence.'));
+  const all = writingStrength([criteria[1]]);
+  assert.equal(all.assessed, 0);
+  assert.equal(all.keyStrengthKey, '');
+  assert.match(all.summary, /need more writing/);
 });
 
 test('every writing skill has a child-friendly explanation, in our own words', () => {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { preservesExpansionKernel, TWR_SENTENCE_GUIDANCE } from '../api/_twr.js';
+import { preservesExpansionKernel, removesWholeSentences, TWR_SENTENCE_GUIDANCE, TWR_ASSESSMENT_GUIDANCE } from '../api/_twr.js';
 import { powerUpProblems, handleFeedback } from '../api/feedback.js';
 import { MOVES } from '../api/_criteria.js';
 
@@ -37,5 +37,20 @@ test('both generation and final review receive the supplied section guidance', a
   }});
   assert.equal(r.status,502);
   assert.equal(prompts.length,2);
-  for (const prompt of prompts) assert.ok(prompt.includes(TWR_SENTENCE_GUIDANCE));
+  for (const prompt of prompts) {
+    assert.ok(prompt.includes(TWR_SENTENCE_GUIDANCE));
+    assert.ok(prompt.includes(TWR_ASSESSMENT_GUIDANCE));
+    assert.match(prompt, /scaffold_in_task|Put this selected support in rule\/now_you/);
+  }
+});
+
+test('paragraph focus removes whole sentences without rewriting useful ideas', () => {
+  const before = 'The pond supports wildlife. My shoes are blue. Frogs shelter in its reeds.';
+  const after = 'The pond supports wildlife. Frogs shelter in its reeds.';
+  assert.equal(removesWholeSentences(before, after), true);
+  for (const invalid of ['', before, 'The pond supports wildlife. Fish live there.', 'Frogs shelter in its reeds. The pond supports wildlife.', 'The pond supports frogs.']) {
+    assert.equal(removesWholeSentences(before, invalid), false, invalid);
+    assert.ok(powerUpProblems({power_ups:[{move:'paragraph_focus',example_before:before,example_after:invalid}]}).length);
+  }
+  assert.deepEqual(powerUpProblems({power_ups:[{move:'paragraph_focus',example_before:before,example_after:after}]}), []);
 });

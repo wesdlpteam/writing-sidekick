@@ -14,6 +14,29 @@ export function preservesExpansionKernel(before, after) {
   return kernel.length > 0;
 }
 
+// A focus model teaches deletion only. Meaning/relevance is checked by the reviewer;
+// this guard prevents the model from adding facts, rewriting or deleting everything.
+export function removesWholeSentences(before, after) {
+  const split = value => String(value || "").trim().split(/(?<=[.!?])\s+|\n+/).map(s => s.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const original = split(before), revised = split(after);
+  if (!revised.length || revised.length >= original.length) return false;
+  let position = 0;
+  return revised.every(sentence => {
+    const found = original.indexOf(sentence, position);
+    position = found + 1;
+    return found >= 0;
+  });
+}
+
+// Original distillation of supplied Section III, chapters 11–13. See the research review.
+export const TWR_ASSESSMENT_GUIDANCE = `TWR SECTION III — assess the sample, then adapt the support:
+Privately check structure (order), coherence (logical links), unity (each detail supports the main idea) and sentence control before selecting targets. Assess this piece, not a permanent ability level. Do not claim independent mastery when teacher assistance is unknown. Content knowledge, spelling and handwriting must not stand in for writing-craft evidence.
+Choose the SAME useful strategy with different support. For sentence expansion, a writer needing support answers one useful question in brief notes; a writer showing control may answer two or three. For because/but/so, select one meaningful relationship rather than requiring all three. For combining, begin with two short sentences and a suggested conjunction when support is needed; combine more information independently only when the draft shows readiness. For elaboration, offer a short starter if needed; fluent writers explain how evidence supports a reason, a consequence, or a justified qualification. For an eligible appositive task, offer phrase choices if needed. Put this selected support in rule/now_you, not just in the private assessment. Choose from the permitted strategies; year eligibility is not a difficulty setting. Keep younger coaching readable while retaining the quality of fluent writing. Older students may need one foundational step. Never add difficulty merely through length, ornate vocabulary or more devices.
+Before adding detail, check unity and relevance. For paragraph_focus, quote the off-topic sentence, explain its mismatch with the paragraph's main idea, and ask for its removal. The fresh BEFORE model must include a main idea, useful supporting detail and one irrelevant sentence. The AFTER removes only the irrelevant sentence, keeping the remaining sentences unchanged and in order. It can be shorter and better. Do not delete relevant evidence, needed context, a deliberate narrative aside, a counterargument or a separate classroom exercise. Do not combine deletion with expansion in one power-up. Other strategies still preserve their supplied ideas; combining preserves facts and expansion preserves its kernel.
+When removing one irrelevant sentence resolves the paragraph's main problem, prefer that single useful power-up. Do not manufacture an extra target to fill space. A persuasive topic sentence may state a reason directly without should or must; preserve it when its following evidence works. Do not change an effective reason into a command merely to add a persuasive device. For paragraph_focus, now_you asks to remove the quoted sentence from this paragraph, with no alternative task. For sentence_expansion, now_you explicitly asks for brief notes answering the selected question before expanding, even when just one question is needed.
+Use not_assessed only when evidence for an area is insufficient in the supplied task. Leave its strength and next_step empty and explain the limitation briefly in assessment_note. Never give a power-up in that area. Missing evidence is not proof of weakness, and a spelling error does not erase a well-developed idea. Keep assessed strengths even when offering an optional stretch. Revisit foundational strategies where the writing needs them without restarting a compulsory sequence of drills.
+Preserve the familiar subject in the student's own task. The fresh model remains on a different, familiar topic as Nathan requires; supply enough context to understand it, without inventing evidence for the student's assignment. Keep concise persuasive topic sentences and place support after them.`;
+
 export const TWR_SENTENCE_GUIDANCE = `TWR SECTION I — strategy fidelity takes priority over generic advice to make prose more elaborate:
 Teach one purposeful change through a clear model, then a manageable task on the student's own writing. Use familiar content so the challenge is thinking and sentence construction, not guessing unknown facts. Select the scaffold from the writing actually present; an older writer may need a foundational strategy. Do not interpret the book's instructional Levels 1 and 2 as Australian school Years 1 and 2. Keep the application's year gates and age-appropriate language.
 Sentence foundations: a full stop and capital do not make a fragment complete. The words need a complete thought with a subject and predicate. A dependent clause alone is unfinished. Teach run-on repair by identifying complete thoughts and separating or correctly joining them; splitting sentences is never sentence combining. Preserve intentional fragments in dialogue or poetry when they serve the genre. Do not prescribe scrambled-sentence drills when the child's draft does not show a word-order problem.

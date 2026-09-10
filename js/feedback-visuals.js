@@ -1,17 +1,36 @@
-// Writing craft and editing are separate: error totals do not lower craft ratings.
+export const WRITING_STATUS_LABELS = {
+  strength: "Strength", steady: "On track", next_step: "Next step", not_assessed: "Need more writing",
+};
+
+// Writing craft and editing are separate. Unassessed skills remain visible, but are
+// never counted as a result or selected as a strength or improvement target.
 export function writingStrength(criteria = []) {
   const areas = criteria.filter((area) => !["spelling", "punctuation"].includes(area.key)
-    && ["strength", "steady", "next_step"].includes(area.status));
+    && Object.hasOwn(WRITING_STATUS_LABELS, area.status));
+  const assessed = areas.filter(area => area.status !== "not_assessed");
+  const unassessed = areas.length - assessed.length;
+  const strong = assessed.filter(area => area.status === "strength").length;
   const key = areas.find((area) => area.status === "strength");
-  const focus = areas.find((area) => area.powerUp === 1) || areas.find((area) => area.status === "next_step");
+  const focus = assessed.find((area) => area.powerUp === 1) || assessed.find((area) => area.status === "next_step");
   return {
     areas,
-    strong: areas.filter((area) => area.status === "strength").length,
-    keyStrength: key?.label || "Keep building your writing skills",
+    assessed: assessed.length,
+    unassessed,
+    strong,
+    summary: [assessed.length ? `We checked ${assessed.length} writing ${assessed.length === 1 ? "skill" : "skills"}. ${strong} ${strong === 1 ? "shows" : "show"} strength.` : "We need more writing to check these skills.",
+      assessed.length && unassessed ? `${unassessed} ${unassessed === 1 ? "needs" : "need"} more writing to check.` : ""].filter(Boolean).join(" "),
+    keyStrength: key?.label || (assessed.length ? "Keep building your writing skills" : "Need more writing"),
     keyStrengthKey: key?.key || "",
-    focus: focus?.label || "Keep stretching your skills",
+    focus: focus?.label || (assessed.length ? "Keep stretching your skills" : "Need more writing"),
     focusKey: focus?.key || "",
   };
+}
+
+// Shared by print and saved picture so uncertain areas cannot become implied strengths.
+export function writingStrengthLines(criteria = []) {
+  const summary = writingStrength(criteria);
+  return [summary.summary, ...summary.areas.map(area =>
+    `${area.label}: ${WRITING_STATUS_LABELS[area.status]}.${area.status === "not_assessed" && area.assessmentNote ? ` ${area.assessmentNote}` : ""}`)];
 }
 
 // What each writing skill means, in words a child can read. Tapping a skill on the writing

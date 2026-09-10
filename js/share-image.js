@@ -1,3 +1,5 @@
+import { writingStrengthLines, heroPowers } from "./feedback-visuals.js?v=20260910-section3";
+
 // Renders the feedback as one tall image so it can be saved to the camera roll.
 
 const W = 1080;
@@ -128,9 +130,10 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel }) {
     sections.push({ fill, titleLines: title ? wrap(title, titleFont) : [], lines });
   };
 
-  const powers = (feedback.criteria || []).filter((c) => c.strength && c.status === "strength").slice(0, 3);
+  addCard("#ffffff", "Writing strengths", writingStrengthLines(feedback.criteria));
+  const powers = heroPowers(feedback.criteria);
   if (powers.length) {
-    addCard(GREEN, "🔥 What you did well", powers.map((c) => ({ label: c.label, text: c.strength })));
+    addCard(GREEN, "🔥 What you did well", powers.map((c) => ({ label: c.label, text: c.text })));
   }
   feedback.powerUps.forEach((p, index) => {
     const how = [p.rule, p.example && `${p.example.before} → ${p.example.after}`].filter(Boolean).join("\n");

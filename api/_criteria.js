@@ -98,7 +98,7 @@ export function criteriaFor(genre) {
   );
 }
 
-export const STATUSES = ["strength", "steady", "next_step"];
+export const STATUSES = ["strength", "steady", "next_step", "not_assessed"];
 
 export function criteriaPrompt(genre) {
   const areas = criteriaFor(genre);
@@ -114,13 +114,15 @@ For every area give a status, judged against THIS year level (a Year 1 writer is
 - "strength": done well for this year and worth naming, so the child can do it again on purpose
 - "steady": there and mostly working; one specific tweak would lift it
 - "next_step": missing or weak for this year; these are the best candidates for a power-up
-Be honest and judge only what is on the page. Strong work can have mostly strengths, and a very short piece may not show enough to judge some areas: then use "steady" with a next step rather than inventing a weakness. Never mark everything as a strength when the writing has not earned it.`;
+- "not_assessed": this sample does not provide enough evidence to judge this area; give a brief assessment_note explaining the limitation, and leave strength and next_step empty
+Be honest and judge only what is on the page. A short extract or separate practice exercise may not show whole-text structure or paragraphing: use "not_assessed", never "steady" as a substitute for uncertainty. Do not invent a weakness, praise or remedial task for an unassessable area. Still assess skills visible in a short sample, such as a complete sentence; do not mark everything unassessable just because it is brief. Judge against the task and year: a young writer's appropriately short piece need not demonstrate older students' paragraphing. Strong work can have mostly strengths. Never mark everything as a strength when the writing has not earned it.`;
 }
 
 // The writing strategies the school teaches, following The Writing Revolution approach (sentences
 // first, then paragraphs; revise before you edit). Names are the ones children hear in class,
-// written out in full; the explanations and examples are our own. minYear follows the usual
-// order the strategies are introduced, so a Year 2 is never handed an appositive.
+// written out in full; the explanations and examples are our own. minYear sets eligibility,
+// not task difficulty. Section III supports simple expansion/elaboration in Year 1 and
+// supported combining in Year 2; retain later gates for appositives and essay scaffolds.
 export const MOVES = {
   sentence_types: {
     name: "Sentence types",
@@ -142,7 +144,7 @@ export const MOVES = {
   },
   sentence_expansion: {
     name: "Sentence expansion",
-    minYear: 2,
+    minYear: 1,
     rule: "Start with a complete kernel sentence. Note answers to the selected when, where, why or how questions, then add those details inside one sentence. Keep the kernel's words; put when first if selected.",
     example: "At sunrise, the surfer paddled out past the break to catch the first wave.",
   },
@@ -166,15 +168,21 @@ export const MOVES = {
   },
   elaborate: {
     name: "Elaborate",
-    minYear: 2,
+    minYear: 1,
     rule: "Add a whole new sentence after a thin one that gives a detail, an example or what happened next, so the reader can see the moment.",
     example: "The monkey grabbed the hat. It held it high above its head and screeched at us.",
   },
   sentence_combining: {
     name: "Sentence combining",
-    minYear: 3,
+    minYear: 2,
     rule: "Join two or three short sentences into one using and, but, because or so, a pronoun, or a describing phrase, while keeping all their information and adding no new facts.",
     example: "The tent was tiny and wet, so nobody slept.",
+  },
+  paragraph_focus: {
+    name: "Keep ideas on topic",
+    minYear: 1,
+    rule: "Read the paragraph's main idea. Remove a sentence that does not support it. Keep the useful sentences in their original order and wording. Check that the paragraph still makes sense.",
+    example: "The pond supports wildlife. Frogs shelter among its reeds.",
   },
   topic_sentence: {
     name: "Topic sentence",

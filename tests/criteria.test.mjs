@@ -41,7 +41,7 @@ test("no kind chosen (or an unknown kind) offers both genre areas as a choice", 
 });
 
 test("the writing moves are named in full, explained, and staged by year", () => {
-  assert.equal(Object.keys(MOVES).length, 14);
+  assert.equal(Object.keys(MOVES).length, 15);
   for (const [key, m] of Object.entries(MOVES)) {
     assert.ok(m.name && m.rule.length > 30 && m.example.length > 8, key);
     assert.ok(m.minYear >= 1 && m.minYear <= 6, key);
@@ -50,11 +50,11 @@ test("the writing moves are named in full, explained, and staged by year", () =>
   }
   assert.match(MOVES.transition.rule, /transition word or phrase/);
   assert.match(MOVES.subordinating_conjunction.rule, /Begin with a subordinating conjunction/);
-  assert.deepEqual(movesFor(1).map((m) => m.key), ["sentence_types", "fragment_fix", "because_but_so"]);
-  assert.ok(movesFor(3).some((m) => m.key === "sentence_combining"));
+  assert.deepEqual(movesFor(1).map((m) => m.key), ["sentence_types", "fragment_fix", "because_but_so", "sentence_expansion", "elaborate", "paragraph_focus"]);
+  assert.ok(movesFor(2).some((m) => m.key === "sentence_combining"));
   assert.ok(!movesFor(3).some((m) => m.key === "appositive"), "appositives wait until Year 4");
   assert.ok(!movesFor(4).some((m) => m.key === "general_to_specific_intro"), "introductions wait until Year 5");
-  assert.equal(movesFor(6).length, 14);
+  assert.equal(movesFor(6).length, 15);
   assert.ok(movesFor(2).some((m) => m.key === "elaborate"));
 });
 

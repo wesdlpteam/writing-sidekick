@@ -95,6 +95,29 @@ const IMG = "data:image/jpeg;base64,/9j/AAAA";
 const feedbackFor = (payload, body = { transcript: TEXT, yearLevel: 3, genre: "narrative" }, capture) =>
   handleFeedback(body, { fetchImpl: mockFetch(JSON.stringify(payload), { capture }), env: ENV });
 
+test("unassessed areas retain a limitation note and cannot receive praise or a power-up", async () => {
+  const payload = structuredClone(GOOD_PAYLOAD);
+  payload.areas.sentence_structure = {status:'not_assessed',strength:'Made up praise',next_step:'Invented task',assessment_note:'This extract does not show this skill.'};
+  const result = await feedbackFor(payload);
+  assert.equal(result.status, 200);
+  const area = result.payload.criteria.find(c=>c.key==='sentence_structure');
+  assert.equal(area.assessmentNote, 'This extract does not show this skill.');
+  assert.equal(area.strength, '');
+  assert.equal(area.nextStep, '');
+  assert.equal(area.powerUp, null);
+  assert.deepEqual(result.payload.powerUps.map(p=>p.area), ['vocabulary']);
+  assert.equal(result.payload.criteria.find(c=>c.key==='vocabulary').powerUp, 1);
+});
+
+test("no assessable craft evidence returns no invented power-ups and supplies a neutral note", async () => {
+  const payload = {...GOOD_PAYLOAD,headline:'',power_ups:[],areas:Object.fromEntries(Object.keys(AREAS).map(k=>[k,{status:'not_assessed'}]))};
+  const result = await feedbackFor(payload);
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.payload.powerUps, []);
+  assert.ok(result.payload.criteria.every(c=>c.status==='not_assessed' && c.assessmentNote && !c.strength && !c.nextStep));
+  assert.match(result.payload.headline, /does not show enough/);
+});
+
 // ---- shared validation -----------------------------------------------------
 
 test("rejects invalid year level", async () => {
@@ -526,6 +549,7 @@ test("feedback response is normalised: headline, ten areas in marker order, powe
     status: "strength",
     strength: "Capital letters and full stops are in place on both sentences.",
     nextStep: "Try an exclamation mark when the dog does something exciting.",
+    assessmentNote: "",
     powerUp: null,
   });
   assert.equal(r.payload.criteria.find((c) => c.key === "sentence_structure").powerUp, 1, "area points at its power-up");
@@ -599,7 +623,7 @@ test("kind of writing not chosen: model picks one of the two genre areas", async
   assert.equal(r2.payload.criteria.map((c) => c.key)[3], "persuasive_devices");
 });
 
-test("areas: one missing is tolerated, most missing -> 502, unknown status becomes steady, junk skipped", async () => {
+test("areas: one missing is tolerated, most missing -> 502, unknown status becomes unassessed, junk skipped", async () => {
   const nine = { ...AREAS };
   delete nine.cohesion;
   const r1 = await feedbackFor({ ...GOOD_PAYLOAD, areas: nine });
@@ -613,7 +637,7 @@ test("areas: one missing is tolerated, most missing -> 502, unknown status becom
   const odd = { ...AREAS, ideas: area("amazing", "x", "y"), audience: "junk", paragraphing: area("steady", "", "") };
   const r3 = await feedbackFor({ ...GOOD_PAYLOAD, areas: odd });
   assert.equal(r3.status, 200);
-  assert.equal(r3.payload.criteria.find((c) => c.key === "ideas").status, "steady");
+  assert.equal(r3.payload.criteria.find((c) => c.key === "ideas").status, "not_assessed");
   assert.ok(!r3.payload.criteria.some((c) => c.key === "audience"));
   assert.ok(!r3.payload.criteria.some((c) => c.key === "paragraphing"), "an area with no text at all is dropped");
 });

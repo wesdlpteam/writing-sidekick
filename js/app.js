@@ -1,8 +1,8 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260910-quality";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260910-section3";
 import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260910-quality";
 import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260910-quality";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260910-example";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260910-section3";
 
 const MAX_PAGES = 2;
 
@@ -489,6 +489,7 @@ const STATUS = {
   strength: { emoji: "⭐", label: "Strength", css: "is-strength" },
   steady: { emoji: "👍", label: "On track", css: "is-steady" },
   next_step: { emoji: "🚀", label: "Next step", css: "is-next" },
+  not_assessed: { emoji: "", label: "Need more writing", css: "is-unassessed" },
 };
 
 // The ten-area check-up is no longer shown to the child; it goes into the teacher report
@@ -513,7 +514,7 @@ function renderStrength() {
     chip.addEventListener("click", () => showSkill(area.key));
     bar.appendChild(chip);
   }
-  const description = summary.areas.length ? `${summary.strong} of ${summary.areas.length} writing skills showing strength` : "Writing strength not available";
+  const description = summary.summary;
   $("strength-summary").textContent = description;
   for (const [id, label, key] of [["strength-key", summary.keyStrength, summary.keyStrengthKey], ["strength-focus", summary.focus, summary.focusKey]]) {
     const btn = $(id);
@@ -542,7 +543,7 @@ function showSkill(key) {
     return;
   }
   closeSkill();
-  const status = STATUS[area.status] || STATUS.steady;
+  const status = STATUS[area.status] || STATUS.not_assessed;
   const guide = skillExplanation(area.key);
   detail.dataset.key = key;
   detail.className = `skill-detail ${status.css}`;
@@ -550,12 +551,14 @@ function showSkill(key) {
   $("skill-detail-status").textContent = status.label;
   $("skill-detail-what").textContent = guide.what;
   $("skill-detail-how").textContent = guide.how;
-  $("skill-detail-how").hidden = !guide.how;
+  $("skill-detail-how").hidden = !guide.how || area.status === "not_assessed";
+  $("skill-detail-note").textContent = area.assessmentNote || "";
+  $("skill-detail-note").hidden = !area.assessmentNote;
   const strength = $("skill-detail-strength");
   strength.hidden = !area.strength;
   strength.lastElementChild.textContent = area.strength;
   const next = $("skill-detail-next");
-  const nextText = area.powerUp ? `See Power-up ${area.powerUp} below.` : area.nextStep;
+  const nextText = area.powerUp ? `See Power-up ${area.powerUp} in the next section.` : area.nextStep;
   next.hidden = !nextText;
   next.lastElementChild.textContent = nextText || "";
   detail.hidden = false;
@@ -632,6 +635,8 @@ function renderFeedback() {
   renderBoost();
   rebuildShareImage();
   renderPowerUps(powerUps);
+  $("mission-revise").hidden = !powerUps.length;
+  $("mission-word-power").hidden = !state.feedback.wordBoost;
   showSlide(0);
   resetIdle();
 }
@@ -640,6 +645,7 @@ function renderFeedback() {
 
 // The server's one-line headline is not shown: Nathan found it doubled up on the rest.
 const SLIDES = [
+  { key: "strength", label: "Writing strengths" },
   { key: "power", label: "Power-ups" },
   { key: "words", label: "Word lab" },
   { key: "finish", label: "Mission complete" },
@@ -650,7 +656,7 @@ let slideIndex = 0;
 function activeSlides() {
   const fb = state.feedback;
   const hasWords = Boolean(fb);
-  return SLIDES.filter((s) => s.key !== "words" || hasWords);
+  return SLIDES.filter((s) => (s.key !== "words" || hasWords) && (s.key !== "power" || fb?.powerUps?.length));
 }
 
 function renderSteps(slides, index) {
@@ -752,6 +758,7 @@ $("btn-print").addEventListener("click", () => {
     pagesBox.appendChild(img);
   });
   $("print-transcript").textContent = fullTranscript();
+  $("print-strength").replaceChildren(...writingStrengthLines(criteria).map(line => el("p", "", line)));
   const powersBox = $("print-powers");
   powersBox.innerHTML = "";
   const powers = heroPowers(criteria);
@@ -767,6 +774,7 @@ $("btn-print").addEventListener("click", () => {
     powersBox.append(h, ul);
   }
   const powerBox = $("print-powerups");
+  $("print-powerups-title").hidden = !powerUps.length;
   powerBox.innerHTML = "";
   powerUps.forEach((p, index) => {
     const h = document.createElement("h3");
@@ -833,10 +841,10 @@ function clearEverything() {
   $("transcript-check-note").textContent = "";
   $("include-photos").checked = false;
   $("camera-title").textContent = "Photo time";
-  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "boost-swaps", "challenge-list", "print-pages", "print-powers", "print-powerups", "print-practice", "print-boost"]) {
+  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "boost-swaps", "challenge-list", "print-pages", "print-strength", "print-powers", "print-powerups", "print-practice", "print-boost"]) {
     $(id).innerHTML = "";
   }
-  for (const id of ["strength-summary", "strength-key", "strength-focus", "skill-detail-title", "skill-detail-what", "skill-detail-how", "print-transcript"]) $(id).textContent = "";
+  for (const id of ["strength-summary", "strength-key", "strength-focus", "skill-detail-title", "skill-detail-what", "skill-detail-how", "skill-detail-note", "print-transcript"]) $(id).textContent = "";
   for (const id of ["skill-detail-strength", "skill-detail-next"]) $(id).lastElementChild.textContent = "";
   $("boost-before").textContent = "";
   $("boost-after").textContent = "";

@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260910-quality">
+  <link rel="stylesheet" href="css/app.css?v=20260910-section3">
 </head>
 <body>
   <main id="app">
@@ -95,19 +95,18 @@
       <h1><span class="h-emoji" aria-hidden="true">&#x1F4A5; </span>Sidekick says</h1>
       <nav id="fb-steps" class="fb-steps" aria-label="Feedback steps"></nav>
 
-      <section class="fb-slide" data-slide="power">
-        <div class="stage stage-power">
-          <video class="stage-video" muted playsinline preload="none" poster="art/powerup.jpg" aria-hidden="true">
-            <source src="art/powerup.mp4" type="video/mp4">
+      <section class="fb-slide" data-slide="strength">
+        <div class="stage stage-strength">
+          <video class="stage-video" muted playsinline preload="none" poster="art/strengths.jpg" aria-hidden="true">
+            <source src="art/strengths.mp4" type="video/mp4">
           </video>
         </div>
-        <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Power up here</h2>
-        <p class="lead fb-lead">Revise first. These writing strategies will lift this piece the most. Try each one, then use it in other spots too.</p>
+        <h2 id="strength-title" class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x2B50; </span>Writing strengths</h2>
+        <p class="lead fb-lead">Start with what your writing shows. Notice your strengths and keep using them.</p>
         <section class="strength-card" aria-labelledby="strength-title">
-          <div class="title-row"><h3 id="strength-title" class="practice-title">Writing strength</h3></div>
           <p class="visual-caption">Your writing skills at a glance. Tap a skill to see what it means and how you went.</p>
           <div id="strength-bar" class="skill-chips" role="group" aria-label="Your writing skills"></div>
-          <div class="strength-legend"><span class="legend-strength">Strength</span><span class="legend-steady">On track</span><span class="legend-next_step">Next step</span></div>
+          <div class="strength-legend"><span class="legend-strength">Strength</span><span class="legend-steady">On track</span><span class="legend-next_step">Next step</span><span class="legend-not_assessed">Need more writing</span></div>
           <div id="skill-detail" class="skill-detail" data-key="" hidden>
             <div class="skill-detail-head">
               <h4 id="skill-detail-title" class="skill-detail-title"></h4>
@@ -115,6 +114,7 @@
             </div>
             <p id="skill-detail-what" class="skill-detail-what"></p>
             <p id="skill-detail-how" class="skill-detail-how"></p>
+            <p id="skill-detail-note" class="skill-detail-line" hidden></p>
             <p id="skill-detail-strength" class="skill-detail-line" hidden><span class="power-label">In your writing:</span> <span></span></p>
             <p id="skill-detail-next" class="skill-detail-line" hidden><span class="power-label">Next step:</span> <span></span></p>
             <button id="skill-detail-close" class="ghost small skill-detail-close" type="button">Close</button>
@@ -130,6 +130,16 @@
           <p class="visual-caption">Things already working in your writing. Keep doing them on purpose.</p>
           <ul id="powers-list" class="powers-list"></ul>
         </section>
+      </section>
+
+      <section class="fb-slide" data-slide="power">
+        <div class="stage stage-power">
+          <video class="stage-video" muted playsinline preload="none" poster="art/powerup.jpg" aria-hidden="true">
+            <source src="art/powerup.mp4" type="video/mp4">
+          </video>
+        </div>
+        <h2 class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Power up here</h2>
+        <p class="lead fb-lead">Revise first. These writing strategies will lift this piece the most. Try each one, then use it in other spots too.</p>
         <div id="power-ups" class="power-ups"></div>
         <div class="pencil-card">
           <p class="pencil-title"><span class="h-emoji" aria-hidden="true">&#x270D;&#xFE0F; </span>Pick up your pencil</p>
@@ -172,8 +182,8 @@
         <div class="mission-card">
           <p class="mission-title"><span class="h-emoji" aria-hidden="true">&#x1F4A5; </span>Your mission</p>
           <ol class="mission-steps">
-            <li><strong>Revise.</strong> Find each power-up line in your book and improve it yourself.</li>
-            <li><strong>Word power.</strong> Swap in stronger words where they fit.</li>
+            <li id="mission-revise"><strong>Revise.</strong> Find each power-up line in your book and improve it yourself.</li>
+            <li id="mission-word-power"><strong>Word power.</strong> Swap in stronger words where they fit.</li>
             <li><strong>Edit.</strong> Hunt down the spelling, punctuation and capital letter errors.</li>
             <li><strong>Read it again</strong> like a reader would. Does it sound even better?</li>
           </ol>
@@ -189,7 +199,7 @@
 
       <div class="btn-row step-actions slide-nav">
         <button id="btn-slide-back" class="ghost" type="button" hidden>&#8592; Back</button>
-        <button id="btn-slide-next" class="primary big" type="button">Next: Word lab &#8594;</button>
+        <button id="btn-slide-next" class="primary big" type="button">Next: Power-ups &#8594;</button>
         <button id="btn-finish-feedback" class="ghost btn-finish" type="button">Finish and clear</button>
       </div>
     </section>
@@ -216,8 +226,10 @@
     <div id="print-pages"></div>
     <h2>My writing</h2>
     <pre id="print-transcript"></pre>
+    <h2>Writing strengths</h2>
+    <div id="print-strength"></div>
     <div id="print-powers"></div>
-    <h2>Power-ups</h2>
+    <h2 id="print-powerups-title">Power-ups</h2>
     <div id="print-powerups"></div>
     <div id="print-boost"></div>
     <div id="print-practice"></div>
@@ -234,7 +246,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20260910-editing");
+      await import("./js/app.js?v=20260910-section3");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;
