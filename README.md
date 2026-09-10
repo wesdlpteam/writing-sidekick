@@ -10,7 +10,7 @@ Nothing is ever stored.
 ## What the feedback looks like
 
 The feedback comes as three slides, named to fit the superhero theme: Power-ups, Word lab and
-Level up. Every word of it is pitched at the child's year: Years 1 and 2 get picture-book
+Level up. Coaching instructions are pitched at the child's year; worked examples demonstrate ambitious, attainable writing: Years 1 and 2 get picture-book
 sentences, Years 3 and 4 plain words with a hint for any term, Years 5 and 6 the proper names
 of strategies.
 
@@ -19,11 +19,11 @@ of strategies.
   what the sidekick saw in their own writing. "What you did well" then lists the real strengths,
   quoting the child, so the positives are as visible as the next steps.
 - One to three power-ups (one or two for Years 1 and 2): the areas with the biggest payoff for
-  this piece. Each card is one line and one strategy, laid out as three numbered steps in
+  this piece. Each card has one teaching focus and one strategy, laid out as three numbered steps in
   the order the child works: 1 find this line in your book (their own words, quoted); 2 use
   the strategy (its name, a one-line how-to for this kind of sentence, and the strategy done
   on a fresh sentence like theirs, before and after, never their own sentence rewritten, so
-  there is nothing to copy, with the full explanation behind a "What is this strategy?" tap);
+  the student applies the strategy independently, with the explanation visible beside the model);
   3 do this (one short instruction). A one-line opener says what the line already does well.
   The strategies are the ones the school teaches (because/but/so, subordinating conjunction
   start, sentence expansion, sentence combining, elaborating with a detail sentence,
@@ -60,7 +60,9 @@ not reproduced here). The writing strategies follow the approach of The Writing 
 Hochman Method), which the school uses for writing instruction; "strategies" is the book's own
 word for them, the names are theirs, the explanations and examples are ours, and none of their
 materials are reproduced. See
-`docs/research/writing-revolution-brief.md`.
+`docs/research/writing-revolution-brief.md` and `docs/research/twr-section-i.md`. The supplied
+TWR 2.0 sentences section is distilled in `api/_twr.js` and used by generation and review;
+the book itself is not uploaded, reproduced, or used to retrain a model.
 
 The approach follows what the feedback research says works: answer "where to next?",
 stay specific to the task, show the improvement rather than just naming it, and leave
@@ -77,9 +79,22 @@ Two separate steps, so each has one job:
 1. Reading the handwriting. The photos go to a vision model at full image detail with
    strict copy rules: keep every misspelling, keep every apostrophe and punctuation mark,
    leave out crossed-out words, put inserted words where the caret points, keep line
-   breaks and page order. The child checks and fixes the result before anything else.
+   breaks and page order. A second pass compares the draft against the same photo. Unreadable
+   words or marks appear as [unclear], never silent guesses. Year 4 and above check the typing;
+   uncertainty or an unavailable verification pass triggers this check for younger writers too.
 2. Feedback. Only the checked text goes to the model, with the year-level expectations,
-   the genre guide and the skill bank.
+   the genre guide and the skill bank. A separate teaching editor improves the draft and audits
+   editing errors using exact quoted occurrences. The server validates those occurrences and
+   calculates totals; model-supplied totals are ignored. Corrections remain server-side.
+   Unverifiable audits show unavailable counts, not zero. A failed teaching review asks the
+   child to retry instead of displaying unchecked feedback.
+
+The extra image check is bounded to 25 seconds. Feedback generation has 30 seconds and
+the independent review has 80 seconds, within the client's 120-second limit. The reviewer
+uses medium reasoning and the complete output schema, and checks the student's existing
+skills and surrounding sentences before choosing targets. Provider retries share the same
+time budget. These checks add model cost and
+latency; they reduce failure modes but cannot guarantee perfect handwriting or feedback.
 
 Photos are cleaned up on the iPad first (uneven lighting flattened so the page reads
 white and the ink dark, like a phone's document scan) and sent at up to 2000 pixels.
@@ -96,7 +111,8 @@ the feedback is a canned example, but every screen works.
 3. The `.env` file stays on this computer; it is ignored by version control and never shared.
 
 Both steps default to `gpt-5.4`. Set `OPENAI_MODEL=gpt-5.4-mini` to make the feedback
-step cheaper, or `OPENAI_TRANSCRIBE_MODEL` to change the reading step. The Listen buttons
+generation cheaper, or `OPENAI_TRANSCRIBE_MODEL` to change the reading step. The independent
+teaching/editing reviewer defaults to `gpt-5.4`; `OPENAI_REVIEW_MODEL` overrides it. The Listen buttons
 use `gpt-4o-mini-tts` with the `marin` voice; `OPENAI_TTS_MODEL` and `OPENAI_TTS_VOICE`
 change that.
 
@@ -160,6 +176,24 @@ looks and launches like a normal app.
 
 ## Cost
 
-With both steps on `gpt-5.4`, one page plus feedback costs roughly two to three cents.
-A class of 25 using it weekly is under three dollars a month. Switching the feedback
-step to `gpt-5.4-mini` roughly halves that.
+Cost depends on the models, input length, image detail and review reasoning. Earlier
+two-call estimates no longer apply to the image verification and deeper teaching review.
+Check actual usage in the provider account. A cheaper draft model does not remove the
+independent review cost. The September age/attainment matrix took about 45–67 seconds per
+feedback request; these are observations, not a latency guarantee.
+
+## Checking age and writing quality
+
+Age controls coaching readability and curriculum expectations. Demonstrated sentence control,
+idea development and organisation control the next teaching step and worked model. Strong
+younger writers should receive a worthwhile refinement; older foundational writers should
+receive a manageable scaffold. A concise persuasive topic sentence stays concise, and its
+support follows in separate sentences. Genuine strength ratings can receive stretch tasks.
+
+The invented fixtures in `tests/fixtures/quality-samples.mjs` pair three writing levels with
+Years 1–6. `tests/fixtures/quality-holdouts.mjs` adds new topics, genres and edge cases.
+Run `npm run quality:live` for the matrix, or `npm run quality:live -- output/quality-holdouts holdouts`
+for the holdouts. These commands load local API configuration, send invented text to the
+configured provider, incur usage charges and save results locally. They do not send student
+photos. Inspect the output against `docs/audits/2026-09-10-age-attainment-quality.md`;
+HTTP success does not establish teaching quality. Ordinary `npm test` uses no live provider.

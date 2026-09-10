@@ -72,7 +72,8 @@ test("the moves prompt lists only the moves for the year and says revise before 
   assert.match(year3, /say "transition word" \(never signpost word/, "naming rule keeps the classroom vocabulary");
   assert.match(year3, /insert a transition, begin it with a subordinating conjunction, vary vocabulary, give an example/, "tasks use the school's feedback phrasing");
   assert.match(MOVES.transition.rule, /time and sequence.*illustrate.*change direction.*conclude.*emphasise/, "all five transition types");
-  assert.match(MOVES.topic_sentence.rule, /begin it with a subordinating conjunction/);
+  assert.match(MOVES.topic_sentence.rule, /short and concise/);
+  assert.match(MOVES.topic_sentence.rule, /supporting sentences after it/);
   assert.match(movesPrompt(5), /- appositive: Appositive\./);
 });
 
@@ -83,7 +84,7 @@ test("describeMove respects the year and rejects unknown keys", () => {
   assert.deepEqual(describeMove("because_but_so", 1), {
     key: "because_but_so",
     name: "Because, but, so",
-    rule: "Finish a thin sentence with because (the reason), but (a change of direction) or so (what happened next). Each one pushes you to say more.",
+    rule: "Finish a thin sentence with because (the reason), but (a change of direction) or so (the result of that reason or event). Each one pushes you to say more.",
     example: "The dog barked because a possum was on the fence.",
   });
 });

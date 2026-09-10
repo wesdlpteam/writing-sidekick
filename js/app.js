@@ -1,8 +1,8 @@
-import { reflowTranscript } from "./transcript.js?v=20260909-well";
-import { writingStrength, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260909-well";
-import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260909-well";
-import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260909-well";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260909-well";
+import { reflowTranscript } from "./transcript.js?v=20260910-quality";
+import { writingStrength, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260910-quality";
+import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260910-quality";
+import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260910-quality";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260910-example";
 
 const MAX_PAGES = 2;
 
@@ -196,7 +196,12 @@ $("btn-read").addEventListener("click", async () => {
     // feedback comes straight back. Year 4 and up still get to fix anything the app misread.
     // An unreadable photo always shows the typing screen, whatever the year, so the writing
     // can be typed in rather than the child being stuck.
-    if (checksTyping() || !fullTranscript()) {
+    const needsCheck = pages.some((page) => page.verification === "unavailable") || /\[unclear\]/i.test(state.transcript);
+    $("transcript-check-note").hidden = !needsCheck;
+    $("transcript-check-note").textContent = /\[unclear\]/i.test(state.transcript)
+      ? "Some writing was hard to read. Replace each [unclear] with the words or marks in your book. You can ask your teacher to help."
+      : "The extra photo check was unavailable. Compare this typing carefully with your book before continuing.";
+    if (checksTyping() || !fullTranscript() || needsCheck) {
       show("screen-review");
       showReview();
       return;
@@ -297,7 +302,9 @@ function renderPractice() {
     list.appendChild(li);
   }
   $("practice-tip").hidden = false;
-  $("practice-tip").textContent = editingTask;
+  $("practice-tip").textContent = Object.values(state.feedback.errorTotals || {}).length !== 3 || Object.values(state.feedback.errorTotals || {}).some((n) => n === null)
+    ? "We couldn't confirm the error counts this time. Read your writing with your teacher and check it together."
+    : editingTask;
 }
 
 // Word power: each plain word climbs a ladder of four synonyms, from a small step up to a
@@ -414,7 +421,7 @@ function el(tag, className, text) {
 // strategy (how, then before and after), do this.
 export function powerUpLines(p) {
   const how = [
-    p.move ? `Use the strategy: ${p.move.name}.` : p.rule || p.example ? "See it done." : "",
+    p.move ? `Use the strategy: ${p.move.name}.` : p.rule || p.example ? "See an example." : "",
     p.rule,
     p.example && `${p.example.before} -> ${p.example.after}`,
   ].filter(Boolean).join(" ");
@@ -447,7 +454,7 @@ function step(label, nodes) {
 // Each power-up is one line and one strategy, laid out in the order the child works:
 // 1 find the line in your book, 2 the strategy (a one-line how-to, then before and after
 // on a sentence LIKE theirs, never their own line rewritten), 3 the job. The strategy's
-// full explanation waits behind a tap for the child who wants it.
+// explanation stays beside its worked model.
 function renderPowerUps(powerUps) {
   const box = $("power-ups");
   box.innerHTML = "";
@@ -470,16 +477,7 @@ function renderPowerUps(powerUps) {
       example.append(el("span", "ex-before", p.example.before), arrow, el("span", "sr-only", "becomes"), el("strong", "ex-after", p.example.after));
       how.push(example);
     }
-    if (p.move) {
-      const more = el("details", "step-more");
-      more.appendChild(el("summary", "", "What is this strategy?"));
-      more.appendChild(el("p", "", p.move.rule));
-      const another = el("p", "st-example");
-      another.append("Another one: ", el("em", "", p.move.example));
-      more.appendChild(another);
-      how.push(more);
-    }
-    if (how.length) steps.appendChild(step(p.move ? ["Use the strategy: ", el("strong", "", p.move.name)] : "See it done", how));
+    if (how.length) steps.appendChild(step(p.move ? ["Use the strategy: ", el("strong", "", p.move.name)] : "See an example", how));
     if (p.nowYou) steps.appendChild(step("Do this", [el("p", "step-task", p.nowYou)]));
     card.appendChild(steps);
     box.appendChild(card);
@@ -830,6 +828,8 @@ function clearEverything() {
   state.feedback = null;
   shareCache = { key: "", blob: null };
   $("transcript").value = "";
+  $("transcript-check-note").hidden = true;
+  $("transcript-check-note").textContent = "";
   $("include-photos").checked = false;
   $("camera-title").textContent = "Photo time";
   for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "boost-swaps", "challenge-list", "print-pages", "print-powers", "print-powerups", "print-practice", "print-boost"]) {

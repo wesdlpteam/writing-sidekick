@@ -137,13 +137,13 @@ export const MOVES = {
   because_but_so: {
     name: "Because, but, so",
     minYear: 1,
-    rule: "Finish a thin sentence with because (the reason), but (a change of direction) or so (what happened next). Each one pushes you to say more.",
+    rule: "Finish a thin sentence with because (the reason), but (a change of direction) or so (the result of that reason or event). Each one pushes you to say more.",
     example: "The dog barked because a possum was on the fence.",
   },
   sentence_expansion: {
     name: "Sentence expansion",
     minYear: 2,
-    rule: "Start with a bare kernel sentence like 'The surfer paddled out.' and add when, where, why or how. The when usually goes at the front, followed by a comma.",
+    rule: "Start with a complete kernel sentence. Note answers to the selected when, where, why or how questions, then add those details inside one sentence. Keep the kernel's words; put when first if selected.",
     example: "At sunrise, the surfer paddled out past the break to catch the first wave.",
   },
   subordinating_conjunction: {
@@ -155,7 +155,7 @@ export const MOVES = {
   transition: {
     name: "Transition word",
     minYear: 2,
-    rule: "A transition word or phrase at the start of a sentence that links it to the one before: First, Next, Later or Finally for time and sequence; For example to illustrate; However or On the other hand to change direction; Therefore or In the end to conclude; In fact or Most of all to emphasise.",
+    rule: "A transition word or phrase at the start of a sentence that links it to the one before: First, Next, Later or Finally for time and sequence; For example to illustrate; However or On the other hand to change direction; Therefore or In the end to conclude; In fact or Most of all to emphasise. Choose the relationship first: Secondly starts a new ordered reason with a topic sentence and supporting detail; For example develops that same reason; However introduces a contrast. They are not interchangeable. Show the previous reason when using an ordered transition.",
     example: "Later, the rain finally stopped.",
   },
   vary_vocabulary: {
@@ -173,13 +173,13 @@ export const MOVES = {
   sentence_combining: {
     name: "Sentence combining",
     minYear: 3,
-    rule: "Join two or three short sentences into one using and, but, because or so, a pronoun, or a describing phrase, so the writing stops sounding choppy.",
+    rule: "Join two or three short sentences into one using and, but, because or so, a pronoun, or a describing phrase, while keeping all their information and adding no new facts.",
     example: "The tent was tiny and wet, so nobody slept.",
   },
   topic_sentence: {
     name: "Topic sentence",
     minYear: 3,
-    rule: "The first sentence of a paragraph, telling the reader what the whole paragraph is about. Make it interesting: try a question or an exclamation, or begin it with a subordinating conjunction.",
+    rule: "The first sentence of a paragraph tells the reader its main idea. In persuasive writing, keep it short and concise, stating one main reason. Put evidence and elaboration in the supporting sentences after it. Do not make an effective topic sentence longer just to make it sound advanced.",
     example: "Our school needs a bigger playground for three reasons.",
   },
   concluding_sentence: {
@@ -191,7 +191,7 @@ export const MOVES = {
   appositive: {
     name: "Appositive",
     minYear: 4,
-    rule: "A short description tucked in straight after a person or thing, between commas. Take it out and the sentence still works.",
+    rule: "A noun or noun phrase that renames a person or thing, placed straight after it between commas. Take it out and the sentence still works. A who/which clause is a different structure.",
     example: "Our teacher, a huge footy fan, wore her scarf to school.",
   },
   general_to_specific_intro: {

@@ -6,6 +6,7 @@
   "description": "Writing Sidekick: iPad web app giving ACARA-anchored feedback on handwritten student writing",
   "scripts": {
     "test": "node --test",
-    "dev": "node dev-server.mjs"
+    "dev": "node dev-server.mjs",
+    "quality:live": "node scripts/quality-eval.mjs"
   }
 }

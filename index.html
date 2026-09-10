@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260909-well">
+  <link rel="stylesheet" href="css/app.css?v=20260910-quality">
 </head>
 <body>
   <main id="app">
@@ -81,6 +81,7 @@
         <button id="btn-back-camera" class="ghost small">&#8592; Back to the camera</button>
         <button id="btn-finish-review" class="ghost small btn-finish" type="button">Finish and clear this iPad</button>
       </div>
+      <p id="transcript-check-note" class="lead" role="status" hidden></p>
       <div class="typed-box">
         <textarea id="transcript" aria-label="Your writing as typed text" spellcheck="false" placeholder="Type your writing here"></textarea>
         <p class="edit-hint">Tap to put the cursor where you want it. Double-tap a word to select it, then type the fix.</p>
@@ -233,7 +234,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20260909-well");
+      await import("./js/app.js?v=20260910-example");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

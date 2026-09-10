@@ -68,6 +68,10 @@ function mockFetch(modelContent, { capture, moderation } = {}) {
       if (capture) capture.moderationBody = JSON.parse(options.body);
       return { ok: true, status: 200, json: async () => ({ results: [{ flagged: false, category_scores: moderation || {} }] }) };
     }
+    const request = JSON.parse(options.body);
+    if (request.messages?.[0]?.content.includes("QUALITY_REVIEW:")) {
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ approved: true, feedback: null, editing: { complete: false, errors: [] } }) } }] }) };
+    }
     if (capture) {
       capture.url = url;
       capture.body = JSON.parse(options.body);
@@ -123,6 +127,7 @@ test("provider calls carry a timeout signal and follow OPENAI_BASE_URL", async (
   const seen = [];
   const fetchImpl = async (url, options) => {
     seen.push({ url, signal: options.signal });
+    if (JSON.parse(options.body).messages?.[0]?.content.includes("QUALITY_REVIEW:")) return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({approved:true,feedback:null})}}]})};
     return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(GOOD_PAYLOAD) } }] }) };
   };
   const r = await handleFeedback({ transcript: TEXT, yearLevel: 3 }, { fetchImpl, env: { ...ENV, OPENAI_BASE_URL: "https://au.example/v1/" } });
@@ -156,7 +161,7 @@ test("photos go to a transcription-only call and return just the transcript", as
     { fetchImpl: mockFetch(JSON.stringify({ transcript: "I dont like peas.\nThey are green." }), { capture }), env: ENV },
   );
   assert.equal(r.status, 200);
-  assert.deepEqual(r.payload, { transcript: "I dont like peas.\nThey are green." });
+  assert.deepEqual(r.payload, { transcript: "I dont like peas.\nThey are green.", verification: "checked" });
   const userParts = capture.body.messages[1].content;
   assert.equal(userParts.filter((p) => p.type === "image_url").length, 2, "every page is sent, in order");
   assert.ok(userParts.every((p) => p.type !== "image_url" || p.image_url.detail === "original"), "original detail keeps small marks");
@@ -193,7 +198,7 @@ test("transcription rules cover apostrophes, crossed-out words and page order", 
   assert.match(sys, /sideways or upside down/, "a rotated page is still read");
   // Patterns from a real Year 5 page (2026-09-09): comma chosen before a capital, a missed
   // final full stop, a ruled-line dash read as a comma, squeezed and joined letters.
-  assert.match(sys, /before a word that starts with a capital letter is a full stop, not a comma/);
+  assert.match(sys, /A capital after a mark does not prove that mark is a full stop/);
   assert.match(sys, /end of every sentence and every paragraph for a small full stop/);
   assert.match(sys, /ruled lines, including their dots and dashes, are not punctuation/);
   assert.match(sys, /count its letters/);
@@ -223,7 +228,7 @@ test("a 400 from the model retries once without the optional settings", async ()
   const r = await handleFeedback({ image: IMG, yearLevel: 2 }, { fetchImpl, env: ENV });
   assert.equal(r.status, 200);
   assert.equal(r.payload.transcript, "ok");
-  assert.equal(bodies.length, 2);
+  assert.equal(bodies.length, 3);
   assert.equal(bodies[1].verbosity, undefined);
   assert.equal(bodies[1].messages[1].content.find((p) => p.type === "image_url").image_url.detail, "high");
 });
@@ -308,7 +313,7 @@ test("feedback prompt: year guide, rules, the ten areas, skill bank, writing mov
   assert.match(sys, /never on the child's own sentence/, "the worked example is a sentence like theirs, never their line rewritten");
   assert.doesNotMatch(sys, /try_this/, "the old rewrite-their-line field is gone");
   assert.match(sys, /"rule": "one short line telling the child how to do that strategy/);
-  assert.match(sys, /Every part of a power-up is about ONE line and ONE strategy/, "no more three sentences for one job");
+  assert.match(sys, /Every part of a power-up is about ONE teaching focus and ONE strategy/, "no more three sentences for one job");
   assert.match(sys, /a task to split a long sentence is never sentence_combining/);
   assert.match(sys, /under 15 words/);
   assert.match(sys, /opens with something genuinely good about the line/, "every power-up starts positive");
@@ -319,7 +324,7 @@ test("feedback prompt: year guide, rules, the ten areas, skill bank, writing mov
   assert.match(sys, /from the simplest to the most sophisticated/);
   assert.match(sys, /"challenge" lists 3 OTHER plain words/);
   assert.match(sys, /not just a one-word swap/i);
-  assert.doesNotMatch(sys, /NAPLAN/, "the marking guide itself is not in the prompt");
+  assert.match(sys, /NAPLAN-informed craft/, "distilled marking criteria guide model quality");
   assert.equal(capture.body.model, "gpt-5.4-mini", "OPENAI_MODEL still picks the feedback model");
   const userParts = capture.body.messages[1].content;
   assert.ok(!userParts.some((p) => p.type === "image_url"));
@@ -336,7 +341,7 @@ test("the prompt does not force a spread of strengths and next steps; Years 1 an
   const c4 = {};
   await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 4, genre: "narrative" }, c4);
   const sys4 = c4.body.messages[0].content;
-  assert.match(sys4, /Rules for power_ups: 2 or 3/);
+  assert.match(sys4, /Rules for power_ups: 1 to 3/);
   assert.doesNotMatch(sys4, /under 12 words/);
   assert.match(sys4, /This writer is in Year 4\. .*under 16 words/, "Years 3 and 4 get their own band");
   const c6 = {};
@@ -358,10 +363,7 @@ test("a misspelling the child never wrote is dropped, and a correctly spelt word
   };
   const r = await feedbackFor(fixture, { transcript: `${TEXT}\nMy favourite colour is blue.`, yearLevel: 3, genre: "narrative" });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.payload.practiceWords, [
-    { correct: "family", wrote: "famly" },
-    { correct: "because", wrote: "Becos" },
-  ]);
+  assert.deepEqual(r.payload.practiceWords, []);
 });
 
 test("word power only swaps words the child used, and its sentence must be theirs", async () => {
@@ -705,17 +707,14 @@ test("unparseable feedback output -> 502 child-safe error", async () => {
   assert.doesNotMatch(r.payload.error, /json|parse|model/i);
 });
 
-test("practice words pass through", async () => {
+test("private spelling corrections never pass through", async () => {
   const r = await feedbackFor(GOOD_PAYLOAD);
   assert.equal(r.status, 200);
-  assert.deepEqual(r.payload.practiceWords, [
-    { correct: "family", wrote: "famly" },
-    { correct: "because", wrote: "becos" },
-  ]);
-  assert.equal(r.payload.spellingTip, "Say tricky words in syllables: fam-i-ly.");
+  assert.deepEqual(r.payload.practiceWords, []);
+  assert.equal(r.payload.spellingTip, "");
 });
 
-test("practice words capped at 5, junk entries filtered", async () => {
+test("legacy practice words are omitted from student response", async () => {
   const many = {
     ...GOOD_PAYLOAD,
     practice_words: [
@@ -732,7 +731,7 @@ test("practice words capped at 5, junk entries filtered", async () => {
   };
   const r = await feedbackFor(many, { transcript: `${TEXT}\nwun too thre for fiv siks`, yearLevel: 3, genre: "narrative" });
   assert.equal(r.status, 200);
-  assert.equal(r.payload.practiceWords.length, 5);
+  assert.equal(r.payload.practiceWords.length, 0);
   assert.ok(r.payload.practiceWords.every((w) => w.correct && w.wrote));
 });
 
@@ -878,14 +877,9 @@ test("upstream error -> 502 without leaking details", async () => {
 });
 
 
-test("error totals cover every occurrence without a five-error cap", async () => {
-  const capture = {};
-  const r = await feedbackFor({ ...GOOD_PAYLOAD, error_totals: { spelling: 12, punctuation: 3, capital_letters: 0 } }, undefined, capture);
-  assert.deepEqual(r.payload.errorTotals, { spelling: 12, punctuation: 3, capital_letters: 0 });
-  const prompt = capture.body.messages[0].content;
-  assert.match(prompt, /Count each occurrence, including repeated misspellings/);
-  assert.match(prompt, /excluding capital letters/);
-  assert.doesNotMatch(prompt, /at most 5/);
+test("unverified model totals are ignored even when they look valid", async () => {
+  const r = await feedbackFor({ ...GOOD_PAYLOAD, error_totals: { spelling: 12, punctuation: 3, capital_letters: 0 } });
+  assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null });
 });
 
 test("missing or invalid totals are unavailable, never reported as zero errors", async () => {

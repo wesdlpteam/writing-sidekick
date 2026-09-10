@@ -1,0 +1,6 @@
+// Invented samples only. Identical texts across years separate age from attainment.
+export const qualitySamples = [
+  {level:'foundations',genre:'narrative',transcript:'The fox ran. It hid. It was scared.'},
+  {level:'developing',genre:'persuasive',transcript:'School gardens help children learn. We can grow plants. We can look at bugs. Gardens are good.\n\nGardens give us food. We can eat carrots and peas. I think we should have a garden.'},
+  {level:'strong',genre:'persuasive',transcript:'Our school should turn its unused courtyard into a garden. A small trial would let us test the benefits before spending money on a larger project.\n\nA garden makes learning practical. By measuring seedlings each week, students could compare growth and investigate why some plants thrive while others struggle. These observations would give our science lessons a purpose beyond completing worksheets.\n\nMaintenance deserves careful planning. Although a garden needs water and regular care, a roster shared between classes could spread the work fairly. Choosing hardy local plants would also reduce watering during dry weather.\n\nWe should begin with two raised beds and review the trial after one term. If the benefits justify the effort, the garden could grow with us.'},
+];

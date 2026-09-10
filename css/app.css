@@ -747,6 +747,7 @@ body.senior .practice-tip::before { content: ""; }
   gap: 2px;
 }
 .ex-arrow { color: var(--purple-mid); font-weight: 800; }
+.ex-before, .ex-after { white-space: pre-line; overflow-wrap: anywhere; }
 .step-more { margin-top: 6px; font-size: 0.95rem; color: var(--muted); }
 .step-more summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font-weight: 800; color: var(--purple); }
 .step-more p { margin: 2px 0 0; line-height: 1.5; }

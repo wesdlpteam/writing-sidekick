@@ -137,7 +137,7 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel }) {
     addCard("#ffffff", `⚡ Power-up ${index + 1}: ${p.skill}`, [
       p.why,
       p.yourLine && { label: "1. Find this line in your book", text: `“${p.yourLine}”` },
-      how && { label: p.move ? `2. Use the strategy: ${p.move.name}` : "2. See it done", text: how },
+      how && { label: p.move ? `2. Use the strategy: ${p.move.name}` : "2. See an example", text: how },
       p.nowYou && { label: "3. Do this", text: p.nowYou },
     ]);
   });

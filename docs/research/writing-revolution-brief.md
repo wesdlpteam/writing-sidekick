@@ -41,7 +41,7 @@ Expansion, Appositives, Sentence Combining, Transitions.
   if. Fuller sets group them by meaning: reason (as, because, since), concession (although, even
   though, though, whereas, while), purpose (so that), condition (if, unless), place (where,
   wherever), time (after, before, once, until, when, whenever, while, as soon as).
-  Example: "Although the drought had lasted three years, the wheat crop still failed."
+  Example: "Although the drought had lasted three years, the wheat crop survived."
 - **Sentence Expansion.** Start from a kernel sentence (simple, active, no modifiers) and expand
   it with question words in this order: who, what, when, where, why, how (not all every time).
   The expanded sentence usually puts the "when" at the front with a comma and keeps the kernel's
@@ -51,8 +51,7 @@ Expansion, Appositives, Sentence Combining, Transitions.
   by commas, removable without breaking the sentence. "The platypus, a curious egg-laying mammal,
   is found only in Australia."
 - **Sentence Combining.** Merge short sentences using pronouns, conjunctions and appositives.
-  "The bushfire destroyed the shed. The bushfire also destroyed the fence." becomes "The bushfire,
-  a fierce blaze fanned by strong winds, destroyed both the shed and the fence."
+  "The bushfire destroyed the shed. The bushfire also destroyed the fence." becomes "The bushfire destroyed both the shed and the fence."
 - **Transitions.** Four categories in TWR's own pacing guide: time and sequence (first, next,
   meanwhile, eventually), illustration (for example, specifically, such as), change of direction
   (however, on the other hand), conclusion (therefore, in short, as a result).
@@ -173,3 +172,7 @@ TWR worksheets, posters, checklists or rubrics.
 - https://www.vit.vic.edu.au/news/building-student-capacity-through-writing-revolution-richmond-high-school
 - https://www.mfac.edu.au/flinders-records-top-naplan-writing-results/
 - https://www.cranbourne-ps.vic.edu.au/page/376/Literacy
+
+## 2026-09-10 source update
+
+Nathan supplied the full Section I PDF from the second edition. See [the integration notes](twr-section-i.md) for exported-page references and the runtime guidance in `api/_twr.js`. This primary source adds the emphasis transition category and more precise boundaries for expansion, combining, appositives and cause/effect. The example contrast and combining example above have been corrected so they demonstrate the intended strategy without a false contrast or invented facts.

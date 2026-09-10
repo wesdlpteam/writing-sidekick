@@ -38,3 +38,11 @@ verify, save the photo outside the repo and run the reading step on it before an
 - Erasing printed ruled lines in the photo clean-up (long horizontal dark runs) so their dots
   and dashes cannot be mistaken for punctuation. Risky for crossbars and underlines; needs
   samples to test against.
+
+## 2026-09-10: Year 4, separate short persuasive exercises
+
+The supplied photo and typed screenshot show `really` read as `realy` and `hayfever` as `heyfever`. A full stop appears to have been introduced before `And` in the seasons passage. `Wednesdays` and faint apostrophes need further original-resolution review; no exact original spelling total is asserted.
+
+Changes: an image-grounded verification pass, [unclear] instead of silent guesses, and removal of the categorical rule treating a mark before a capital as necessarily a full stop. The student checks uncertain readings at every year level. No automatic replacement of these sample words is applied to transcription. Editing totals now require a separate audit with exact evidence.
+
+The supplied-photo live test remains unverified: automatic approval review blocked its transfer to OpenAI without explicit permission for that photo and transcript. Synthetic text tests are documented separately. Photos remain outside the repository.
