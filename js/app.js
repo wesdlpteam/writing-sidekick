@@ -302,9 +302,10 @@ function renderPractice() {
     list.appendChild(li);
   }
   $("practice-tip").hidden = false;
-  $("practice-tip").textContent = Object.values(state.feedback.errorTotals || {}).length !== 3 || Object.values(state.feedback.errorTotals || {}).some((n) => n === null)
-    ? "We couldn't confirm the error counts this time. Read your writing with your teacher and check it together."
-    : editingTask;
+  const confirmed = Object.values(state.feedback.errorTotals || {}).filter(n => Number.isSafeInteger(n) && n >= 0).length;
+  $("practice-tip").textContent = confirmed === 3 ? editingTask : confirmed > 0
+    ? "Use the counts shown to check your writing. Ask your teacher to help with any count marked Not available."
+    : "We couldn't confirm the error counts this time. Read your writing with your teacher and check it together.";
 }
 
 // Word power: each plain word climbs a ladder of four synonyms, from a small step up to a

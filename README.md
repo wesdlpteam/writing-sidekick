@@ -86,14 +86,19 @@ Two separate steps, so each has one job:
    the genre guide and the skill bank. A separate teaching editor improves the draft and audits
    editing errors using exact quoted occurrences. The server validates those occurrences and
    calculates totals; model-supplied totals are ignored. Corrections remain server-side.
-   Unverifiable audits show unavailable counts, not zero. A failed teaching review asks the
+   Each category is validated independently; a capital and an apostrophe can both be fixed
+   on the same word. Pure case, punctuation and spacing changes are classified by their
+   actual change. Incomplete or invalid audits get one focused recheck when time permits,
+   without regenerating the teaching feedback. If that fails, confirmed categories remain
+   visible and only unresolved counts show unavailable, never a guessed zero. A failed teaching review asks the
    child to retry instead of displaying unchecked feedback.
 
 The extra image check is bounded to 25 seconds. Feedback generation has 30 seconds and
 the independent review has 80 seconds, within the client's 120-second limit. The reviewer
 uses medium reasoning and the complete output schema, and checks the student's existing
 skills and surrounding sentences before choosing targets. Provider retries share the same
-time budget. These checks add model cost and
+time budget. The optional editing recheck gets at most 25 seconds from the remaining
+110-second server budget; it adds no extra call when the original audit is valid. These checks add model cost and
 latency; they reduce failure modes but cannot guarantee perfect handwriting or feedback.
 
 Photos are cleaned up on the iPad first (uneven lighting flattened so the page reads

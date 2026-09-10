@@ -69,6 +69,9 @@ function mockFetch(modelContent, { capture, moderation } = {}) {
       return { ok: true, status: 200, json: async () => ({ results: [{ flagged: false, category_scores: moderation || {} }] }) };
     }
     const request = JSON.parse(options.body);
+    if (request.messages?.[0]?.content.includes("EDITING_RECHECK:")) {
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({editing:{complete:false,errors:[]}}) } }] }) };
+    }
     if (request.messages?.[0]?.content.includes("QUALITY_REVIEW:")) {
       return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ approved: true, feedback: null, editing: { complete: false, errors: [] } }) } }] }) };
     }

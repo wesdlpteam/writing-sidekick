@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editingTotals, unavailableTotals } from '../api/_editing.js';
+import { editingTotals, inspectEditing, unavailableTotals } from '../api/_editing.js';
 import { handleFeedback, powerUpProblems, hasIndependentPassages } from '../api/feedback.js';
 
 const entry = (quote, correction, category = 'spelling', occurrence = 1) => ({quote, correction, category, occurrence});
@@ -14,9 +14,34 @@ test('counts evidenced occurrences, not model totals or a five-error limit', () 
 
 test('separates punctuation, capitals and spacing from spelling', () => {
   assert.deepEqual(count('dont summer any thing', [entry('dont',"don't",'punctuation'),entry('summer','Summer','capital_letters'),entry('any thing','anything','spacing')]), {spelling:0,punctuation:1,capital_letters:1});
-  for (const [quote, correction] of [['dont',"don't"],['summer','Summer'],['any thing','anything'],['mozzies','mosquitoes'],['really','realy'],['hayfever','hay fever']]) {
-    assert.deepEqual(count(quote,[entry(quote,correction)]), unavailableTotals());
+  assert.deepEqual(count('dont',[entry('dont',"don't")]),{spelling:0,punctuation:1,capital_letters:0});
+  assert.deepEqual(count('summer',[entry('summer','Summer')]),{spelling:0,punctuation:0,capital_letters:1});
+  for (const [quote, correction] of [['any thing','anything'],['hayfever','hay fever']]) {
+    assert.deepEqual(count(quote,[entry(quote,correction)]), {spelling:0,punctuation:0,capital_letters:0});
   }
+  for (const [quote, correction] of [['mozzies','mosquitoes'],['really','realy']]) {
+    assert.deepEqual(count(quote,[entry(quote,correction)]), {spelling:null,punctuation:0,capital_letters:0});
+  }
+});
+
+test('different editing categories can correct the same word independently', () => {
+  assert.deepEqual(count('dont', [entry('dont','Dont','capital_letters'),entry('dont',"don't",'punctuation')]),{spelling:0,punctuation:1,capital_letters:1});
+  assert.deepEqual(count('becos', [entry('becos','because'),entry('becos','Becos','capital_letters'),entry('becos','becos.','punctuation')]),{spelling:1,punctuation:1,capital_letters:1});
+  assert.deepEqual(count('dont',[entry('dont',"don't",'spelling'),entry('dont',"don't",'punctuation')]),{spelling:0,punctuation:1,capital_letters:0});
+});
+
+test('occurrence numbering ignores matches embedded in longer words', () => {
+  assert.deepEqual(count('We went home. we slept.',[entry('we','We','capital_letters')]),{spelling:0,punctuation:0,capital_letters:1});
+  assert.deepEqual(count('the he he',[entry('he','He','capital_letters',2)]),{spelling:0,punctuation:0,capital_letters:1});
+  assert.deepEqual(count('cats',[entry('cat','Cat','capital_letters')]),{spelling:0,punctuation:0,capital_letters:null});
+});
+
+test('invalid evidence affects its category; mixed corrections flag every affected category', () => {
+  assert.deepEqual(count('famly dont', [entry('famly','family'),entry('missing','missing.','punctuation')]),{spelling:1,punctuation:null,capital_letters:0});
+  assert.deepEqual(count('dont',[entry('dont',"Don't",'punctuation')]),{spelling:0,punctuation:null,capital_letters:null});
+  assert.deepEqual(count('becos',[entry('becos','Because.','spelling')]),unavailableTotals());
+  assert.deepEqual(count('cat',[entry('cat','cats'),entry('cat','cut')]),{spelling:null,punctuation:0,capital_letters:0});
+  assert.equal(inspectEditing({complete:true,errors:[]},'[unclear]').retryable,false);
 });
 
 test('unverifiable audits never fabricate a total or zero', () => {
@@ -115,6 +140,55 @@ test('distinct opinion passages are assessed independently, without splitting a 
   assert.equal(hasIndependentPassages(text, 'narrative'), false);
   assert.equal(hasIndependentPassages('Trees are useful.\n\nThey are homes for birds.', 'persuasive'), false);
   assert.equal(hasIndependentPassages('Dogs are loud. Secondly, dogs damage gardens.', 'persuasive'), false);
+});
+
+test('a focused recheck recovers editing counts without changing teaching feedback', async () => {
+  const requests=[];
+  const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async(_url,options)=>{
+    requests.push(JSON.parse(options.body));
+    if(requests.length===1) return reply(draft);
+    if(requests.length===2) return reply({approved:true,feedback:draft,editing:{complete:true,errors:[entry('dont',"Don't",'punctuation')]}});
+    return reply({editing:{complete:true,errors:[entry('dont',"don't",'punctuation'),entry('dont','Dont','capital_letters')]}});
+  }});
+  assert.equal(r.status,200);
+  assert.equal(requests.length,3);
+  assert.match(requests[2].messages[0].content,/EDITING_RECHECK/);
+  assert.deepEqual(r.payload.errorTotals,{spelling:0,punctuation:1,capital_letters:1});
+  assert.equal(r.payload.headline,draft.headline);
+  assert.equal(JSON.stringify(r.payload).includes('mixed changes'),false);
+  assert.equal(r.payload.editing,undefined);
+});
+
+test('a failed audit recheck retains independently verified categories', async () => {
+  let calls=0;
+  const r=await handleFeedback({yearLevel:4,transcript:'My famly likes cats.'},{env,fetchImpl:async()=>{
+    if(++calls===1) return reply(draft);
+    if(calls===2) return reply({approved:true,feedback:draft,editing:{complete:true,errors:[entry('famly','family'),entry('missing','missing.','punctuation')]}});
+    throw new Error('unavailable');
+  }});
+  assert.equal(r.status,200);
+  assert.equal(calls,3);
+  assert.deepEqual(r.payload.errorTotals,{spelling:1,punctuation:null,capital_letters:0});
+});
+
+test('valid shared-word evidence does not make an extra provider call', async () => {
+  let calls=0;
+  const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async()=>reply(++calls===1?draft:{approved:true,feedback:draft,editing:{complete:true,errors:[entry('dont',"don't",'punctuation'),entry('dont','Dont','capital_letters')]}})});
+  assert.equal(calls,2);
+  assert.deepEqual(r.payload.errorTotals,{spelling:0,punctuation:1,capital_letters:1});
+});
+
+test('audit recovery respects the remaining request budget', async t => {
+  let elapsed=0,calls=0;
+  t.mock.method(Date,'now',()=>elapsed);
+  const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async()=>{
+    if(++calls===1) return reply(draft);
+    elapsed=109_500;
+    return reply({approved:true,feedback:draft,editing:{complete:false,errors:[]}});
+  }});
+  assert.equal(calls,2,'do not start another call with less than one second remaining');
+  assert.equal(r.status,200);
+  assert.deepEqual(r.payload.errorTotals,unavailableTotals());
 });
 
 test('a stretch keeps genuine strength ratings and private attainment evidence stays private', async () => {
