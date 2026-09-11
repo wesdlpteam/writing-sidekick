@@ -36,8 +36,11 @@ test('both generation and final review receive the supplied section guidance', a
     return {ok:true,json:async()=>({choices:[{message:{content:prompts.length===1?'{}':'{"approved":false}'}}]})};
   }});
   assert.equal(r.status,502);
-  assert.equal(prompts.length,2);
-  for (const prompt of prompts) {
+  assert.equal(prompts.length,3,'draft, editing audit and teaching review');
+  const audits = prompts.filter(p=>p.startsWith('EDITING_AUDIT:'));
+  assert.equal(audits.length,1);
+  assert.ok(!audits[0].includes(TWR_SENTENCE_GUIDANCE),'the editing audit carries no teaching guidance');
+  for (const prompt of prompts.filter(p=>!p.startsWith('EDITING_AUDIT:'))) {
     assert.ok(prompt.includes(TWR_SENTENCE_GUIDANCE));
     assert.ok(prompt.includes(TWR_ASSESSMENT_GUIDANCE));
     assert.match(prompt, /scaffold_in_task|Put this selected support in rule\/now_you/);

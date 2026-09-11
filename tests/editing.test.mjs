@@ -59,6 +59,8 @@ test('transition models must change the transition', () => {
 });
 
 const reply = (value) => ({ok:true,status:200,json:async()=>({choices:[{message:{content:JSON.stringify(value)}}]})});
+// Provider calls per feedback request: draft, then the teaching review and the editing audit side by side, then an optional recheck.
+const stageOf = (body) => { const sys = body?.messages?.[0]?.content || ''; return sys.startsWith('QUALITY_REVIEW:') ? 'review' : sys.startsWith('EDITING_AUDIT:') ? 'audit' : sys.startsWith('EDITING_RECHECK:') ? 'recheck' : 'draft'; };
 const env = {OPENAI_API_KEY:'test'};
 const image = 'data:image/jpeg;base64,/9j/AAAA';
 
@@ -94,7 +96,7 @@ const draft = {
 
 test('reviewed evidence determines totals; corrections stay private', async () => {
   let calls=0;
-  const r=await handleFeedback({yearLevel:4,transcript:'My famly likes cats.'},{env,fetchImpl:async()=>reply(++calls===1?draft:{approved:true,feedback:null,editing:{complete:true,errors:[entry('famly','family')]}})});
+  const r=await handleFeedback({yearLevel:4,transcript:'My famly likes cats.'},{env,fetchImpl:async(_url,options)=>{const stage=stageOf(JSON.parse(options.body));calls++;return reply(stage==='draft'?draft:stage==='audit'?{editing:{complete:true,errors:[entry('famly','family')]}}:{approved:true,feedback:null});}});
   assert.equal(r.status,200);
   assert.deepEqual(r.payload.errorTotals,{spelling:1,punctuation:0,capital_letters:0});
   assert.equal(JSON.stringify(r.payload).includes('family'),false);
@@ -117,7 +119,7 @@ test('the final editor can repair malformed generation JSON in its one review pa
     return reply({approved:true,feedback:draft,editing:{complete:true,errors:[entry('famly','family')]}});
   }});
   assert.equal(r.status,200);
-  assert.equal(calls,2);
+  assert.equal(calls,3);
   assert.equal(r.payload.errorTotals.spelling,1);
 });
 
@@ -146,13 +148,15 @@ test('a focused recheck recovers editing counts without changing teaching feedba
   const requests=[];
   const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async(_url,options)=>{
     requests.push(JSON.parse(options.body));
-    if(requests.length===1) return reply(draft);
-    if(requests.length===2) return reply({approved:true,feedback:draft,editing:{complete:true,errors:[entry('dont',"Don't",'punctuation')]}});
+    const stage=stageOf(requests.at(-1));
+    if(stage==='draft') return reply(draft);
+    if(stage==='review') return reply({approved:true,feedback:draft});
+    if(stage==='audit') return reply({editing:{complete:true,errors:[entry('dont',"Don't",'punctuation')]}});
     return reply({editing:{complete:true,errors:[entry('dont',"don't",'punctuation'),entry('dont','Dont','capital_letters')]}});
   }});
   assert.equal(r.status,200);
-  assert.equal(requests.length,3);
-  assert.match(requests[2].messages[0].content,/EDITING_RECHECK/);
+  assert.equal(requests.length,4);
+  assert.match(requests[3].messages[0].content,/EDITING_RECHECK/);
   assert.deepEqual(r.payload.errorTotals,{spelling:0,punctuation:1,capital_letters:1});
   assert.equal(r.payload.headline,draft.headline);
   assert.equal(JSON.stringify(r.payload).includes('mixed changes'),false);
@@ -161,32 +165,37 @@ test('a focused recheck recovers editing counts without changing teaching feedba
 
 test('a failed audit recheck retains independently verified categories', async () => {
   let calls=0;
-  const r=await handleFeedback({yearLevel:4,transcript:'My famly likes cats.'},{env,fetchImpl:async()=>{
-    if(++calls===1) return reply(draft);
-    if(calls===2) return reply({approved:true,feedback:draft,editing:{complete:true,errors:[entry('famly','family'),entry('missing','missing.','punctuation')]}});
+  const r=await handleFeedback({yearLevel:4,transcript:'My famly likes cats.'},{env,fetchImpl:async(_url,options)=>{
+    const stage=stageOf(JSON.parse(options.body));
+    calls++;
+    if(stage==='draft') return reply(draft);
+    if(stage==='review') return reply({approved:true,feedback:draft});
+    if(stage==='audit') return reply({editing:{complete:true,errors:[entry('famly','family'),entry('missing','missing.','punctuation')]}});
     throw new Error('unavailable');
   }});
   assert.equal(r.status,200);
-  assert.equal(calls,3);
+  assert.equal(calls,4);
   assert.deepEqual(r.payload.errorTotals,{spelling:1,punctuation:null,capital_letters:0});
 });
 
 test('valid shared-word evidence does not make an extra provider call', async () => {
   let calls=0;
-  const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async()=>reply(++calls===1?draft:{approved:true,feedback:draft,editing:{complete:true,errors:[entry('dont',"don't",'punctuation'),entry('dont','Dont','capital_letters')]}})});
-  assert.equal(calls,2);
+  const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async(_url,options)=>{const stage=stageOf(JSON.parse(options.body));calls++;return reply(stage==='draft'?draft:stage==='audit'?{editing:{complete:true,errors:[entry('dont',"don't",'punctuation'),entry('dont','Dont','capital_letters')]}}:{approved:true,feedback:draft});}});
+  assert.equal(calls,3);
   assert.deepEqual(r.payload.errorTotals,{spelling:0,punctuation:1,capital_letters:1});
 });
 
 test('audit recovery respects the remaining request budget', async t => {
   let elapsed=0,calls=0;
   t.mock.method(Date,'now',()=>elapsed);
-  const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async()=>{
-    if(++calls===1) return reply(draft);
-    elapsed=109_500;
-    return reply({approved:true,feedback:draft,editing:{complete:false,errors:[]}});
+  const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async(_url,options)=>{
+    const stage=stageOf(JSON.parse(options.body));
+    calls++;
+    if(stage==='draft') return reply(draft);
+    elapsed=169_500;
+    return reply(stage==='audit'?{editing:{complete:false,errors:[]}}:{approved:true,feedback:draft});
   }});
-  assert.equal(calls,2,'do not start another call with less than one second remaining');
+  assert.equal(calls,3,'do not start another call with less than one second remaining');
   assert.equal(r.status,200);
   assert.deepEqual(r.payload.errorTotals,unavailableTotals());
 });
@@ -197,13 +206,15 @@ test('a stretch keeps genuine strength ratings and private attainment evidence s
   const requests = [];
   const result = await handleFeedback({yearLevel:6,genre:'persuasive',transcript:'My famly likes cats.'},{env,fetchImpl:async(_url,options)=>{
     requests.push(JSON.parse(options.body));
-    return reply(requests.length===1?strong:{approved:true,learning_check:{demonstrated_skills:['PRIVATE_ASSESSMENT'],targets:[]},feedback:strong,editing:{complete:true,errors:[]}});
+    const stage=stageOf(requests.at(-1));
+    return reply(stage==='draft'?strong:stage==='audit'?{editing:{complete:true,errors:[]}}:{approved:true,learning_check:{demonstrated_skills:['PRIVATE_ASSESSMENT'],targets:[]},feedback:strong});
   }});
   assert.equal(result.status,200);
   assert.equal(result.payload.powerUps.length,1,'a useful single target is valid for an older writer');
   assert.equal(result.payload.criteria.find(c=>c.key==='ideas').status,'strength');
   assert.equal(JSON.stringify(result.payload).includes('PRIVATE_ASSESSMENT'),false);
-  assert.equal(requests[1].reasoning_effort,'medium');
-  assert.match(requests[1].messages[0].content,/FEEDBACK OBJECT SCHEMA/);
-  assert.match(requests[1].messages[0].content,/ASSESSMENT AREAS/);
+  const review=requests.find(b=>stageOf(b)==='review');
+  assert.equal(review.reasoning_effort,'medium');
+  assert.match(review.messages[0].content,/FEEDBACK OBJECT SCHEMA/);
+  assert.match(review.messages[0].content,/ASSESSMENT AREAS/);
 });

@@ -93,13 +93,18 @@ Two separate steps, so each has one job:
    visible and only unresolved counts show unavailable, never a guessed zero. A failed teaching review asks the
    child to retry instead of displaying unchecked feedback.
 
-The extra image check is bounded to 25 seconds. Feedback generation has 30 seconds and
-the independent review has 80 seconds, within the client's 120-second limit. The reviewer
-uses medium reasoning and the complete output schema, and checks the student's existing
-skills and surrounding sentences before choosing targets. Provider retries share the same
-time budget. The optional editing recheck gets at most 25 seconds from the remaining
-110-second server budget; it adds no extra call when the original audit is valid. These checks add model cost and
-latency; they reduce failure modes but cannot guarantee perfect handwriting or feedback.
+The extra image check is bounded to 25 seconds. Feedback generation has 30 seconds. The
+independent teaching review (up to 100 seconds) and the editing audit (up to 90 seconds,
+low reasoning) then run side by side, all within a 170-second server budget under the
+client's 180-second limit. The audit is a separate call on purpose: when it lived inside the
+review, real two-page writing made the reviewer reason past its time and token limits and
+the child saw an error instead of feedback. The reviewer uses medium reasoning and the
+complete output schema, and checks the student's existing skills and surrounding sentences
+before choosing targets. Provider retries share the same time budget. The optional editing
+recheck gets at most 25 seconds from whatever budget remains; it adds no extra call when the
+original audit is valid. Each stage logs a one-line reason to the server log when it fails
+(never the child's writing). These checks add model cost and latency; they reduce failure
+modes but cannot guarantee perfect handwriting or feedback.
 
 Photos are cleaned up on the iPad first (uneven lighting flattened so the page reads
 white and the ink dark, like a phone's document scan) and sent at up to 2000 pixels.

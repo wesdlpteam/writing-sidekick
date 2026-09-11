@@ -69,7 +69,7 @@ function mockFetch(modelContent, { capture, moderation } = {}) {
       return { ok: true, status: 200, json: async () => ({ results: [{ flagged: false, category_scores: moderation || {} }] }) };
     }
     const request = JSON.parse(options.body);
-    if (request.messages?.[0]?.content.includes("EDITING_RECHECK:")) {
+    if (request.messages?.[0]?.content.includes("EDITING_AUDIT:") || request.messages?.[0]?.content.includes("EDITING_RECHECK:")) {
       return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({editing:{complete:false,errors:[]}}) } }] }) };
     }
     if (request.messages?.[0]?.content.includes("QUALITY_REVIEW:")) {
@@ -914,4 +914,36 @@ test("missing or invalid totals are unavailable, never reported as zero errors",
     const r = await feedbackFor({ ...GOOD_PAYLOAD, error_totals });
     assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null });
   }
+});
+
+test("editing audit runs as its own call beside the review, not inside it", async () => {
+  const calls = [];
+  const audit = { complete: true, errors: [
+    { category: "spelling", quote: "famly", occurrence: 1, correction: "family" },
+    { category: "spelling", quote: "becos", occurrence: 1, correction: "because" },
+  ] };
+  const reply = (content) => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(content) } }] }) });
+  const fetchImpl = async (url, options) => {
+    const system = JSON.parse(options.body).messages?.[0]?.content || "";
+    const stage = system.startsWith("QUALITY_REVIEW:") ? "review" : system.startsWith("EDITING_AUDIT:") ? "audit" : system.startsWith("EDITING_RECHECK:") ? "recheck" : "draft";
+    const entry = { stage, system, started: Date.now() };
+    calls.push(entry);
+    if (stage === "review") {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      entry.finished = Date.now();
+      return reply({ approved: true, feedback: GOOD_PAYLOAD });
+    }
+    if (stage === "audit") return reply({ editing: audit });
+    return reply(GOOD_PAYLOAD);
+  };
+  const r = await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl, env: ENV });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.payload.errorTotals, { spelling: 2, punctuation: 0, capital_letters: 0 });
+  const review = calls.find((c) => c.stage === "review");
+  const auditCall = calls.find((c) => c.stage === "audit");
+  assert.ok(auditCall, "the audit is its own call");
+  assert.match(auditCall.system, /json/i, "OpenAI JSON mode rejects a prompt that never says 'json'");
+  assert.ok(auditCall.started <= review.finished, "the audit runs alongside the review, not after it");
+  assert.doesNotMatch(review.system, /Return editing:|editing:<audit>/, "the review is not asked to audit");
+  assert.ok(!calls.some((c) => c.stage === "recheck"), "a valid audit needs no recheck");
 });

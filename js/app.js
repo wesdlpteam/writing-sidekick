@@ -1,7 +1,7 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
 import { writingStrength, writingStrengthLines, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260910-section3";
 import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260910-quality";
-import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260910-quality";
+import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260911-audit";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260910-section3";
 
 const MAX_PAGES = 2;
@@ -259,7 +259,7 @@ async function submitWriting() {
     return;
   }
   try {
-    setLoading(true, "Your sidekick is thinking about your writing…");
+    setLoading(true, "Your sidekick is thinking about your writing… This can take a minute or two.");
     state.feedback = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
     renderFeedback();
     show("screen-feedback");

@@ -1,4 +1,4 @@
-const TIMEOUT_MS = 120_000;
+const TIMEOUT_MS = 180_000;
 const FRIENDLY_FAIL = "Something went wrong talking to your sidekick. Please try again.";
 const OFFLINE_FAIL = "It looks like the internet is off. Please check the wifi, then try again.";
 
