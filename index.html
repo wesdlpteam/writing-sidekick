@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260910-section3">
+  <link rel="stylesheet" href="css/app.css?v=20260916-photolibrary">
 </head>
 <body>
   <main id="app">
@@ -55,19 +55,27 @@
           <li>&#x1F91A; Cover your name with your hand or a card</li>
           <li>&#x1F4C4; Lay the page flat</li>
           <li>&#x1F4A1; Find good light, no shadows</li>
-          <li>&#x1F4DA; Up to two pages. Snap them one at a time, in order</li>
+          <li>&#x1F4DA; Up to two pages, in order. Snap them one at a time, or pick them from your photos</li>
         </ul>
       </div>
       <p id="privacy-line" class="privacy-line">Your photo goes to an AI helper to read your writing, then it is forgotten. <a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">For adults: how your writing is handled</a></p>
-      <label id="first-photo" class="primary big file-btn">
-        Take the photo
-        <input id="photo-input" type="file" accept="image/*" capture="environment">
-      </label>
+      <div id="first-photo" class="first-photo">
+        <label class="primary big file-btn">
+          Take the photo
+          <input id="photo-input" type="file" accept="image/*" capture="environment">
+        </label>
+        <p class="or-line">or</p>
+        <label class="secondary big file-btn">
+          Choose a photo I already took
+          <input id="photo-library" type="file" accept="image/*" multiple>
+        </label>
+      </div>
       <div id="pages-box" class="pages-box" hidden>
         <p id="pages-title" class="pages-title">Your page</p>
         <ul id="pages-list" class="pages-list"></ul>
         <div class="btn-row pages-actions">
-          <label id="add-page" class="ghost file-btn">+ Add another page<input id="photo-add" type="file" accept="image/*" capture="environment"></label>
+          <label id="add-page" class="ghost file-btn">+ Take another page<input id="photo-add" type="file" accept="image/*" capture="environment"></label>
+          <label id="add-page-library" class="ghost file-btn">+ Add from my photos<input id="photo-add-library" type="file" accept="image/*" multiple></label>
           <button id="btn-read" class="primary big" type="button">Read my writing &#8594;</button>
         </div>
       </div>
@@ -246,7 +254,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20260911-audit");
+      await import("./js/app.js?v=20260916-photolibrary");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

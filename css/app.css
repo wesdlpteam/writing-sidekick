@@ -217,6 +217,18 @@ button, .file-btn {
 }
 .secondary:hover { filter: brightness(0.97); }
 .secondary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--purple-mid); }
+.secondary.big {
+  display: block;
+  width: 100%;
+  padding: 16px 18px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.5rem;
+  letter-spacing: 0.05em;
+  box-shadow: 0 6px 0 var(--purple-mid);
+}
+.secondary.big:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--purple-mid); }
 
 .ghost {
   background: transparent;
@@ -317,6 +329,18 @@ h1[tabindex="-1"]:focus-visible, h2[tabindex="-1"]:focus-visible, h3[tabindex="-
 .reminder ul { margin: 0; padding-left: 4px; list-style: none; }
 .reminder li { margin: 8px 0; font-size: 1.05rem; }
 
+/* Two ways in: take a fresh photo, or pick one already in the iPad's photo album. */
+.first-photo[hidden] { display: none; }
+.or-line {
+  text-align: center;
+  margin: 14px 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+  color: var(--sky-text);
+  text-transform: uppercase;
+}
+
 .file-btn { position: relative; overflow: hidden; display: inline-block; }
 .file-btn input[type="file"] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
 .file-btn[hidden] { display: none; }
@@ -364,7 +388,9 @@ h1[tabindex="-1"]:focus-visible, h2[tabindex="-1"]:focus-visible, h3[tabindex="-
 .page-tools .ghost.small { color: var(--ink); text-decoration-color: var(--purple-mid); padding: 4px 8px; }
 .pages-actions { flex-wrap: wrap; }
 .pages-actions > * { flex: 1 1 200px; text-align: center; }
-.pages-actions .file-btn { padding: 16px; font-size: 1.1rem; }
+/* The two ways to add a page share a row; the go button keeps a full row of its own. */
+.pages-actions .file-btn { flex: 1 1 160px; padding: 16px; font-size: 1.1rem; }
+.pages-actions #btn-read { flex: 1 1 100%; margin-top: 8px; }
 
 #print-pages img { width: 100%; max-height: 45vh; object-fit: contain; object-position: top; margin-bottom: 8px; display: block; }
 

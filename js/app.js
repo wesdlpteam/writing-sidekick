@@ -91,19 +91,31 @@ $("btn-back-camera").addEventListener("click", () => show("screen-camera"));
 
 // ---- pages: photo -> cleaned scan, up to two pages -------------------------
 
-async function addPage(file) {
-  if (!file || state.pages.length >= MAX_PAGES) return;
+// Photos arrive one at a time from the camera, or several at once from the photo album.
+// Extras past the two-page limit are ignored, and the child is told so.
+async function addPages(fileList) {
+  const room = MAX_PAGES - state.pages.length;
+  const files = Array.from(fileList || []).slice(0, Math.max(0, room));
+  if (!files.length) return;
+  const dropped = (fileList?.length || 0) - files.length;
+  let failed = 0;
   try {
-    setLoading(true, "Tidying up your photo…");
-    // Every page keeps full size: each one is sent in its own request (see btn-read below).
-    const { dataUrl } = await prepareScan(file);
-    state.pages.push(dataUrl);
+    setLoading(true, files.length > 1 ? "Tidying up your photos…" : "Tidying up your photo…");
+    for (const file of files) {
+      try {
+        // Every page keeps full size: each one is sent in its own request (see btn-read below).
+        const { dataUrl } = await prepareScan(file);
+        state.pages.push(dataUrl);
+      } catch {
+        failed++;
+      }
+    }
     renderPages();
-  } catch {
-    showError("That photo didn't work. Please try taking it again.");
   } finally {
     setLoading(false);
   }
+  if (failed) showError("That photo didn't work. Please try another one, or take it again.");
+  else if (dropped > 0) showError(`Only ${MAX_PAGES} pages fit, so the extra photos were left out.`);
 }
 
 function renderPages() {
@@ -138,7 +150,9 @@ function renderPages() {
   const count = state.pages.length;
   $("pages-box").hidden = count === 0;
   $("first-photo").hidden = count > 0;
-  $("add-page").hidden = count >= MAX_PAGES;
+  const full = count >= MAX_PAGES;
+  $("add-page").hidden = full;
+  $("add-page-library").hidden = full;
   $("pages-title").textContent = count === 1 ? "Your page" : `Your ${count} pages`;
   resetIdle();
 }
@@ -152,9 +166,10 @@ $("pages-list").addEventListener("click", async (event) => {
   renderPages();
 });
 
-for (const id of ["photo-input", "photo-add"]) {
+// Camera inputs (capture="environment") open the camera; the plain ones open the photo album.
+for (const id of ["photo-input", "photo-add", "photo-library", "photo-add-library"]) {
   $(id).addEventListener("change", (e) => {
-    addPage(e.target.files[0]);
+    addPages(e.target.files);
     e.target.value = "";
   });
 }

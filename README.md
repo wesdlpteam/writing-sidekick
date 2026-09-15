@@ -1,8 +1,9 @@
 # Writing Sidekick (Years 1 to 6)
 
 An iPad web app for primary students. A student picks their year level, photographs
-their handwritten writing (up to two pages; a page snapped sideways or upside down is
-turned upright automatically before it is read), checks the typed-out version (both pages
+their handwritten writing or picks photos of it from the iPad's photo album (up to two
+pages; a page snapped sideways or upside down is turned upright automatically before it
+is read), checks the typed-out version (both pages
 together in one box) by tapping any word to fix it, and gets specific, improvement-first
 feedback matched to the Australian Curriculum (ACARA v9) expectations for their year.
 Nothing is ever stored.
