@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask } from "../api/feedback.js";
+import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, findRunOns } from "../api/feedback.js";
 
 const area = (status, strength, next_step) => ({ status, strength, next_step });
 
@@ -357,17 +357,17 @@ test("feedback prompt: year guide, rules, the ten areas, skill bank, writing mov
   assert.ok(userParts.some((p) => p.type === "text" && p.text.includes(TEXT)));
 });
 
-test("the prompt does not force a spread of strengths and next steps; Years 1 and 2 get fewer, shorter power-ups", async () => {
+test("the prompt does not force a spread of strengths and next steps; how many power-ups follows the writing, and Years 1 and 2 get shorter ones", async () => {
   const c1 = {};
   await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 1, genre: "recount" }, c1);
   const sys1 = c1.body.messages[0].content;
   assert.doesNotMatch(sys1, /typical piece has/);
-  assert.match(sys1, /Rules for power_ups: 1 or 2/);
+  assert.match(sys1, /Rules for power_ups: 1 or 2, because this draft is short/, "a short piece is not buried under three");
   assert.match(sys1, /under 12 words/);
   const c4 = {};
   await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 4, genre: "narrative" }, c4);
   const sys4 = c4.body.messages[0].content;
-  assert.match(sys4, /Rules for power_ups: 1 to 3/);
+  assert.match(sys4, /Rules for power_ups: 1 or 2, because this draft is short/, "year does not decide the count, length does");
   assert.doesNotMatch(sys4, /under 12 words/);
   assert.match(sys4, /This writer is in Year 4\. .*under 16 words/, "Years 3 and 4 get their own band");
   const c6 = {};
@@ -946,4 +946,116 @@ test("editing audit runs as its own call beside the review, not inside it", asyn
   assert.ok(auditCall.started <= review.finished, "the audit runs alongside the review, not after it");
   assert.doesNotMatch(review.system, /Return editing:|editing:<audit>/, "the review is not asked to audit");
   assert.ok(!calls.some((c) => c.stage === "recheck"), "a valid audit needs no recheck");
+});
+
+// ---- run-on sentences and the three power-ups ------------------------------
+
+// Invented, but built like the real Year 2 writing that prompted this: two pages of good
+// ideas delivered as a handful of enormous chained sentences. The app used to spend its
+// power-ups stretching the strengths and leave the run-ons alone.
+const RUN_ON_TEXT = "The pirates and the storm\nOnce upon a time there were 2 kids named Mia and Sam. Mia loved old maps and Sam loved boats. Everyone said they were the silliest kids in town, so one day they decided to sail to Turtle Island. They packed sandwiches then they filled the water bottles then they pushed the little boat out then they started rowing.\n\nMia and Sam couldnt belive their luck. Mia watched the water for turtles and Sam watched the sky for clouds soon they came across 2 dolphins they said the dolphins were called Splash and Bubble but for some reason the dolphins swam in circles around the boat Sam asked why and Mia said they were probly warning them about somthing.\n\nsoon Mia, Sam, Splash and Bubble were begining to feel scared but then the wind got stronger and the waves got taller but Mia and Sam wanted to reach the island so they tried to row faster to get past the rocks so Splash and Bubble said they needed a better plan.\n\nSplash told Mia and Sam to steer for the old lighthouse on the point to get out of the storm before the big wave came by pulling hard on the left oar and it worked but then the lighthouse light went out so it was a real problem so Mia lit the lantern from her bag and Sam tied the rope around the post so soon they climbed onto the rocks and waved at the fishing boats and it worked! So they got home safe.";
+
+test("a run-on pattern is found in chained writing and not in controlled writing", () => {
+  const found = findRunOns(RUN_ON_TEXT);
+  assert.ok(found.length >= 3, `expected the chained sentences, got ${found.length}`);
+  assert.match(found[0].sentence, /the lighthouse light went out/, "the worst offender leads");
+  assert.ok(found[0].joins >= found[1].joins, "sorted by how badly chained they are");
+  // Short chained sentences and long well-punctuated ones are both left alone.
+  assert.deepEqual(findRunOns("They went fishing then they toasted marshmallows then they told spooky tales then they went to bed."), []);
+  assert.deepEqual(findRunOns(TEXT), []);
+  assert.deepEqual(findRunOns(""), []);
+  assert.deepEqual(
+    findRunOns("Although the storm had passed, the beach was still closed because the council wanted to check the dunes for damage and erosion before anyone walked on them."),
+    [],
+    "one long controlled sentence is not a pattern",
+  );
+});
+
+test("run-on repair leads the power-ups even when the model puts it last", async () => {
+  const payload = structuredClone(GOOD_PAYLOAD);
+  payload.areas.sentence_structure = area("next_step", "", "Break your longest sentence where the first whole idea ends.");
+  payload.power_ups = [
+    { ...GOOD_PAYLOAD.power_ups[1], area: "vocabulary" },
+    {
+      area: "sentence_structure",
+      skill: "Let your reader breathe",
+      why: "Your storm has great action. Full stops let the reader feel each wave.",
+      your_line: "so it was a real problem so Mia lit the lantern from her bag",
+      move: "run_on_fix",
+      rule: "Find where one whole idea ends, put a full stop, and start the next with a capital.",
+      example_before: "The siren wailed and we grabbed our bags and we ran to the gate and the bus left.",
+      example_after: "The siren wailed. We grabbed our bags and ran to the gate, just as the bus left.",
+      now_you: "Split your storm sentence where the first whole idea ends.",
+    },
+  ];
+  const r = await feedbackFor(payload, { transcript: RUN_ON_TEXT, yearLevel: 2, genre: "narrative" });
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.powerUps[0].area, "sentence_structure", "the run-on fix is promoted to Power-up 1");
+  assert.equal(r.payload.powerUps[0].move.name, "Run-on sentences");
+  assert.equal(r.payload.criteria.find((c) => c.key === "sentence_structure").powerUp, 1);
+  assert.equal(r.payload.criteria.find((c) => c.key === "vocabulary").powerUp, 2);
+});
+
+test("Years 1 and 2 now get up to three power-ups, like the older years", async () => {
+  const payload = structuredClone(GOOD_PAYLOAD);
+  payload.power_ups = [
+    GOOD_PAYLOAD.power_ups[0],
+    GOOD_PAYLOAD.power_ups[1],
+    { ...GOOD_PAYLOAD.power_ups[1], area: "ideas", skill: "Say why the dog ran", now_you: "Add why your dog was running." },
+    { ...GOOD_PAYLOAD.power_ups[1], area: "cohesion", skill: "Link your two sentences", now_you: "Join them with because." },
+  ];
+  for (const yearLevel of [1, 2, 3]) {
+    const r = await feedbackFor(payload, { transcript: TEXT, yearLevel, genre: "narrative" });
+    assert.equal(r.payload.powerUps.length, 3, `Year ${yearLevel}`);
+  }
+});
+
+test("the run-on override reaches both model calls, and only when the writing earns it", async () => {
+  const systems = [];
+  const fetchImpl = async (url, options) => {
+    if (String(url).endsWith("/moderations")) return { ok: true, status: 200, json: async () => ({ results: [{ flagged: false, category_scores: {} }] }) };
+    const request = JSON.parse(options.body);
+    const system = request.messages[0].content;
+    systems.push(system);
+    if (system.includes("EDITING_AUDIT:")) return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ editing: { complete: false, errors: [] } }) } }] }) };
+    if (system.includes("QUALITY_REVIEW:")) return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ approved: true, feedback: GOOD_PAYLOAD }) } }] }) };
+    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(GOOD_PAYLOAD) } }] }) };
+  };
+  await handleFeedback({ transcript: RUN_ON_TEXT, yearLevel: 2, genre: "narrative" }, { fetchImpl, env: ENV });
+  const overridden = systems.filter((s) => s.includes("RUN-ON OVERRIDE:"));
+  assert.equal(overridden.length, 2, "the draft and the teaching review both get it");
+  assert.ok(overridden.every((s) => /FIRST power-up must be run_on_fix/.test(s)));
+
+  systems.length = 0;
+  await handleFeedback({ transcript: TEXT, yearLevel: 2, genre: "narrative" }, { fetchImpl, env: ENV });
+  assert.ok(!systems.some((s) => s.includes("RUN-ON OVERRIDE:")), "controlled writing is left alone");
+});
+
+test("run-on repair is never labelled on a job that asks the child to join sentences", () => {
+  assert.equal(moveFitsTask("run_on_fix", "Combine sentences 2 and 3", "", ""), false);
+  assert.equal(moveFitsTask("run_on_fix", "Let your reader breathe", "Split your storm sentence where the first idea ends.", ""), true);
+});
+
+test("the staffroom word 'kernel' never reaches the child", async () => {
+  const payload = structuredClone(GOOD_PAYLOAD);
+  payload.power_ups[0].rule = "Keep the kernel sentence and add when and where.";
+  payload.power_ups[0].why = "Kernel sentences like this one are a good start.";
+  payload.power_ups[0].now_you = "Keep your kernel's words.";
+  payload.areas.sentence_structure = area("steady", "Your kernel is complete.", "Expand one kernel sentence.");
+  const r = await feedbackFor(payload);
+  const shown = JSON.stringify(r.payload);
+  assert.doesNotMatch(shown, /kernel/i);
+  assert.equal(r.payload.powerUps[0].rule, "Keep the short sentence and add when and where.");
+  assert.equal(r.payload.powerUps[0].why, "Short sentences like this one are a good start.");
+  assert.equal(r.payload.powerUps[0].nowYou, "Keep your short sentence's words.");
+});
+
+test("a substantial draft is asked for three power-ups, whatever the year", async () => {
+  for (const yearLevel of [2, 5]) {
+    const capture = {};
+    await feedbackFor(GOOD_PAYLOAD, { transcript: RUN_ON_TEXT, yearLevel, genre: "narrative" }, capture);
+    const system = capture.body.messages[0].content;
+    assert.match(system, /Rules for power_ups: exactly 3, on three different areas/, `Year ${yearLevel}`);
+    assert.match(system, /find three real targets rather than inventing one/, `Year ${yearLevel}`);
+  }
 });

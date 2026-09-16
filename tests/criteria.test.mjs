@@ -41,7 +41,7 @@ test("no kind chosen (or an unknown kind) offers both genre areas as a choice", 
 });
 
 test("the writing moves are named in full, explained, and staged by year", () => {
-  assert.equal(Object.keys(MOVES).length, 15);
+  assert.equal(Object.keys(MOVES).length, 16);
   for (const [key, m] of Object.entries(MOVES)) {
     assert.ok(m.name && m.rule.length > 30 && m.example.length > 8, key);
     assert.ok(m.minYear >= 1 && m.minYear <= 6, key);
@@ -50,11 +50,11 @@ test("the writing moves are named in full, explained, and staged by year", () =>
   }
   assert.match(MOVES.transition.rule, /transition word or phrase/);
   assert.match(MOVES.subordinating_conjunction.rule, /Begin with a subordinating conjunction/);
-  assert.deepEqual(movesFor(1).map((m) => m.key), ["sentence_types", "fragment_fix", "because_but_so", "sentence_expansion", "elaborate", "paragraph_focus"]);
+  assert.deepEqual(movesFor(1).map((m) => m.key), ["sentence_types", "fragment_fix", "run_on_fix", "because_but_so", "sentence_expansion", "elaborate", "paragraph_focus"]);
   assert.ok(movesFor(2).some((m) => m.key === "sentence_combining"));
   assert.ok(!movesFor(3).some((m) => m.key === "appositive"), "appositives wait until Year 4");
   assert.ok(!movesFor(4).some((m) => m.key === "general_to_specific_intro"), "introductions wait until Year 5");
-  assert.equal(movesFor(6).length, 15);
+  assert.equal(movesFor(6).length, 16);
   assert.ok(movesFor(2).some((m) => m.key === "elaborate"));
 });
 
@@ -75,6 +75,28 @@ test("the moves prompt lists only the moves for the year and says revise before 
   assert.match(MOVES.topic_sentence.rule, /short and concise/);
   assert.match(MOVES.topic_sentence.rule, /supporting sentences after it/);
   assert.match(movesPrompt(5), /- appositive: Appositive\./);
+});
+
+test("run-on repair is a strategy of its own from Year 1, kept apart from combining", () => {
+  assert.equal(MOVES.run_on_fix.minYear, 1);
+  assert.equal(MOVES.run_on_fix.name, "Run-on sentences");
+  assert.match(MOVES.run_on_fix.rule, /full stop/);
+  assert.match(MOVES.run_on_fix.rule, /capital letter/);
+  // Two complete sentences, so the example itself shows the split it asks for.
+  assert.equal(MOVES.run_on_fix.example.match(/[.!?]/g).length, 2);
+  assert.match(movesPrompt(1), /- run_on_fix: Run-on sentences\./);
+  assert.match(movesPrompt(1), /run_on_fix is its opposite, splitting ONE over-long chained sentence/);
+  assert.match(movesPrompt(1), /never call that combining/);
+  assert.match(movesPrompt(3), /split your long sentence where the first whole idea ends/);
+});
+
+test("no strategy hands the child the staffroom word 'kernel'", () => {
+  for (const [key, m] of Object.entries(MOVES)) {
+    assert.doesNotMatch(`${m.name} ${m.rule} ${m.example}`, /\bkernels?\b/i, `${key} is child-facing`);
+  }
+  assert.match(MOVES.sentence_expansion.rule, /a short sentence that makes sense on its own/);
+  assert.match(MOVES.sentence_expansion.rule, /Keep the words you started with/);
+  assert.match(movesPrompt(3), /"Kernel" and "kernel sentence" are staffroom words/);
 });
 
 test("describeMove respects the year and rejects unknown keys", () => {

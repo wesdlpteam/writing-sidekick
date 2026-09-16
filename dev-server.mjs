@@ -56,7 +56,7 @@ const MOCK_PAYLOAD = {
       move: {
         key: "sentence_expansion",
         name: "Sentence expansion",
-        rule: "Start with a bare kernel sentence like 'The surfer paddled out.' and add when, where, why or how. The when usually goes at the front, followed by a comma.",
+        rule: "Start with a short sentence that makes sense on its own, like 'The surfer paddled out.' and add when, where, why or how. The when usually goes at the front, followed by a comma.",
         example: "At sunrise, the surfer paddled out past the break to catch the first wave.",
       },
       nowYou: "Add when and where to your line.",

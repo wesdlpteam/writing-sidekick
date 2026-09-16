@@ -123,7 +123,7 @@ test('the final editor can repair malformed generation JSON in its one review pa
   assert.equal(r.payload.errorTotals.spelling,1);
 });
 
-test('younger writers receive at most two power-ups and no raw strategy keys', async () => {
+test('younger writers now reach three power-ups too, and never see a raw strategy key', async () => {
   const extra = {...draft,power_ups:[
     {...draft.power_ups[0],skill:'Use sentence_expansion'},
     {...draft.power_ups[0],area:'vocabulary'},
@@ -132,7 +132,7 @@ test('younger writers receive at most two power-ups and no raw strategy keys', a
   let calls=0;
   const r=await handleFeedback({yearLevel:2,transcript:'My famly likes cats.'},{env,fetchImpl:async()=>reply(++calls===1?extra:{approved:true,feedback:extra})});
   assert.equal(r.status,200);
-  assert.equal(r.payload.powerUps.length,2);
+  assert.equal(r.payload.powerUps.length,3);
   assert.equal(r.payload.powerUps[0].skill,'Use Sentence expansion');
 });
 
