@@ -58,7 +58,7 @@ export const CRITERIA = {
     label: "Sentence structure",
     sub: "building good sentences",
     guide:
-      "Are sentences complete and correct (no fragments), and is there variety? Look for a mix of short and long sentences, simple, compound and complex sentences, sentences that begin with a subordinating conjunction, expanded sentences that say when, where, why and how, and no run-on sentences joined with and, and, and.",
+      "Are sentences complete and correct (no half sentences left hanging), and is there variety? Look for a mix of short and long sentences, simple, compound and complex sentences, sentences that begin with a subordinating conjunction, expanded sentences that say when, where, why and how, and no run-on sentences joined with and, and, and.",
   },
   punctuation: {
     label: "Punctuation",
@@ -131,9 +131,9 @@ export const MOVES = {
     example: "What a monster wave that was!",
   },
   fragment_fix: {
-    name: "Sentences and fragments",
+    name: "Whole sentences",
     minYear: 1,
-    rule: "A fragment is only a piece of a sentence, like 'Because it was raining.' Add the missing who and what to make it a whole sentence.",
+    rule: "A half sentence is only part of an idea, like 'Because it was raining.' It leaves the reader waiting. Add the missing who and what so it makes sense on its own.",
     example: "We stayed inside because it was raining.",
   },
   run_on_fix: {
@@ -234,7 +234,7 @@ export function movesPrompt(yearLevel) {
 ${lines.join("\n")}
 Name a strategy only when "example_after" really does it: sentence_expansion adds when, where, why or how inside ONE sentence; sentence_combining joins two or more of the child's sentences into fewer sentences; run_on_fix is its opposite, splitting ONE over-long chained sentence into two or more complete sentences (never call that combining); elaborate adds a NEW sentence of detail after one of theirs; because_but_so extends a sentence with because, but or so. If none fits exactly, use null.
 Revising comes before editing: power-ups are revising strategies. Spelling and punctuation are editing and belong in error_totals and the spelling and punctuation areas.
-Call them "writing strategies" (never moves, tricks or techniques) and use the strategy names above whenever you talk about one, so the child hears the same words as in class: say "transition word" (never signpost word, connective, linking word or time connective), "subordinating conjunction" (never joining word, opener or sentence starter), "fragment", "topic sentence" and "concluding sentence" (never T.S., C.S. or SPO), "revise" for improving the writing and "edit" for fixing spelling and punctuation. "Kernel" and "kernel sentence" are staffroom words: never write either in anything the child reads. Say "a short sentence that makes sense on its own", and "keep the words you started with" when asking them to preserve it.
+Call them "writing strategies" (never moves, tricks or techniques) and use the strategy names above whenever you talk about one, so the child hears the same words as in class: say "transition word" (never signpost word, connective, linking word or time connective), "subordinating conjunction" (never joining word, opener or sentence starter), "topic sentence" and "concluding sentence" (never T.S., C.S. or SPO), "revise" for improving the writing and "edit" for fixing spelling and punctuation. "Kernel" and "fragment" are staffroom words: never write either, or "kernel sentence", in anything the child reads. Say "a short sentence that makes sense on its own" for a kernel, "keep the words you started with" when asking them to preserve it, and "half sentence" for a fragment.
 Phrase "now_you" the way the school's own feedback is phrased, pointing at a sentence: expand it (add when, where, why or how), combine sentences 2 and 3, split your long sentence where the first whole idea ends, insert a transition, begin it with a subordinating conjunction, vary vocabulary, give an example, or improve your topic sentence or concluding sentence.`;
 }
 

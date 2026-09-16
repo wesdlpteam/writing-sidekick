@@ -1036,6 +1036,10 @@ test("run-on repair is never labelled on a job that asks the child to join sente
   assert.equal(moveFitsTask("run_on_fix", "Let your reader breathe", "Split your storm sentence where the first idea ends.", ""), true);
 });
 
+// Everything the child can actually read. Strategy keys (move.key stays "fragment_fix") are
+// internal identifiers that no screen, print-out or saved picture renders.
+const visibleText = (payload) => JSON.stringify(payload, (field, value) => (field === "key" ? undefined : value));
+
 test("the staffroom word 'kernel' never reaches the child", async () => {
   const payload = structuredClone(GOOD_PAYLOAD);
   payload.power_ups[0].rule = "Keep the kernel sentence and add when and where.";
@@ -1043,8 +1047,7 @@ test("the staffroom word 'kernel' never reaches the child", async () => {
   payload.power_ups[0].now_you = "Keep your kernel's words.";
   payload.areas.sentence_structure = area("steady", "Your kernel is complete.", "Expand one kernel sentence.");
   const r = await feedbackFor(payload);
-  const shown = JSON.stringify(r.payload);
-  assert.doesNotMatch(shown, /kernel/i);
+  assert.doesNotMatch(visibleText(r.payload), /kernel/i);
   assert.equal(r.payload.powerUps[0].rule, "Keep the short sentence and add when and where.");
   assert.equal(r.payload.powerUps[0].why, "Short sentences like this one are a good start.");
   assert.equal(r.payload.powerUps[0].nowYou, "Keep your short sentence's words.");
@@ -1058,4 +1061,16 @@ test("a substantial draft is asked for three power-ups, whatever the year", asyn
     assert.match(system, /Rules for power_ups: exactly 3, on three different areas/, `Year ${yearLevel}`);
     assert.match(system, /find three real targets rather than inventing one/, `Year ${yearLevel}`);
   }
+});
+
+test("the staffroom word 'fragment' never reaches the child either", async () => {
+  const payload = structuredClone(GOOD_PAYLOAD);
+  payload.power_ups[0].rule = "Fix the fragment by adding who and what.";
+  payload.power_ups[0].why = "Sentence fragments leave the reader waiting.";
+  payload.areas.sentence_structure = area("next_step", "", "Check each line for fragments.");
+  const r = await feedbackFor(payload);
+  assert.doesNotMatch(visibleText(r.payload), /fragment/i);
+  assert.equal(r.payload.powerUps[0].rule, "Fix the half sentence by adding who and what.");
+  assert.equal(r.payload.powerUps[0].why, "Half sentences leave the reader waiting.");
+  assert.equal(r.payload.criteria.find((c) => c.key === "sentence_structure").nextStep, "Check each line for half sentences.");
 });

@@ -314,15 +314,18 @@ const powerUpCountRule = (transcript) =>
 function validateFeedback(data, { areas, yearLevel, transcript }) {
   if (!data || typeof data !== "object") return null;
 
-  // Strategy keys become the names the child hears in class, and "kernel" never reaches them:
-  // it is a staffroom word for the short sentence an expansion starts from.
+  // Strategy keys become the names the child hears in class. "Kernel" and "fragment" are
+  // staffroom words for the short sentence an expansion starts from and for a sentence that
+  // stops half way, so they are swapped for the plain words even if a prompt rule is ignored.
+  const plainWord = (plain) => (match) => {
+    const word = /s$/i.test(match) ? `${plain}s` : plain;
+    return /^[A-Z]/.test(match) ? `${word[0].toUpperCase()}${word.slice(1)}` : word;
+  };
   const studentText = (value) =>
     text(value)
       .replace(/\b[a-z]+(?:_[a-z]+)+\b/g, (key) => describeMove(key, yearLevel)?.name || key)
-      .replace(/\bkernels?(?:\s+sentences?)?\b/gi, (match) => {
-        const plain = /s$/i.test(match) ? "short sentences" : "short sentence";
-        return /^K/.test(match) ? `S${plain.slice(1)}` : plain;
-      });
+      .replace(/\bkernels?(?:\s+sentences?)?\b/gi, plainWord("short sentence"))
+      .replace(/\b(?:sentence\s+)?fragments?\b/gi, plainWord("half sentence"));
   const raw = data.areas && typeof data.areas === "object" ? data.areas : {};
   const criteria = [];
   let slotFilled = false;

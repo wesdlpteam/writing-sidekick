@@ -90,13 +90,19 @@ test("run-on repair is a strategy of its own from Year 1, kept apart from combin
   assert.match(movesPrompt(3), /split your long sentence where the first whole idea ends/);
 });
 
-test("no strategy hands the child the staffroom word 'kernel'", () => {
+test("no strategy hands the child a staffroom word", () => {
   for (const [key, m] of Object.entries(MOVES)) {
-    assert.doesNotMatch(`${m.name} ${m.rule} ${m.example}`, /\bkernels?\b/i, `${key} is child-facing`);
+    assert.doesNotMatch(`${m.name} ${m.rule} ${m.example}`, /\b(kernels?|fragments?)\b/i, `${key} is child-facing`);
   }
   assert.match(MOVES.sentence_expansion.rule, /a short sentence that makes sense on its own/);
   assert.match(MOVES.sentence_expansion.rule, /Keep the words you started with/);
-  assert.match(movesPrompt(3), /"Kernel" and "kernel sentence" are staffroom words/);
+  // The pair of sentence-foundation strategies: one idea stops too early, the other never stops.
+  assert.equal(MOVES.fragment_fix.name, "Whole sentences");
+  assert.match(MOVES.fragment_fix.rule, /A half sentence is only part of an idea/);
+  assert.equal(MOVES.run_on_fix.name, "Run-on sentences");
+  assert.match(movesPrompt(3), /"Kernel" and "fragment" are staffroom words/);
+  assert.match(movesPrompt(3), /"half sentence" for a fragment/);
+  assert.doesNotMatch(criteriaPrompt("narrative"), /\bfragments?\b/i, "the marker guidance seeds the plain word too");
 });
 
 test("describeMove respects the year and rejects unknown keys", () => {
