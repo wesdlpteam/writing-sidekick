@@ -207,21 +207,15 @@ $("btn-read").addEventListener("click", async () => {
       .map((page) => reflowTranscript(page.transcript).trim())
       .filter(Boolean)
       .join("\n\n");
-    // Years 1 to 3 do not check the typing: it is a lot of reading for a young writer, so the
-    // feedback comes straight back. Year 4 and up still get to fix anything the app misread.
-    // An unreadable photo always shows the typing screen, whatever the year, so the writing
-    // can be typed in rather than the child being stuck.
+    // Every year checks the typing, so any child can fix a word the app misread before the
+    // feedback comes back. The note below only appears when the reading itself was doubtful.
     const needsCheck = pages.some((page) => page.verification === "unavailable") || /\[unclear\]/i.test(state.transcript);
     $("transcript-check-note").hidden = !needsCheck;
     $("transcript-check-note").textContent = /\[unclear\]/i.test(state.transcript)
       ? "Some writing was hard to read. Replace each [unclear] with the words or marks in your book. You can ask your teacher to help."
       : "The extra photo check was unavailable. Compare this typing carefully with your book before continuing.";
-    if (checksTyping() || !fullTranscript() || needsCheck) {
-      show("screen-review");
-      showReview();
-      return;
-    }
-    await submitWriting();
+    show("screen-review");
+    showReview();
   } catch (error) {
     showError(error.message);
   } finally {
@@ -261,9 +255,6 @@ function fullTranscript() {
 }
 
 // ---- step 2: the writing -> feedback ---------------------------------------
-
-// Year 4 and up see the typed copy and can fix it before the feedback comes back.
-const checksTyping = () => state.yearLevel >= 4;
 
 $("btn-confirm").addEventListener("click", () => submitWriting());
 

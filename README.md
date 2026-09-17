@@ -81,8 +81,8 @@ Two separate steps, so each has one job:
    strict copy rules: keep every misspelling, keep every apostrophe and punctuation mark,
    leave out crossed-out words, put inserted words where the caret points, keep line
    breaks and page order. A second pass compares the draft against the same photo. Unreadable
-   words or marks appear as [unclear], never silent guesses. Year 4 and above check the typing;
-   uncertainty or an unavailable verification pass triggers this check for younger writers too.
+   words or marks appear as [unclear], never silent guesses. Every year level then checks the
+   typing and can fix anything the app misread before the feedback is requested.
 2. Feedback. Only the checked text goes to the model, with the year-level expectations,
    the genre guide and the skill bank. A separate teaching editor improves the draft and audits
    editing errors using exact quoted occurrences. The server validates those occurrences and
