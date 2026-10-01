@@ -192,7 +192,7 @@ test("photos go to a transcription-only call and return just the transcript", as
   assert.equal(userParts.filter((p) => p.type === "image_url").length, 2, "every page is sent, in order");
   assert.ok(userParts.every((p) => p.type !== "image_url" || p.image_url.detail === "original"), "original detail keeps small marks");
   assert.equal(capture.body.verbosity, "high");
-  assert.equal(capture.body.model, "gpt-5.4", "transcription uses the stronger model by default");
+  assert.equal(capture.body.model, "gpt-6-sol", "transcription uses the stronger model by default");
 });
 
 test("crossed-out words the model marks with ~~ are dropped from the transcript", async () => {
@@ -281,7 +281,8 @@ test("orientation check: a small low-detail call returns the clockwise turn; odd
   const parts = capture.body.messages[1].content;
   assert.equal(parts.find((p) => p.type === "image_url").image_url.detail, "low", "a cheap look is enough to see which way the lines run");
   assert.match(capture.body.messages[0].content, /clockwise rotation in degrees, one of 0, 90, 180 or 270/);
-  assert.equal(capture.body.model, "gpt-5.4");
+  assert.equal(capture.body.model, "gpt-6-sol");
+  assert.equal(capture.body.reasoning_effort, "none", "a quick look needs no thinking time");
   assert.doesNotMatch(capture.body.messages[0].content, /transcri/i, "this call is not asked to read the page");
 
   const odd = await handleFeedback({ yearLevel: 3, orientation: { image: IMG } }, { fetchImpl: mockFetch(JSON.stringify({ rotate: 45 })), env: ENV });
@@ -711,14 +712,14 @@ test("missing headline falls back to the first power-up", async () => {
   assert.equal(r.payload.headline, "Start with a subordinating conjunction. Both of your sentences start with 'The' and 'It'. A When or While start makes the reader lean in.");
 });
 
-test("feedback defaults to gpt-5.4 when no model configured", async () => {
+test("feedback defaults to gpt-5.6-terra when no model configured", async () => {
   const capture = {};
   const r = await handleFeedback(
     { transcript: TEXT, yearLevel: 3 },
     { fetchImpl: mockFetch(JSON.stringify(GOOD_PAYLOAD), { capture }), env: { OPENAI_API_KEY: "sk-test" } },
   );
   assert.equal(r.status, 200);
-  assert.equal(capture.body.model, "gpt-5.4");
+  assert.equal(capture.body.model, "gpt-5.6-terra");
 });
 
 test("parses fenced json from model", async () => {

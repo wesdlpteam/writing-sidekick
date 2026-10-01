@@ -121,9 +121,12 @@ the feedback is a canned example, but every screen works.
 2. Paste your OpenAI API key into it, on the line that mentions the key.
 3. The `.env` file stays on this computer; it is ignored by version control and never shared.
 
-Both steps default to `gpt-5.4`. Set `OPENAI_MODEL=gpt-5.4-mini` to make the feedback
-generation cheaper, or `OPENAI_TRANSCRIBE_MODEL` to change the reading step. The independent
-teaching/editing reviewer defaults to `gpt-5.4`; `OPENAI_REVIEW_MODEL` overrides it. The Listen buttons
+Feedback defaults to `gpt-5.6-terra` and the reading step to `gpt-6-sol` (picked on 2026-10-01 by
+testing every current model on the invented samples: same quality as `gpt-5.4`, about half the cost
+and time). `OPENAI_MODEL` changes the feedback model and `OPENAI_TRANSCRIBE_MODEL` the reading
+step. The independent teaching/editing reviewer follows the feedback default; `OPENAI_REVIEW_MODEL`
+overrides it. Any model you pick must accept `reasoning_effort: "none"` (gpt-6.1-sol and
+gpt-6-astra do not). The Listen buttons
 use `gpt-4o-mini-tts` with the `marin` voice; `OPENAI_TTS_MODEL` and `OPENAI_TTS_VOICE`
 change that.
 

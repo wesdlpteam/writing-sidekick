@@ -21,8 +21,12 @@ const UPSTREAM_TIMEOUT_MS = 60_000;
 const SERVER_BUDGET_MS = 170_000;
 const REVIEW_MAX_MS = 100_000;
 const AUDIT_MAX_MS = 90_000;
-const DEFAULT_FEEDBACK_MODEL = "gpt-5.4";
-const DEFAULT_TRANSCRIBE_MODEL = "gpt-5.4";
+// Chosen 2026-10-01 by a side-by-side run of every current model on the invented test writing:
+// gpt-5.6-terra gave feedback on all of it in about half the time and half the cost of gpt-5.4;
+// gpt-6-sol read the handwriting without "fixing" the child's mistakes. Newer models think by
+// default, so the quick calls below ask for reasoning_effort "none" (what gpt-5.4 did silently).
+const DEFAULT_FEEDBACK_MODEL = "gpt-5.6-terra";
+const DEFAULT_TRANSCRIBE_MODEL = "gpt-6-sol";
 const PHOTO_ERROR = "Hmm, I had trouble reading that photo. Try taking it again with the page flat and in good light.";
 const FEEDBACK_ERROR = "Hmm, I couldn't put your feedback together that time. Please try again.";
 
@@ -567,6 +571,7 @@ async function detectOrientation({ image, env, fetchImpl }) {
         },
       ],
       response_format: { type: "json_object" },
+      reasoning_effort: "none",
       max_completion_tokens: 400,
     },
   });
@@ -630,6 +635,7 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
         },
       ],
       response_format: { type: "json_object" },
+      reasoning_effort: "none",
       max_completion_tokens: 3600,
     },
   });
@@ -823,6 +829,7 @@ async function levelUpFeedback({ levelUp, yearLevel, env, fetchImpl }) {
         { role: "user", content: [{ type: "text", text: userText }] },
       ],
       response_format: { type: "json_object" },
+      reasoning_effort: "none",
       max_completion_tokens: 900,
     },
   });
@@ -869,6 +876,7 @@ async function synonymCheck({ check, yearLevel, env, fetchImpl }) {
         { role: "user", content: [{ type: "text", text: userText }] },
       ],
       response_format: { type: "json_object" },
+      reasoning_effort: "none",
       max_completion_tokens: 150,
     },
   });
