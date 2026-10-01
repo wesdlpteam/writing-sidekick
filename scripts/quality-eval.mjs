@@ -29,7 +29,9 @@ await Promise.all(Array.from({length:3},async()=>{
       const stages=[];
       const result=await handleFeedback(job,{env:process.env,fetchImpl:async(url,options)=>{
         const body=JSON.parse(options.body);
-        const stage=body.messages?.[0]?.content?.startsWith('QUALITY_REVIEW:') ? 'teaching-review' : body.messages?.[0]?.content?.startsWith('EDITING_RECHECK:') ? 'editing-recheck' : body.messages?.[0]?.content?.startsWith('EDITING_AUDIT:') ? 'editing-audit' : 'draft';
+        // Newer models get the system prompt as cacheable parts; join them back into one text.
+        const sys=[].concat(body.messages?.[0]?.content ?? '').map(p=>typeof p==='string'?p:p.text).join('');
+        const stage=sys.startsWith('QUALITY_REVIEW:') ? 'teaching-review' : sys.startsWith('EDITING_RECHECK:') ? 'editing-recheck' : sys.startsWith('EDITING_AUDIT:') ? 'editing-audit' : 'draft';
         if (reviewEffort && stage==='teaching-review') body.reasoning_effort=reviewEffort;
         const callStarted=Date.now();
         const response=await fetch(url,{...options,body:JSON.stringify(body)});

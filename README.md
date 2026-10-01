@@ -130,6 +130,19 @@ gpt-6-astra do not). The Listen buttons
 use `gpt-4o-mini-tts` with the `marin` voice; `OPENAI_TTS_MODEL` and `OPENAI_TTS_VOICE`
 change that.
 
+Two things keep the cost down (measured 2026-10-01: about 3c per piece in a class, down from 9c):
+
+- **Prompt cache.** The draft and review prompts mark where the rulebook a class shares ends, so
+  the next child in the same year and genre reads it at a tenth of the price. The child's writing
+  is never cached. Only the run-on note quotes the child, so it sits after the markers. Keep the
+  rest of the prompt order as it is: regrouping the sections changed the teaching review's
+  judgement on a strong poem.
+- **Flex lane.** Reading the page, the draft, the editing audit and the review ask OpenAI for its
+  half-price `flex` service tier. When OpenAI is busy it answers 429 at once (free) and the request
+  goes again at the normal price. Set `OPENAI_FLEX=off` in Vercel if feedback ever gets slow, or
+  if you switch to a model that does not offer the flex tier. Server logs say "flex lane busy"
+  each time a request is bounced.
+
 ## The live site
 
 Share this link: https://wesdlpteam.github.io/writing-sidekick/

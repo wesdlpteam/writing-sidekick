@@ -2,6 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, findRunOns } from "../api/feedback.js";
 
+// A system prompt arrives as one string, or (newer models) as cacheable parts; this reads either.
+const systemText = (body) => [].concat(body.messages?.[0]?.content ?? "").map((p) => (typeof p === "string" ? p : p.text)).join("");
+
 const area = (status, strength, next_step) => ({ status, strength, next_step });
 
 const AREAS = {
@@ -69,10 +72,10 @@ function mockFetch(modelContent, { capture, moderation } = {}) {
       return { ok: true, status: 200, json: async () => ({ results: [{ flagged: false, category_scores: moderation || {} }] }) };
     }
     const request = JSON.parse(options.body);
-    if (request.messages?.[0]?.content.includes("EDITING_AUDIT:") || request.messages?.[0]?.content.includes("EDITING_RECHECK:")) {
+    if (systemText(request).includes("EDITING_AUDIT:") || systemText(request).includes("EDITING_RECHECK:")) {
       return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({editing:{complete:false,errors:[]}}) } }] }) };
     }
-    if (request.messages?.[0]?.content.includes("QUALITY_REVIEW:")) {
+    if (systemText(request).includes("QUALITY_REVIEW:")) {
       return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ approved: true, feedback: null, editing: { complete: false, errors: [] } }) } }] }) };
     }
     if (capture) {
@@ -153,7 +156,7 @@ test("provider calls carry a timeout signal and follow OPENAI_BASE_URL", async (
   const seen = [];
   const fetchImpl = async (url, options) => {
     seen.push({ url, signal: options.signal });
-    if (JSON.parse(options.body).messages?.[0]?.content.includes("QUALITY_REVIEW:")) return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({approved:true,feedback:null})}}]})};
+    if (systemText(JSON.parse(options.body)).includes("QUALITY_REVIEW:")) return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({approved:true,feedback:null})}}]})};
     return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(GOOD_PAYLOAD) } }] }) };
   };
   const r = await handleFeedback({ transcript: TEXT, yearLevel: 3 }, { fetchImpl, env: { ...ENV, OPENAI_BASE_URL: "https://au.example/v1/" } });
@@ -925,7 +928,7 @@ test("editing audit runs as its own call beside the review, not inside it", asyn
   ] };
   const reply = (content) => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(content) } }] }) });
   const fetchImpl = async (url, options) => {
-    const system = JSON.parse(options.body).messages?.[0]?.content || "";
+    const system = systemText(JSON.parse(options.body));
     const stage = system.startsWith("QUALITY_REVIEW:") ? "review" : system.startsWith("EDITING_AUDIT:") ? "audit" : system.startsWith("EDITING_RECHECK:") ? "recheck" : "draft";
     const entry = { stage, system, started: Date.now() };
     calls.push(entry);
@@ -1016,7 +1019,7 @@ test("the run-on override reaches both model calls, and only when the writing ea
   const fetchImpl = async (url, options) => {
     if (String(url).endsWith("/moderations")) return { ok: true, status: 200, json: async () => ({ results: [{ flagged: false, category_scores: {} }] }) };
     const request = JSON.parse(options.body);
-    const system = request.messages[0].content;
+    const system = systemText(request);
     systems.push(system);
     if (system.includes("EDITING_AUDIT:")) return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ editing: { complete: false, errors: [] } }) } }] }) };
     if (system.includes("QUALITY_REVIEW:")) return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ approved: true, feedback: GOOD_PAYLOAD }) } }] }) };
@@ -1074,4 +1077,108 @@ test("the staffroom word 'fragment' never reaches the child either", async () =>
   assert.equal(r.payload.powerUps[0].rule, "Fix the half sentence by adding who and what.");
   assert.equal(r.payload.powerUps[0].why, "Half sentences leave the reader waiting.");
   assert.equal(r.payload.criteria.find((c) => c.key === "sentence_structure").nextStep, "Check each line for half sentences.");
+});
+
+// ---- cost: prompt cache and the flex lane ------------------------------------
+
+const cachedText = (body) => [].concat(body.messages[0].content).filter((p) => p?.prompt_cache_breakpoint).map((p) => p.text).join("");
+const isReview = (body) => systemText(body).startsWith("QUALITY_REVIEW:");
+const isDraft = (body) => !isReview(body) && !systemText(body).startsWith("EDITING_") && !body.messages[1].content.some?.((p) => p.type === "image_url");
+
+// Answers every stage sensibly and keeps every request. `busy` flex requests get OpenAI's 429 first.
+function stageFetch(bodies, { busy = 0 } = {}) {
+  return async (url, options) => {
+    const body = JSON.parse(options.body);
+    bodies.push(body);
+    if (busy > 0 && body.service_tier === "flex") {
+      busy--;
+      return { ok: false, status: 429, json: async () => ({ error: { code: "resource_unavailable" } }) };
+    }
+    const content = isReview(body) ? { approved: true, feedback: GOOD_PAYLOAD }
+      : systemText(body).startsWith("EDITING_") ? { editing: { complete: true, errors: [] } }
+      : !isDraft(body) ? { transcript: "The dog ran fast.", rotate: 0 }
+      : GOOD_PAYLOAD;
+    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(content) } }] }) };
+  };
+}
+
+const NEW_MODEL_ENV = { OPENAI_API_KEY: "sk-test" };
+const CALM_LONG_TEXT = Array(25).fill("The dog ran fast in the park.").join(" ");
+
+test("newer models cache only the rulebook a class shares, never the child's writing", async () => {
+  const bodies = [];
+  await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl: stageFetch(bodies), env: NEW_MODEL_ENV });
+  for (const body of [bodies.find(isDraft), bodies.find(isReview)]) {
+    assert.deepEqual(body.prompt_cache_options, { mode: "explicit" }, "nothing is cached unless marked");
+    assert.ok(cachedText(body).length > 4000, "the rulebook is marked for caching");
+    assert.ok(!cachedText(body).includes("famly"), "the child's writing is never cached");
+    assert.ok(!JSON.stringify(body.messages.slice(1)).includes("prompt_cache_breakpoint"));
+  }
+});
+
+test("children in the same class send the same cached rulebook", async () => {
+  const first = [], second = [];
+  await handleFeedback({ transcript: TEXT, yearLevel: 4, genre: "persuasive" }, { fetchImpl: stageFetch(first), env: NEW_MODEL_ENV });
+  await handleFeedback({ transcript: "Cats make calm pets.\nThey sleep most of the day.", yearLevel: 4, genre: "persuasive" }, { fetchImpl: stageFetch(second), env: NEW_MODEL_ENV });
+  assert.ok(cachedText(first.find(isDraft)).length > 4000);
+  assert.equal(cachedText(first.find(isDraft)), cachedText(second.find(isDraft)));
+  assert.equal(cachedText(first.find(isReview)), cachedText(second.find(isReview)));
+});
+
+test("the run-on note quotes the child, so it stays outside the cache", async () => {
+  assert.ok(findRunOns(RUN_ON_TEXT).length > 0);
+  const runOn = [], calm = [];
+  await handleFeedback({ transcript: RUN_ON_TEXT, yearLevel: 2, genre: "narrative" }, { fetchImpl: stageFetch(runOn), env: NEW_MODEL_ENV });
+  await handleFeedback({ transcript: CALM_LONG_TEXT, yearLevel: 2, genre: "narrative" }, { fetchImpl: stageFetch(calm), env: NEW_MODEL_ENV });
+  for (const pick of [isDraft, isReview]) {
+    const body = runOn.find(pick);
+    assert.match(systemText(body), /RUN-ON OVERRIDE:/, "the note still reaches the model");
+    assert.ok(cachedText(body).length > 4000);
+    assert.doesNotMatch(cachedText(body), /RUN-ON OVERRIDE:/);
+    assert.equal(cachedText(body), cachedText(calm.find(pick)), "a run-on piece still shares the class cache");
+  }
+});
+
+test("older models get the same instructions as one plain string, with no cache options", async () => {
+  const newer = [], older = [];
+  const piece = { transcript: TEXT, yearLevel: 5, genre: "recount" };
+  await handleFeedback(piece, { fetchImpl: stageFetch(newer), env: NEW_MODEL_ENV });
+  await handleFeedback(piece, { fetchImpl: stageFetch(older), env: { ...NEW_MODEL_ENV, OPENAI_MODEL: "gpt-5.4", OPENAI_REVIEW_MODEL: "gpt-5.4" } });
+  for (const pick of [isDraft, isReview]) {
+    const body = older.find(pick);
+    assert.equal(typeof body.messages[0].content, "string");
+    assert.equal(body.prompt_cache_options, undefined);
+    assert.equal(body.messages[0].content, systemText(newer.find(pick)), "word for word the same instructions");
+  }
+});
+
+test("reading and feedback use the half-price flex lane; quick checks do not", async () => {
+  const slow = [];
+  await handleFeedback({ yearLevel: 3, image: IMG }, { fetchImpl: stageFetch(slow), env: NEW_MODEL_ENV });
+  await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl: stageFetch(slow), env: NEW_MODEL_ENV });
+  assert.ok(slow.length >= 5);
+  assert.ok(slow.every((b) => b.service_tier === "flex"), "reading, draft, audit and review all ask for flex");
+  const quick = [];
+  await handleFeedback({ yearLevel: 3, orientation: { image: IMG } }, { fetchImpl: stageFetch(quick), env: NEW_MODEL_ENV });
+  await handleFeedback({ yearLevel: 3, synonymCheck: { word: "big", attempt: "huge" } }, { fetchImpl: stageFetch(quick), env: NEW_MODEL_ENV });
+  assert.equal(quick.length, 2);
+  assert.ok(quick.every((b) => b.service_tier === undefined), "a child waiting on a tap gets the normal lane");
+});
+
+test("when the flex lane is busy, the same request goes again at the normal price", async () => {
+  const bodies = [];
+  const r = await handleFeedback({ yearLevel: 3, image: IMG }, { fetchImpl: stageFetch(bodies, { busy: 1 }), env: NEW_MODEL_ENV });
+  assert.equal(r.status, 200);
+  assert.equal(bodies[0].service_tier, "flex");
+  const { service_tier, ...sameRequest } = bodies[0];
+  assert.deepEqual(bodies[1], sameRequest, "retried at once, unchanged, without the flex lane");
+});
+
+test("OPENAI_FLEX=off switches the flex lane off", async () => {
+  for (const off of ["off", "OFF", "false", " no "]) {
+    const bodies = [];
+    await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl: stageFetch(bodies), env: { ...NEW_MODEL_ENV, OPENAI_FLEX: off } });
+    assert.ok(bodies.length >= 3);
+    assert.ok(bodies.every((b) => b.service_tier === undefined), `OPENAI_FLEX=${off}`);
+  }
 });

@@ -32,7 +32,8 @@ test('transition checks accept an inserted phrase outside the example vocabulary
 test('both generation and final review receive the supplied section guidance', async () => {
   const prompts=[];
   const r=await handleFeedback({yearLevel:4,genre:'persuasive',transcript:'Parks are useful because children can play.'},{env:{OPENAI_API_KEY:'test'},fetchImpl:async(_url,options)=>{
-    prompts.push(JSON.parse(options.body).messages[0].content);
+    // Newer models get the system prompt as cacheable parts; join them back into one text.
+    prompts.push([].concat(JSON.parse(options.body).messages[0].content).map(p=>typeof p==='string'?p:p.text).join(''));
     return {ok:true,json:async()=>({choices:[{message:{content:prompts.length===1?'{}':'{"approved":false}'}}]})};
   }});
   assert.equal(r.status,502);

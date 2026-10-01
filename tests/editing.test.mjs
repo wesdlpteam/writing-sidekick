@@ -60,7 +60,9 @@ test('transition models must change the transition', () => {
 
 const reply = (value) => ({ok:true,status:200,json:async()=>({choices:[{message:{content:JSON.stringify(value)}}]})});
 // Provider calls per feedback request: draft, then the teaching review and the editing audit side by side, then an optional recheck.
-const stageOf = (body) => { const sys = body?.messages?.[0]?.content || ''; return sys.startsWith('QUALITY_REVIEW:') ? 'review' : sys.startsWith('EDITING_AUDIT:') ? 'audit' : sys.startsWith('EDITING_RECHECK:') ? 'recheck' : 'draft'; };
+// A system prompt arrives as one string, or (newer models) as cacheable parts; this reads either.
+const systemText = (body) => [].concat(body?.messages?.[0]?.content ?? '').map(p => typeof p === 'string' ? p : p.text).join('');
+const stageOf = (body) => { const sys = systemText(body); return sys.startsWith('QUALITY_REVIEW:') ? 'review' : sys.startsWith('EDITING_AUDIT:') ? 'audit' : sys.startsWith('EDITING_RECHECK:') ? 'recheck' : 'draft'; };
 const env = {OPENAI_API_KEY:'test'};
 const image = 'data:image/jpeg;base64,/9j/AAAA';
 
@@ -215,6 +217,6 @@ test('a stretch keeps genuine strength ratings and private attainment evidence s
   assert.equal(JSON.stringify(result.payload).includes('PRIVATE_ASSESSMENT'),false);
   const review=requests.find(b=>stageOf(b)==='review');
   assert.equal(review.reasoning_effort,'medium');
-  assert.match(review.messages[0].content,/FEEDBACK OBJECT SCHEMA/);
-  assert.match(review.messages[0].content,/ASSESSMENT AREAS/);
+  assert.match(systemText(review),/FEEDBACK OBJECT SCHEMA/);
+  assert.match(systemText(review),/ASSESSMENT AREAS/);
 });
