@@ -1046,6 +1046,35 @@ body.senior .crit-label { font-size: 1.1rem; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Long AI waits: a row of power blocks that charge up left to right. */
+.overlay.with-bar .spinner { display: none; }
+.load-bar {
+  display: flex;
+  gap: 6px;
+  width: min(440px, 82vw);
+  padding: 7px;
+  border: 3px solid var(--gold);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 22px rgba(255, 194, 51, 0.25);
+}
+.load-bar[hidden] { display: none; }
+.load-block {
+  flex: 1;
+  height: 26px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.load-block.on {
+  background: var(--gold);
+  box-shadow: inset 0 -5px 0 var(--gold-deep), 0 0 12px rgba(255, 194, 51, 0.55);
+  animation: block-in 0.28s ease-out;
+}
+@keyframes block-in {
+  from { transform: scaleY(0.4); opacity: 0.3; }
+  to { transform: none; opacity: 1; }
+}
+
 .error {
   position: fixed;
   left: 50%;
@@ -1093,6 +1122,7 @@ body.senior .year-btn.selected::after { content: ""; }
   .screen.active { animation: none; }
   .screen.active .power-card { animation: none; }
   .spinner { animation-duration: 2s; }
+  .load-block.on { animation: none; }
   .primary:active, .secondary:active { transform: none; }
 }
 

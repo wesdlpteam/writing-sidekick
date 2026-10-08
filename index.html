@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20260918-typedtext">
+  <link rel="stylesheet" href="css/app.css?v=20261009-bar">
 </head>
 <body>
   <main id="app">
@@ -215,6 +215,7 @@
     <div id="loading" class="overlay" role="status" aria-live="polite" hidden>
       <div class="spinner" aria-hidden="true"></div>
       <p id="loading-msg">Reading your writing&#8230;</p>
+      <div id="loading-bar" class="load-bar" role="progressbar" aria-label="How far along" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden></div>
     </div>
 
     <div id="idle-banner" class="idle" role="status" hidden>
@@ -254,7 +255,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20261009-pdf");
+      await import("./js/app.js?v=20261009-bar");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

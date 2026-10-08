@@ -2,6 +2,7 @@ import { reflowTranscript } from "./transcript.js?v=20260910-quality";
 import { writingStrength, writingStrengthLines, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260910-section3";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
+import { ProgressBar } from "./progress.js?v=20261009-bar";
 import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260911-audit";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260910-section3";
 
@@ -37,8 +38,19 @@ const joinOr = (items) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} 
 
 // While the sidekick works, the screens underneath are switched off (inert) so nothing can be
 // tapped twice, and the app reports itself busy.
-function setLoading(visible, message) {
+const loadBar = new ProgressBar($("loading-bar"));
+
+// withBar: show the block bar (long AI waits) instead of the spinner (quick jobs).
+function setLoading(visible, message, { withBar = false } = {}) {
   if (message) $("loading-msg").textContent = message;
+  if (!visible) {
+    loadBar.stop();
+    $("loading-bar").hidden = true;
+  } else if (withBar && $("loading-bar").hidden) loadBar.start(); // a message change mid-wait keeps the bar going
+  if (visible) {
+    $("loading-bar").hidden = !withBar;
+    $("loading").classList.toggle("with-bar", withBar);
+  }
   $("loading").hidden = !visible;
   document.querySelectorAll(".screen").forEach((s) => {
     s.inert = visible;
@@ -204,19 +216,40 @@ async function straighten(dataUrl) {
 
 $("btn-read").addEventListener("click", async () => {
   if (!state.pages.length) return;
+  // The bar: the way-up check fills the first fifth, reading fills the rest, a step per page.
+  const count = state.pages.length;
+  const CHECK_SHARE = 0.2;
+  let done = 0;
   try {
-    setLoading(true, state.pages.length === 1 ? "Checking your page is the right way up…" : "Checking your pages are the right way up…");
-    state.pages = await Promise.all(state.pages.map(straighten));
+    setLoading(true, count === 1 ? "Checking your page is the right way up…" : "Checking your pages are the right way up…", { withBar: true });
+    loadBar.stage(0, CHECK_SHARE, 3000);
+    state.pages = await Promise.all(
+      state.pages.map((page) =>
+        straighten(page).then((upright) => {
+          loadBar.reach((CHECK_SHARE * ++done) / count);
+          return upright;
+        }),
+      ),
+    );
     renderPages();
     setLoading(
       true,
-      state.pages.length === 1
-        ? "Your sidekick is reading your writing…"
-        : `Your sidekick is reading all ${state.pages.length} pages…`,
+      count === 1 ? "Your sidekick is reading your writing…" : `Your sidekick is reading all ${count} pages…`,
+      { withBar: true },
     );
+    loadBar.stage(CHECK_SHARE, 1, 15000);
+    done = 0;
     // One request per page, read side by side, then joined in page order with a blank line
     // between pages. One big request for all pages used to trip the server's upload limit.
-    const pages = await Promise.all(state.pages.map((image) => transcribePage({ image, yearLevel: state.yearLevel })));
+    const pages = await Promise.all(
+      state.pages.map((image) =>
+        transcribePage({ image, yearLevel: state.yearLevel }).then((page) => {
+          loadBar.reach(CHECK_SHARE + ((1 - CHECK_SHARE) * ++done) / count);
+          return page;
+        }),
+      ),
+    );
+    await loadBar.finish();
     state.transcript = pages
       .map((page) => reflowTranscript(page.transcript).trim())
       .filter(Boolean)
@@ -279,8 +312,10 @@ async function submitWriting() {
     return;
   }
   try {
-    setLoading(true, "Your sidekick is thinking about your writing… This can take a minute or two.");
+    setLoading(true, "Your sidekick is thinking about your writing… This can take a minute or two.", { withBar: true });
+    loadBar.stage(0, 1, 35000); // one long call: about half the bar by 30 seconds
     state.feedback = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
+    await loadBar.finish();
     renderFeedback();
     show("screen-feedback");
   } catch (error) {
