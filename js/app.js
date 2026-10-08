@@ -1,6 +1,7 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
 import { writingStrength, writingStrengthLines, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260910-section3";
-import { prepareScan, rotate90, rotateBy, thumbnail } from "./scan.js?v=20260910-quality";
+import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
+import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260911-audit";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260910-section3";
 
@@ -92,30 +93,43 @@ $("btn-back-camera").addEventListener("click", () => show("screen-camera"));
 // ---- pages: photo -> cleaned scan, up to two pages -------------------------
 
 // Photos arrive one at a time from the camera, or several at once from the photo album.
-// Extras past the two-page limit are ignored, and the child is told so.
+// A PDF counts one page per PDF page. Extras past the two-page limit are ignored, and the
+// child is told so.
 async function addPages(fileList) {
-  const room = MAX_PAGES - state.pages.length;
-  const files = Array.from(fileList || []).slice(0, Math.max(0, room));
-  if (!files.length) return;
-  const dropped = (fileList?.length || 0) - files.length;
-  let failed = 0;
+  const files = Array.from(fileList || []);
+  if (!files.length || state.pages.length >= MAX_PAGES) return;
+  let dropped = 0;
+  let failedPhoto = 0;
+  let failedPdf = 0;
   try {
-    setLoading(true, files.length > 1 ? "Tidying up your photos…" : "Tidying up your photo…");
+    setLoading(true, files.length > 1 ? "Tidying up your pages…" : "Tidying up your page…");
     for (const file of files) {
+      const room = MAX_PAGES - state.pages.length;
+      if (room <= 0) {
+        dropped++;
+        continue;
+      }
       try {
         // Every page keeps full size: each one is sent in its own request (see btn-read below).
-        const { dataUrl } = await prepareScan(file);
-        state.pages.push(dataUrl);
+        if (isPdf(file)) {
+          const { canvases, totalPages } = await pdfPageCanvases(file, { maxPages: room, targetEdge: SCAN_MAX_EDGE });
+          dropped += totalPages - canvases.length;
+          for (const canvas of canvases) state.pages.push((await prepareScan(canvas)).dataUrl);
+        } else {
+          state.pages.push((await prepareScan(file)).dataUrl);
+        }
       } catch {
-        failed++;
+        if (isPdf(file)) failedPdf++;
+        else failedPhoto++;
       }
     }
     renderPages();
   } finally {
     setLoading(false);
   }
-  if (failed) showError("That photo didn't work. Please try another one, or take it again.");
-  else if (dropped > 0) showError(`Only ${MAX_PAGES} pages fit, so the extra photos were left out.`);
+  if (failedPdf) showError("That PDF didn't open. Please try another one, or take a photo instead.");
+  else if (failedPhoto) showError("That photo didn't work. Please try another one, or take it again.");
+  else if (dropped > 0) showError(`Only ${MAX_PAGES} pages fit, so the extra pages were left out.`);
 }
 
 function renderPages() {

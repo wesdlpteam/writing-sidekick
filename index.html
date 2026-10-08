@@ -66,8 +66,8 @@
         </label>
         <p class="or-line">or</p>
         <label class="secondary big file-btn">
-          Choose a photo I already took
-          <input id="photo-library" type="file" accept="image/*" multiple>
+          Choose a photo or PDF
+          <input id="photo-library" type="file" accept="image/*,application/pdf,.pdf" multiple>
         </label>
       </div>
       <div id="pages-box" class="pages-box" hidden>
@@ -75,7 +75,7 @@
         <ul id="pages-list" class="pages-list"></ul>
         <div class="btn-row pages-actions">
           <label id="add-page" class="ghost file-btn">+ Take another page<input id="photo-add" type="file" accept="image/*" capture="environment"></label>
-          <label id="add-page-library" class="ghost file-btn">+ Add from my photos<input id="photo-add-library" type="file" accept="image/*" multiple></label>
+          <label id="add-page-library" class="ghost file-btn">+ Add a photo or PDF<input id="photo-add-library" type="file" accept="image/*,application/pdf,.pdf" multiple></label>
           <button id="btn-read" class="primary big" type="button">Read my writing &#8594;</button>
         </div>
       </div>
@@ -254,7 +254,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20260918-typedtext");
+      await import("./js/app.js?v=20261009-pdf");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

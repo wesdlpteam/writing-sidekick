@@ -3,7 +3,7 @@
 
 // The AI reads the page at this resolution (image detail "original"), so keep it generous:
 // small marks like apostrophes survive at 2000px that vanish at 1000px.
-const DEFAULT_MAX_EDGE = 2000;
+export const SCAN_MAX_EDGE = 2000;
 const JPEG_QUALITY = 0.85;
 // Each page travels in its own request, which must stay under the server's 4.5MB request limit
 // (Vercel). A cleaned page is usually about 1MB of data URL; a very noisy photo can reach 1.5MB.
@@ -123,8 +123,9 @@ function renderScan(bitmap, maxEdge) {
   return { dataUrl: canvas.toDataURL("image/jpeg", JPEG_QUALITY), width, height };
 }
 
-export async function prepareScan(file, { maxEdge = DEFAULT_MAX_EDGE, maxChars = MAX_PAGE_CHARS } = {}) {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+// source: a photo file, or a canvas holding a PDF page drawn by pdf-pages.js.
+export async function prepareScan(source, { maxEdge = SCAN_MAX_EDGE, maxChars = MAX_PAGE_CHARS } = {}) {
+  const bitmap = await createImageBitmap(source, { imageOrientation: "from-image" });
   try {
     let edge = maxEdge;
     for (;;) {
