@@ -202,9 +202,8 @@ for (const id of ["photo-input", "photo-add", "photo-library", "photo-add-librar
 
 // ---- step 1: pages -> transcript -> review screen ---------------------------
 
-// A page photographed sideways or upside down reads badly, so before the reading each page
-// is checked with a small copy and turned upright. If the check fails, the page goes as it is
-// (the Rotate button is still there).
+// A page photographed sideways or upside down reads badly, so each page is checked with a small
+// copy and turned upright. If the check fails, the page goes as it is (the Rotate button is still there).
 async function straighten(dataUrl) {
   try {
     const { rotate } = await detectOrientation({ image: await thumbnail(dataUrl), yearLevel: state.yearLevel });
@@ -214,41 +213,40 @@ async function straighten(dataUrl) {
   }
 }
 
+// Reading starts straight away, beside the which-way-up check: most pages are already upright, so
+// the check costs no waiting. A page that needed turning is read again the right way up.
+async function readPage(image) {
+  const firstRead = transcribePage({ image, yearLevel: state.yearLevel });
+  firstRead.catch(() => {}); // awaited below, or not needed at all
+  const upright = await straighten(image);
+  if (upright === image) return { image, page: await firstRead };
+  return { image: upright, page: await transcribePage({ image: upright, yearLevel: state.yearLevel }) };
+}
+
 $("btn-read").addEventListener("click", async () => {
   if (!state.pages.length) return;
-  // The bar: the way-up check fills the first fifth, reading fills the rest, a step per page.
   const count = state.pages.length;
-  const CHECK_SHARE = 0.2;
   let done = 0;
   try {
-    setLoading(true, count === 1 ? "Checking your page is the right way up…" : "Checking your pages are the right way up…", { withBar: true });
-    loadBar.stage(0, CHECK_SHARE, 3000);
-    state.pages = await Promise.all(
-      state.pages.map((page) =>
-        straighten(page).then((upright) => {
-          loadBar.reach((CHECK_SHARE * ++done) / count);
-          return upright;
-        }),
-      ),
-    );
-    renderPages();
     setLoading(
       true,
       count === 1 ? "Your sidekick is reading your writing…" : `Your sidekick is reading all ${count} pages…`,
       { withBar: true },
     );
-    loadBar.stage(CHECK_SHARE, 1, 15000);
-    done = 0;
+    loadBar.stage(0, 1, 7000); // a page takes about 10-15 seconds; each finished page fills its share
     // One request per page, read side by side, then joined in page order with a blank line
     // between pages. One big request for all pages used to trip the server's upload limit.
-    const pages = await Promise.all(
+    const results = await Promise.all(
       state.pages.map((image) =>
-        transcribePage({ image, yearLevel: state.yearLevel }).then((page) => {
-          loadBar.reach(CHECK_SHARE + ((1 - CHECK_SHARE) * ++done) / count);
-          return page;
+        readPage(image).then((result) => {
+          loadBar.reach(++done / count);
+          return result;
         }),
       ),
     );
+    state.pages = results.map((result) => result.image);
+    renderPages();
+    const pages = results.map((result) => result.page);
     await loadBar.finish();
     state.transcript = pages
       .map((page) => reflowTranscript(page.transcript).trim())
@@ -313,7 +311,7 @@ async function submitWriting() {
   }
   try {
     setLoading(true, "Your sidekick is thinking about your writing… This can take a minute or two.", { withBar: true });
-    loadBar.stage(0, 1, 35000); // one long call: about half the bar by 30 seconds
+    loadBar.stage(0, 1, 22000); // one long call, usually 35-50 seconds: about two thirds of the bar by 30
     state.feedback = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
     await loadBar.finish();
     renderFeedback();

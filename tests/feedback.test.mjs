@@ -938,15 +938,19 @@ test("editing audit runs as its own call beside the review, not inside it", asyn
       return reply({ approved: true, feedback: GOOD_PAYLOAD });
     }
     if (stage === "audit") return reply({ editing: audit });
+    await new Promise((resolve) => setTimeout(resolve, 30)); // the draft takes a while too
+    entry.finished = Date.now();
     return reply(GOOD_PAYLOAD);
   };
   const r = await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl, env: ENV });
   assert.equal(r.status, 200);
   assert.deepEqual(r.payload.errorTotals, { spelling: 2, punctuation: 0, capital_letters: 0 });
+  const draft = calls.find((c) => c.stage === "draft");
   const review = calls.find((c) => c.stage === "review");
   const auditCall = calls.find((c) => c.stage === "audit");
   assert.ok(auditCall, "the audit is its own call");
   assert.match(auditCall.system, /json/i, "OpenAI JSON mode rejects a prompt that never says 'json'");
+  assert.ok(auditCall.started < draft.finished, "the audit needs only the writing, so it starts beside the draft");
   assert.ok(auditCall.started <= review.finished, "the audit runs alongside the review, not after it");
   assert.doesNotMatch(review.system, /Return editing:|editing:<audit>/, "the review is not asked to audit");
   assert.ok(!calls.some((c) => c.stage === "recheck"), "a valid audit needs no recheck");
@@ -1163,6 +1167,28 @@ test("reading and feedback use the half-price flex lane; quick checks do not", a
   await handleFeedback({ yearLevel: 3, synonymCheck: { word: "big", attempt: "huge" } }, { fetchImpl: stageFetch(quick), env: NEW_MODEL_ENV });
   assert.equal(quick.length, 2);
   assert.ok(quick.every((b) => b.service_tier === undefined), "a child waiting on a tap gets the normal lane");
+});
+
+test("reading and its photo check think 'low', which read as well as the default in a third of the time", async () => {
+  const bodies = [];
+  const r = await handleFeedback({ yearLevel: 3, image: IMG }, { fetchImpl: stageFetch(bodies), env: NEW_MODEL_ENV });
+  assert.equal(r.status, 200);
+  assert.equal(bodies.length, 2, "one read, one photo check");
+  assert.ok(bodies.every((b) => b.reasoning_effort === "low"));
+});
+
+test("an older reading model that rejects the newer settings is asked again without them", async () => {
+  const bodies = [];
+  const fetchImpl = async (url, options) => {
+    const body = JSON.parse(options.body);
+    bodies.push(body);
+    if (body.reasoning_effort) return { ok: false, status: 400, json: async () => ({ error: { code: "unsupported_parameter" } }) };
+    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ transcript: "The dog ran fast." }) } }] }) };
+  };
+  const r = await handleFeedback({ yearLevel: 3, image: IMG }, { fetchImpl, env: NEW_MODEL_ENV });
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.transcript, "The dog ran fast.");
+  assert.ok(bodies.some((b) => b.reasoning_effort === undefined && b.verbosity === undefined), "the fallback drops both");
 });
 
 test("when the flex lane is busy, the same request goes again at the normal price", async () => {
