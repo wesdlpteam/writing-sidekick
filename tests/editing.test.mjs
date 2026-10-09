@@ -36,12 +36,48 @@ test('occurrence numbering ignores matches embedded in longer words', () => {
   assert.deepEqual(count('cats',[entry('cat','Cat','capital_letters')]),{spelling:0,punctuation:0,capital_letters:null});
 });
 
-test('invalid evidence affects its category; mixed corrections flag every affected category', () => {
+test('unverifiable evidence keeps its category unknown; a bundled note counts each kind of fix once', () => {
   assert.deepEqual(count('famly dont', [entry('famly','family'),entry('missing','missing.','punctuation')]),{spelling:1,punctuation:null,capital_letters:0});
-  assert.deepEqual(count('dont',[entry('dont',"Don't",'punctuation')]),{spelling:0,punctuation:null,capital_letters:null});
-  assert.deepEqual(count('becos',[entry('becos','Because.','spelling')]),unavailableTotals());
-  assert.deepEqual(count('cat',[entry('cat','cats'),entry('cat','cut')]),{spelling:null,punctuation:0,capital_letters:0});
+  assert.deepEqual(count('dont',[entry('dont',"Don't",'punctuation')]),{spelling:0,punctuation:1,capital_letters:1});
+  assert.deepEqual(count('becos',[entry('becos','Because.','spelling')]),{spelling:1,punctuation:1,capital_letters:1});
+  assert.deepEqual(count('cat',[entry('cat','cats'),entry('cat','cut')]),{spelling:1,punctuation:0,capital_letters:0},'two notes on one word are one error');
   assert.equal(inspectEditing({complete:true,errors:[]},'[unclear]').retryable,false);
+});
+
+// Notes like these made a count "not available" in 17 of 45 real audits (2026-10-09).
+test('real audit notes are untangled into honest counts', () => {
+  assert.deepEqual(count('I bont Lulu sed',[entry('bont Lulu','bont, Lulu','punctuation'),entry('bont',"bon't",'punctuation')]),{spelling:0,punctuation:2,capital_letters:0},'two marks in overlapping notes are two errors');
+  assert.deepEqual(count('whats that',[entry('whats',"what's",'punctuation'),entry('whats that',"what's that",'punctuation')]),{spelling:0,punctuation:1,capital_letters:0},'one mark described twice is one error');
+  assert.deepEqual(count('said Soor ok the',[entry('Soor ok','Soor. OK','capital_letters')]),{spelling:0,punctuation:1,capital_letters:1});
+  assert.deepEqual(count('they saw sum thing',[entry('sum thing','something','spacing')]),{spelling:1,punctuation:0,capital_letters:0},'the gap is spacing, the respelt word is spelling');
+  assert.deepEqual(count('they went of',[entry('went of','went off')]),{spelling:1,punctuation:0,capital_letters:0});
+  assert.deepEqual(count('your going',[entry('your',"you're",'punctuation')]),{spelling:1,punctuation:1,capital_letters:0});
+  assert.deepEqual(count('I couldent see',[entry('couldent',"couldn't",'punctuation')]),{spelling:1,punctuation:1,capital_letters:0});
+  assert.deepEqual(count('Lulu Sob no',[entry('Sob','said')]),{spelling:1,punctuation:0,capital_letters:1},'a respelling and a needless capital');
+});
+
+test('speech marks: direction counts, quote style does not, and a misplaced mark is a change', () => {
+  assert.deepEqual(count('”Hi” said Mum.',[entry('”','“','punctuation')]),{spelling:0,punctuation:1,capital_letters:0});
+  assert.deepEqual(count('“Hi” said Mum.',[entry('“Hi”','"Hi"','punctuation')]),{spelling:0,punctuation:0,capital_letters:0});
+  assert.deepEqual(count('"Call for help". Then',[entry('help".','help."','punctuation')]),{spelling:0,punctuation:1,capital_letters:0});
+  assert.deepEqual(count('"Yes replied" Max',[entry('"Yes replied"','"Yes," replied','punctuation')]),{spelling:0,punctuation:2,capital_letters:0},'a missing comma and a closing mark in the wrong place');
+});
+
+test('a note is found despite quote style, line breaks or capitals, and one unverifiable note does not block a count', () => {
+  assert.deepEqual(count('Little foot thought hard',[entry('Foot thought','Foot, thought','punctuation')]),{spelling:0,punctuation:1,capital_letters:0},'only the comma the note adds');
+  assert.deepEqual(count('it was\nbig',[entry('was big','was big.','punctuation')]),{spelling:0,punctuation:1,capital_letters:0});
+  assert.deepEqual(count('famly dog',[entry('famly','family'),entry('absent','absnt')]),{spelling:1,punctuation:0,capital_letters:0},'the verified error still counts');
+  assert.deepEqual(count('famly dog',[entry('absent','absnt')]),{spelling:null,punctuation:0,capital_letters:0},'never a fabricated zero');
+});
+
+test('a punctuation place is the same however the note quotes around it', () => {
+  assert.deepEqual(count('go lets go',[entry('lets','"lets','punctuation'),entry('go lets','go "lets','punctuation')]),{spelling:0,punctuation:1,capital_letters:0},'one opening mark, quoted from either side');
+  assert.deepEqual(count('said Jack lets go',[entry('Jack','Jack.','punctuation'),entry('Jack lets','Jack. "Let\'s','punctuation')]),{spelling:0,punctuation:3,capital_letters:1},'a full stop, an opening mark and an apostrophe');
+  assert.deepEqual(count('the dog . the end',[entry('dog .','dog.','punctuation')]),{spelling:0,punctuation:0,capital_letters:0},'only a space moved');
+});
+
+test('a note that rewrites several words is not passed off as spelling', () => {
+  assert.deepEqual(count('me and him goed home',[entry('me and him goed','he and she went')]),{spelling:null,punctuation:0,capital_letters:0});
 });
 
 test('unverifiable audits never fabricate a total or zero', () => {
@@ -146,7 +182,7 @@ test('distinct opinion passages are assessed independently, without splitting a 
   assert.equal(hasIndependentPassages('Dogs are loud. Secondly, dogs damage gardens.', 'persuasive'), false);
 });
 
-test('a flagged editing count shows as not available, with no slow extra call', async () => {
+test('a bundled editing note is untangled, with no slow extra call', async () => {
   const requests=[];
   const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async(_url,options)=>{
     requests.push(JSON.parse(options.body));
@@ -158,7 +194,7 @@ test('a flagged editing count shows as not available, with no slow extra call', 
   assert.equal(r.status,200);
   assert.equal(requests.length,3,'audit, draft and review only');
   assert.ok(!requests.some((body)=>stageOf(body)==='recheck'));
-  assert.deepEqual(r.payload.errorTotals,{spelling:0,punctuation:null,capital_letters:null});
+  assert.deepEqual(r.payload.errorTotals,{spelling:0,punctuation:1,capital_letters:1});
   assert.equal(r.payload.headline,draft.headline);
   assert.equal(JSON.stringify(r.payload).includes('mixed changes'),false);
   assert.equal(r.payload.editing,undefined);

@@ -748,9 +748,9 @@ Ensure every repaired model still follows the SOURCE-BASED STRATEGY RULES: prese
   const audit = extractJson(await auditPending)?.editing;
   const editing = inspectEditing(audit, transcript);
   payload.errorTotals = editing.totals;
-  // A flagged count stays "not available" rather than guessed. A recheck call used to try to repair
-  // it, but on real writing it needed 40-50 seconds, always hit its 25-second limit, and so only
-  // added waiting (measured 2026-10-09: 3 of 5 pieces waited 25 seconds for nothing).
+  // inspectEditing untangles bundled or overlapping notes itself, so no recheck call is needed. One
+  // used to try, but on real writing it needed 40-50 seconds, always hit its 25-second limit, and so
+  // only added waiting (measured 2026-10-09: 3 of 5 pieces waited 25 seconds for nothing).
   payload.practiceWords = [];
   payload.spellingTip = "";
   return { status: 200, payload: { transcript, ...payload } };
