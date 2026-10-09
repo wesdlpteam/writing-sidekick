@@ -594,6 +594,11 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 }
 .practice-tip::before { content: "\1F4A1 "; }
 body.senior .practice-tip::before { content: ""; }
+.practice-note {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
 
 .boost-card { background: var(--card); }
 .boost-caption { margin: 4px 0 14px; }

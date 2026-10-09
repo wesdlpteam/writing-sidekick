@@ -4,7 +4,7 @@ import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./sca
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
 import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260911-audit";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20260910-section3";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261009-rough";
 
 const MAX_PAGES = 2;
 
@@ -329,6 +329,8 @@ const errorTotalLines = (feedback) => [
   ["Capital letter errors", "capital_letters"],
 ].map(([label, key]) => `${label}: ${feedback.errorTotals?.[key] ?? "Not available"}`);
 const editingTask = "Go back to your writing. Find and fix the errors, then read it again to check.";
+// The audit's punctuation and capital calls vary from try to try, so the counts are a guide.
+const roughNote = "These numbers are a rough guide and may not be exact.";
 
 function renderPractice() {
   $("practice-card").hidden = false;
@@ -851,7 +853,9 @@ $("btn-print").addEventListener("click", () => {
   }
   const task = document.createElement("p");
   task.textContent = editingTask;
-  practiceBox.append(h, ul, task);
+  const note = document.createElement("p");
+  note.textContent = roughNote;
+  practiceBox.append(h, ul, task, note);
   const boostBox = $("print-boost");
   boostBox.innerHTML = "";
   const boost = state.feedback.wordBoost;

@@ -157,6 +157,7 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel }) {
   addCard(YELLOW, "📝 Editing: errors to find", [
     `Spelling: ${feedback.errorTotals?.spelling ?? "Not available"}\nPunctuation: ${feedback.errorTotals?.punctuation ?? "Not available"}\nCapital letters: ${feedback.errorTotals?.capital_letters ?? "Not available"}`,
     "Go back to your writing. Find and fix the errors, then read it again to check.",
+    "These numbers are a rough guide and may not be exact.",
   ]);
 
   // Every page is shown at full width; tall pages are cropped at the bottom rather than squashed.
