@@ -19,6 +19,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 function show(screenId) {
+  hideError(); // an old message must not sit over the next screen's buttons
   $("app").classList.toggle("review-wide", screenId === "screen-review");
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === screenId));
   window.scrollTo(0, 0);
@@ -48,6 +49,7 @@ function setLoading(visible, message, { withBar = false } = {}) {
     $("loading-bar").hidden = true;
   } else if (withBar && $("loading-bar").hidden) loadBar.start(); // a message change mid-wait keeps the bar going
   if (visible) {
+    hideError(); // a new attempt starts with a clean slate
     $("loading-bar").hidden = !withBar;
     $("loading").classList.toggle("with-bar", withBar);
   }
@@ -61,6 +63,10 @@ function setLoading(visible, message, { withBar = false } = {}) {
 function showError(message) {
   $("error-msg").textContent = message;
   $("error-banner").hidden = false;
+}
+
+function hideError() {
+  $("error-banner").hidden = true;
 }
 
 // ---- start screen ----------------------------------------------------------
@@ -183,12 +189,22 @@ function renderPages() {
   resetIdle();
 }
 
+// A turn takes a moment, so taps on Rotate or Remove wait until it lands: a double tap would
+// otherwise turn the same photo twice from its old state, or drop a page under a pending turn.
+let pageBusy = false;
 $("pages-list").addEventListener("click", async (event) => {
   const btn = event.target.closest("button[data-action]");
-  if (!btn) return;
+  if (!btn || pageBusy) return;
   const index = Number(btn.dataset.index);
   if (btn.dataset.action === "remove") state.pages.splice(index, 1);
-  else state.pages[index] = await rotate90(state.pages[index]);
+  else {
+    pageBusy = true;
+    try {
+      state.pages[index] = await rotate90(state.pages[index]);
+    } finally {
+      pageBusy = false;
+    }
+  }
   renderPages();
 });
 
@@ -201,6 +217,8 @@ for (const id of ["photo-input", "photo-add", "photo-library", "photo-add-librar
 }
 
 // ---- step 1: pages -> transcript -> review screen ---------------------------
+
+const UNCLEAR_NOTE = "Some writing was hard to read. Replace each [unclear] with the words or marks in your book. You can ask your teacher to help.";
 
 // A page photographed sideways or upside down reads badly, so each page is checked with a small
 // copy and turned upright. If the check fails, the page goes as it is (the Rotate button is still there).
@@ -257,7 +275,7 @@ $("btn-read").addEventListener("click", async () => {
     const needsCheck = pages.some((page) => page.verification === "unavailable") || /\[unclear\]/i.test(state.transcript);
     $("transcript-check-note").hidden = !needsCheck;
     $("transcript-check-note").textContent = /\[unclear\]/i.test(state.transcript)
-      ? "Some writing was hard to read. Replace each [unclear] with the words or marks in your book. You can ask your teacher to help."
+      ? UNCLEAR_NOTE
       : "The extra photo check was unavailable. Compare this typing carefully with your book before continuing.";
     show("screen-review");
     showReview();
@@ -293,6 +311,10 @@ function showReview() {
 $("transcript").addEventListener("input", () => {
   state.transcript = $("transcript").value;
   autosizeTranscript();
+  // Once every [unclear] is replaced, the note asking for it has done its job.
+  if (UNCLEAR_NOTE === $("transcript-check-note").textContent && !/\[unclear\]/i.test(state.transcript)) {
+    $("transcript-check-note").hidden = true;
+  }
 });
 
 function fullTranscript() {
@@ -909,10 +931,20 @@ function clearEverything() {
   $("boost-challenge").hidden = true;
   closeSkill();
   renderPages();
+  // The next child picks their own year and kind of writing; a leftover choice would quietly
+  // set the wrong year's expectations and reading level.
+  state.yearLevel = null;
+  state.genre = "narrative";
+  document.querySelectorAll(".year-btn").forEach((b) => markSelected(b, false));
+  document.querySelectorAll(".chip").forEach((c) => markSelected(c, c.dataset.genre === "narrative"));
+  setSeniorLook();
+  refreshStartButton();
 }
 
 // Every "Finish and clear" button: a first tap arms it, a second tap within 4 seconds clears.
-let armedFinish = null; // { button, label, timer }
+// A second tap sooner than half a second is a double tap, not a "yes", so it is ignored.
+const FINISH_CONFIRM_GAP_MS = 500;
+let armedFinish = null; // { button, label, timer, at }
 
 function disarmFinish() {
   if (!armedFinish) return;
@@ -924,13 +956,14 @@ function disarmFinish() {
 document.querySelectorAll(".btn-finish").forEach((button) => {
   button.addEventListener("click", () => {
     if (armedFinish && armedFinish.button === button) {
+      if (Date.now() - armedFinish.at < FINISH_CONFIRM_GAP_MS) return;
       disarmFinish();
       clearEverything();
       show("screen-start");
       return;
     }
     disarmFinish();
-    armedFinish = { button, label: button.textContent, timer: setTimeout(disarmFinish, 4000) };
+    armedFinish = { button, label: button.textContent, timer: setTimeout(disarmFinish, 4000), at: Date.now() };
     button.textContent = "Sure? Tap again";
   });
 });
