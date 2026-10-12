@@ -156,7 +156,7 @@ h2 {
 .tagline {
   font-family: var(--font-display);
   font-size: 1.5rem;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.05em;
   color: var(--violet);
   margin: 12px 0 0;
   transform: rotate(1.5deg);
@@ -336,7 +336,7 @@ h1[tabindex="-1"]:focus-visible, h2[tabindex="-1"]:focus-visible, h3[tabindex="-
   margin: 14px 0;
   font-family: var(--font-display);
   font-size: 1.2rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   color: var(--sky-text);
   text-transform: uppercase;
 }
@@ -391,6 +391,8 @@ h1[tabindex="-1"]:focus-visible, h2[tabindex="-1"]:focus-visible, h3[tabindex="-
 /* The two ways to add a page share a row; the go button keeps a full row of its own. */
 .pages-actions .file-btn { flex: 1 1 160px; padding: 16px; font-size: 1.1rem; }
 .pages-actions #btn-read { flex: 1 1 100%; margin-top: 8px; }
+/* Clear space under the big buttons, so Back never touches "Read my writing". */
+#btn-back-start { margin-top: 24px; }
 
 #print-pages img { width: 100%; max-height: 45vh; object-fit: contain; object-position: top; margin-bottom: 8px; display: block; }
 
@@ -414,7 +416,23 @@ h1[tabindex="-1"]:focus-visible, h2[tabindex="-1"]:focus-visible, h3[tabindex="-
 .step-actions [hidden] { display: none; }
 .edit-hint { margin: 0; font-size: 0.95rem; color: var(--sky-muted); line-height: 1.4; }
 .check-row { display: flex; align-items: center; gap: 14px; margin: 14px 0; font-weight: 700; font-size: 1.05rem; cursor: pointer; }
-.check-row input { width: 26px; height: 26px; accent-color: var(--purple); flex: none; }
+.check-row { min-height: 44px; }
+/* Real checkboxes with a 44px tap area; the box itself is drawn smaller inside it. */
+.check-row input, .mission-row input {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent center / 30px 30px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect x='2' y='2' width='26' height='26' rx='7' fill='%23fff' stroke='%23131a30' stroke-width='3'/%3E%3C/svg%3E");
+  cursor: pointer;
+}
+.check-row input:checked, .mission-row input:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect x='2' y='2' width='26' height='26' rx='7' fill='%23ffc233' stroke='%23131a30' stroke-width='3'/%3E%3Cpath d='M8 15.5l5 5 9-11' fill='none' stroke='%23131a30' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
 .check-row[hidden] { display: none; }
 dialog .btn-row { margin-top: 18px; }
 dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-mid); }
@@ -445,14 +463,17 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 }
 #transcript::placeholder { color: var(--muted); }
 
-/* Celebration beat: the power-ups land one by one. */
-.screen.active .power-card { animation: settle 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
-.screen.active .power-card:nth-child(1) { animation-delay: 0.2s; }
-.screen.active .power-card:nth-child(2) { animation-delay: 0.5s; }
-.screen.active .power-card:nth-child(3) { animation-delay: 0.8s; }
+/* One power-up shows at a time: the card that appears settles in once, gently. Movement only, so
+   the text never fades (and never dips below its contrast) while it lands. */
+.screen.active .power-card { animation: settle 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes settle {
-  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  from { transform: translateY(14px); }
 }
+
+/* The bottom bar is fixed to the screen. A transform on a parent would pin it to that parent
+   instead, so this screen fades in without one. */
+#screen-feedback.active { animation-name: fade-plain; padding-bottom: calc(var(--bar-h, 170px) + 24px); }
+@keyframes fade-plain { from { opacity: 0; } to { opacity: 1; } }
 
 .fb-heading { margin: 34px 0 4px; }
 .fb-lead { margin: 0 0 14px; }
@@ -501,8 +522,11 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
   box-shadow: var(--pop-shadow);
 }
 .stage-art, .stage-video { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
-.stage-strength .stage-video { aspect-ratio: 16 / 9; object-fit: contain; background: #fff; }
 /* Power-up: the golden aura spills out of the panel and onto the heading. */
+/* On the Power-ups slide the art is a short banner, so the first card starts in the first screen. */
+.stage-banner { height: 180px; margin: 4px 0 14px; }
+.stage-banner .stage-video { height: 100%; aspect-ratio: auto; object-fit: cover; object-position: 50% 28%; }
+@media (max-width: 520px) { .stage-banner { height: 130px; } }
 .stage-power { box-shadow: 5px 5px 0 var(--gold-deep), 0 0 44px rgba(255, 194, 51, 0.45); }
 .fb-slide[data-slide="power"] .fb-heading { text-shadow: 3px 3px 0 var(--ink), 0 0 22px rgba(255, 194, 51, 0.75); }
 /* Mission complete: the finish line, lit like the power-up heading. */
@@ -517,8 +541,16 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
   box-shadow: 5px 5px 0 var(--gold-deep), 0 0 34px rgba(255, 194, 51, 0.3);
 }
 .mission-title { font-family: var(--font-display); font-size: 1.4rem; letter-spacing: 0.04em; color: var(--purple); margin: 0 0 8px; }
-.mission-steps { margin: 0; padding-left: 26px; display: grid; gap: 8px; font-size: 1.05rem; line-height: 1.5; }
-.mission-steps li::marker { font-weight: 800; color: var(--purple-mid); }
+.mission-hint { margin: 0 0 8px; color: var(--muted); font-size: 1rem; }
+.mission-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mission-item + .mission-item { border-top: 2px dashed rgba(19, 26, 48, 0.18); padding-top: 6px; }
+.mission-row { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; cursor: pointer; font-size: 1.05rem; line-height: 1.5; }
+.mission-text { display: block; min-width: 0; padding-top: 8px; }
+.mission-label { display: block; font-weight: 800; color: var(--purple); }
+.mission-row input:checked + .mission-text .mission-label::after { content: " \2713"; }
+.mission-part { display: block; }
+.mission-line { font-style: italic; font-weight: 700; }
+#btn-done { margin-top: 24px; }
 .mission-save { margin-top: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
@@ -710,9 +742,9 @@ body.senior .practice-tip::before { content: ""; }
   margin: 0 0 2px;
   font-size: 0.85rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--purple-mid);
+  color: var(--purple);
 }
 .power-title {
   font-family: var(--font-display);
@@ -777,7 +809,7 @@ body.senior .practice-tip::before { content: ""; }
   display: grid;
   gap: 2px;
 }
-.ex-arrow { color: var(--purple-mid); font-weight: 800; }
+.ex-arrow { color: var(--purple); font-weight: 800; }
 .ex-before, .ex-after { white-space: pre-line; overflow-wrap: anywhere; }
 .step-more { margin-top: 6px; font-size: 0.95rem; color: var(--muted); }
 .step-more summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font-weight: 800; color: var(--purple); }
@@ -821,7 +853,7 @@ body.senior .power-title { font-size: 1.35rem; }
 }
 @supports (grid-template-columns: subgrid) { .power-item { grid-template-columns: subgrid; } }
 .power-item:first-child { border-top: 0; padding-top: 4px; }
-.power-item .power-area { justify-self: start; background: #fff; min-height: 32px; cursor: pointer; font-family: var(--font-body); }
+.power-item .power-area { justify-self: start; display: inline-flex; align-items: center; background: #fff; min-height: 44px; min-width: 44px; cursor: pointer; font-family: var(--font-body); }
 .power-text { margin: 0; font-size: 1.05rem; line-height: 1.5; padding-top: 2px; }
 .power-text .quote { font-style: italic; font-weight: 700; color: var(--purple); }
 @media (max-width: 560px) {
@@ -1097,6 +1129,7 @@ body.senior .crit-label { font-size: 1.1rem; }
   z-index: 60;
   box-shadow: 5px 5px 0 var(--red-bright);
 }
+.on-feedback .error { bottom: calc(var(--bar-h, 170px) + 16px); }
 .error[hidden] { display: none; }
 .error p { margin: 0; }
 
@@ -1125,7 +1158,7 @@ body.senior .year-btn.selected::after { content: ""; }
 
 @media (prefers-reduced-motion: reduce) {
   .screen.active { animation: none; }
-  .screen.active .power-card { animation: none; }
+  .screen.active .power-card, #screen-feedback.active { animation: none; }
   .spinner { animation-duration: 2s; }
   .load-block.on { animation: none; }
   .primary:active, .secondary:active { transform: none; }
@@ -1220,8 +1253,28 @@ body.senior .year-btn.selected::after { content: ""; }
 .editing-ring { display: grid; place-items: center; width: 88px; height: 88px; border: 7px solid #d4a13b; border-radius: 50%; font-weight: 800; font-size: 2rem; background: #fffaf0; }
 .editing-clear .editing-ring { border-color: #26805b; background: #f0faf4; }
 .editing-caption { color: var(--muted); font-size: .8rem; }
+/* Back / Next / Finish: a bar fixed to the bottom of the feedback screen. */
+.slide-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  margin: 0;
+  padding: 12px max(24px, calc((100vw - 712px) / 2)) calc(12px + env(safe-area-inset-bottom));
+  gap: 8px 14px;
+  align-items: center;
+  background: var(--night);
+  border-top: 3px solid var(--gold);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+}
+.slide-nav .primary.big { padding: 12px 16px; font-size: 1.5rem; }
+.slide-nav .ghost { min-height: 44px; }
 @media (max-width: 520px) {
-  .slide-nav .primary.big { font-size: 1.35rem; }
+  .slide-nav { padding-left: 16px; padding-right: 16px; }
+  .slide-nav { gap: 4px 12px; padding-top: 10px; }
+  .slide-nav .primary.big { order: -1; flex: 1 1 100%; padding: 10px 14px; font-size: 1.3rem; }
+  .slide-nav .ghost { flex: 1 1 0; padding: 6px 8px; white-space: nowrap; }
   .strength-card { padding: 18px; }
   #practice-words { gap: 7px; }
   #practice-words li { padding: 12px 3px; font-size: .78rem; }
@@ -1229,3 +1282,35 @@ body.senior .year-btn.selected::after { content: ""; }
   .editing-caption { font-size: .72rem; }
   #practice-card { padding: 18px 12px; }
 }
+
+/* First slide: "What you did well", then "Your next focus", then (Years 5-6) the skill grid on request. */
+.power-item span.power-area { cursor: default; }
+.powers-empty { margin: 0; font-size: 1.15rem; font-weight: 800; line-height: 1.5; }
+.powers-empty[hidden] { display: none; }
+.focus-card {
+  background: var(--purple-soft);
+  color: var(--ink);
+  border: var(--border);
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin: 0 0 22px;
+  box-shadow: var(--pop-shadow);
+}
+.focus-card[hidden] { display: none; }
+.focus-text { margin: 0 0 14px; font-size: 1.2rem; font-weight: 800; line-height: 1.5; }
+.focus-card .secondary[hidden] { display: none; }
+.skills-toggle { display: block; margin: 0 0 18px; }
+.skills-toggle[hidden] { display: none; }
+.strength-card[hidden] { display: none; }
+.strength-summary[hidden] { display: none; }
+
+/* How to change your book, in four short steps. */
+.pencil-card .pencil-steps { margin: 10px 0 0; padding-left: 1.4rem; line-height: 1.5; font-size: 1.1rem; }
+.pencil-card .pencil-steps li { margin: 6px 0; }
+
+/* Years 1-3: say the new sentence out loud before writing it. */
+.step-say { margin: 8px 0 0; font-weight: 700; font-size: 1.05rem; line-height: 1.5; }
+
+/* Years 1-2 editing: two roomy boxes, each with its how-to-hunt tip. */
+#practice-words.editing-junior { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.editing-tip { color: var(--ink); font-size: 1rem; line-height: 1.45; font-weight: 600; }

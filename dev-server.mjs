@@ -32,9 +32,9 @@ const crit = (key, label, sub, status, strength, nextStep, powerUp = null) => ({
 // Same shape as the server's normalised response (see validateFeedback in api/feedback.js).
 const MOCK_PAYLOAD = {
   headline:
-    "'I got dumped!' is the best moment in your recount, and your exclamation mark makes it land. Now paint the beach so your reader can see it too.",
+    "'I got dumped!' is the best moment in your recount, and your exclamation mark makes it pop. Now add what you felt and heard so your reader is in the wave with you.",
   criteria: [
-    crit("audience", "Audience", "hooking and helping your reader", "steady", "'I got dumped!' makes your reader feel the splash.", "Start with the wave, not the weekend, so your reader is hooked from line one."),
+    crit("audience", "Audience", "hooking and helping your reader", "steady", "'I got dumped!' is short and punchy, so your big moment stands out.", "Start with the wave, not the weekend, so your reader is hooked from line one."),
     crit("text_structure", "Text structure", "beginning, middle and end", "steady", "You have a beginning (the trip), a middle (the wave) and an end (fish and chips).", "Finish with how you felt, not just what you ate."),
     crit("ideas", "Ideas", "what your writing is about", "steady", "Getting dumped by a huge wave is a great moment to build your recount around.", "Tell us one more thing that happened at the beach."),
     crit("character_setting", "Characters and setting", "who, where and when", "next_step", "", "We never see the beach. Add one detail about the sand or the sky.", 1),
@@ -50,7 +50,7 @@ const MOCK_PAYLOAD = {
       area: "character_setting",
       areaLabel: "Characters and setting",
       skill: "Put your reader on the sand",
-      why: "'I got dumped!' is a great moment; adding when and where lets your reader see the beach too.",
+      why: "'I got dumped!' is short and punchy. Adding when and where tells your reader more about the moment.",
       yourLine: "The waves were huge and I got dumped!",
       rule: "Add when it happened at the front with a comma, and where it happened at the end.",
       example: { before: "The dog ran off.", after: "After lunch, the dog ran off down the muddy track." },
@@ -79,14 +79,14 @@ const MOCK_PAYLOAD = {
       nowYou: "Start your line with While or When.",
     },
   ],
-  errorTotals: { spelling: 1, punctuation: 0, capital_letters: 0 },
+  errorTotals: { spelling: 1, punctuation: 0, capital_letters: 0, full_stops: 1 },
   wordBoost: {
     swaps: [
       { from: "huge", to: ["big", "enormous", "gigantic", "colossal"] },
       { from: "went", to: ["walked", "raced", "wandered", "trekked"] },
     ],
     before: "The waves were huge and I got dumped!",
-    after: "The gigantic waves crashed over me and dumped me in the sand!",
+    after: "The gigantic snowdrift swallowed the little red sled whole.",
     challenge: [
       { word: "dumped", sentence: "The waves were huge and I got dumped!" },
       { word: "beach", sentence: "On the weekend I went to the beach with my famly." },

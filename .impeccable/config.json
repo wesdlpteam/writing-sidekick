@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "ai-color-palette",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-10-12T22:57:15.003Z",
+        "reason": "Sanctioned: Wesley College brand purple chosen by Nathan for the Sidekick theme (2026-09-02, memory writing-sidekick-theme)"
+      }
+    ]
+  }
+}

@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20261009-rough">
+  <link rel="stylesheet" href="css/app.css?v=20261013-s3">
 </head>
 <body>
   <main id="app">
@@ -84,7 +84,7 @@
 
     <section id="screen-review" class="screen">
       <h1><span class="h-emoji" aria-hidden="true">&#x1F50D; </span>Check the typing</h1>
-      <p class="lead">Here is your writing. Fix any words the app got wrong, then keep going.</p>
+      <p class="lead">The app typed up your writing. Fix only the words it read wrong. Leave your own spelling just as you wrote it.</p>
       <div class="link-row">
         <button id="btn-back-camera" class="ghost small">&#8592; Back to the camera</button>
         <button id="btn-finish-review" class="ghost small btn-finish" type="button">Finish and clear this iPad</button>
@@ -104,20 +104,26 @@
       <nav id="fb-steps" class="fb-steps" aria-label="Feedback steps"></nav>
 
       <section class="fb-slide" data-slide="strength">
-        <div class="stage stage-strength">
-          <video class="stage-video" muted playsinline preload="none" poster="art/strengths.jpg" aria-hidden="true">
-            <source src="art/strengths.mp4" type="video/mp4">
-          </video>
-        </div>
-        <h2 id="strength-title" class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x2B50; </span>Writing strengths</h2>
-        <p class="lead fb-lead">Start with what your writing shows. Notice your strengths and keep using them.</p>
-        <section class="strength-card" aria-labelledby="strength-title">
+        <h2 id="strength-title" class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x2B50; </span>What you did well</h2>
+        <p class="lead fb-lead">Here is what your writing already does well. Keep doing it!</p>
+        <section id="powers-card" class="powers-card" aria-labelledby="strength-title" hidden>
+          <p id="powers-caption" class="visual-caption">Real words from your writing.</p>
+          <ul id="powers-list" class="powers-list"></ul>
+          <p id="powers-empty" class="powers-empty" hidden>You had a go, and that is a great start.</p>
+        </section>
+        <section id="focus-card" class="focus-card" aria-labelledby="focus-title" hidden>
+          <h3 id="focus-title" class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F3AF; </span>Your next focus</h3>
+          <p id="focus-text" class="focus-text"></p>
+          <button id="btn-see-power" class="secondary" type="button" hidden>See Power-up 1</button>
+        </section>
+        <button id="btn-all-skills" class="ghost small skills-toggle" type="button" aria-expanded="false" aria-controls="skills-card" hidden>See all your writing skills</button>
+        <section id="skills-card" class="strength-card" aria-label="All your writing skills" hidden>
           <p class="visual-caption">Your writing skills at a glance. Tap a skill to see what it means and how you went.</p>
           <div id="strength-bar" class="skill-chips" role="group" aria-label="Your writing skills"></div>
           <div class="strength-legend"><span class="legend-strength">Strength</span><span class="legend-steady">On track</span><span class="legend-next_step">Next step</span><span class="legend-not_assessed">Need more writing</span></div>
           <div id="skill-detail" class="skill-detail" data-key="" hidden>
             <div class="skill-detail-head">
-              <h4 id="skill-detail-title" class="skill-detail-title"></h4>
+              <h3 id="skill-detail-title" class="skill-detail-title"></h3>
               <span id="skill-detail-status" class="crit-status"></span>
             </div>
             <p id="skill-detail-what" class="skill-detail-what"></p>
@@ -127,21 +133,16 @@
             <p id="skill-detail-next" class="skill-detail-line" hidden><span class="power-label">Next step:</span> <span></span></p>
             <button id="skill-detail-close" class="ghost small skill-detail-close" type="button">Close</button>
           </div>
-          <p id="strength-summary" class="strength-summary"></p>
+          <p id="strength-summary" class="strength-summary" hidden></p>
           <div class="strength-notes">
             <p><span>Key strength</span><button id="strength-key" class="strength-note-btn" type="button"></button></p>
             <p><span>Next focus</span><button id="strength-focus" class="strength-note-btn" type="button"></button></p>
           </div>
         </section>
-        <section id="powers-card" class="powers-card" aria-labelledby="powers-title" hidden>
-          <div class="title-row"><h3 id="powers-title" class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F525; </span>What you did well</h3></div>
-          <p class="visual-caption">Things already working in your writing. Keep doing them on purpose.</p>
-          <ul id="powers-list" class="powers-list"></ul>
-        </section>
       </section>
 
       <section class="fb-slide" data-slide="power">
-        <div class="stage stage-power">
+        <div class="stage stage-power stage-banner">
           <video class="stage-video" muted playsinline preload="none" poster="art/powerup.jpg" aria-hidden="true">
             <source src="art/powerup.mp4" type="video/mp4">
           </video>
@@ -151,7 +152,13 @@
         <div id="power-ups" class="power-ups"></div>
         <div class="pencil-card">
           <p class="pencil-title"><span class="h-emoji" aria-hidden="true">&#x270D;&#xFE0F; </span>Pick up your pencil</p>
-          <p>Go back to your book and make these changes in your own writing. Read your writing again to check your changes.</p>
+          <p>Go back to your book and change your own writing. Here is how.</p>
+          <ol class="pencil-steps">
+            <li>To add words, write a <strong>^</strong> where they go in. Write the new words above it.</li>
+            <li>To swap a word, draw one neat line through it. Write the new word above.</li>
+            <li>For a new sentence, use the space at the end of a line, or the next line.</li>
+            <li>You do not need to copy it all out again. Just read it again to check.</li>
+          </ol>
         </div>
       </section>
 
@@ -165,8 +172,8 @@
           <p class="visual-caption boost-caption">Each word gets four upgrades, from a small step up to a big one. Pick the one that fits your sentence best.</p>
           <ul id="boost-swaps"></ul>
           <div id="boost-example" hidden>
-            <p class="boost-line"><span class="boost-label">Your sentence:</span> <span id="boost-before"></span></p>
-            <p class="boost-line"><span class="boost-label">With word power:</span> <strong id="boost-after"></strong></p>
+            <p class="boost-line"><span class="boost-label">In your writing:</span> <span id="boost-before"></span></p>
+            <p class="boost-line"><span class="boost-label">Like this:</span> <strong id="boost-after"></strong></p>
           </div>
           <div id="boost-challenge" class="boost-challenge" hidden>
             <p class="challenge-title"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Your turn: synonym challenge</p>
@@ -190,12 +197,8 @@
         <p class="lead fb-lead">Your sidekick has done its part. Now it is over to you, hero: take your power-ups back to your book and write your own destiny!</p>
         <div class="mission-card">
           <p class="mission-title"><span class="h-emoji" aria-hidden="true">&#x1F4A5; </span>Your mission</p>
-          <ol class="mission-steps">
-            <li id="mission-revise"><strong>Revise.</strong> Find each power-up line in your book and improve it yourself.</li>
-            <li id="mission-word-power"><strong>Word power.</strong> Swap in stronger words where they fit.</li>
-            <li><strong>Edit.</strong> Hunt down the spelling, punctuation and capital letter errors.</li>
-            <li><strong>Read it again</strong> like a reader would. Does it sound even better?</li>
-          </ol>
+          <p class="mission-hint">Tick each job when you have done it in your book.</p>
+          <ul id="mission-list" class="mission-list"></ul>
         </div>
         <p class="lead fb-lead mission-save">Want to keep this feedback? Save a picture or print it before you finish.</p>
         <label class="check-row export-photos"><input id="include-photos" type="checkbox"> Include the photos of my writing in the picture and print-out</label>
@@ -203,7 +206,8 @@
           <button id="btn-save-pic" class="secondary"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Save picture</button>
           <button id="btn-print" class="secondary"><span class="h-emoji" aria-hidden="true">&#x1F5A8;&#xFE0F; </span>Print</button>
         </div>
-        <p class="privacy-note">Your photo and typed writing went to an AI helper to be read. This iPad forgets them when you tap Finish, leave, or stop for ten minutes. The app itself keeps nothing. <a href="privacy.html" target="_blank" rel="noopener">For adults: how your writing is handled</a></p>
+        <button id="btn-done" class="primary big btn-finish" type="button">I'm done</button>
+        <p class="privacy-note">Your photo and typed writing went to an AI helper to be read. This iPad forgets them when you tap Finish, leave, or stop tapping for a while. That is 25 minutes on these feedback screens, and 10 minutes on the other screens. The app itself keeps nothing. <a href="privacy.html" target="_blank" rel="noopener">For adults: how your writing is handled</a></p>
       </section>
 
       <div class="btn-row step-actions slide-nav">
@@ -220,7 +224,7 @@
     </div>
 
     <div id="idle-banner" class="idle" role="status" hidden>
-      <p>Still there? Tap anywhere to keep going. This iPad will clear your work in a minute.</p>
+      <p>Still there? Tap anywhere to keep going. This iPad will clear your work soon.</p>
     </div>
 
     <div id="error-banner" class="error" role="alert" hidden>
@@ -256,7 +260,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20261013-audit");
+      await import("./js/app.js?v=20261013-s3");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

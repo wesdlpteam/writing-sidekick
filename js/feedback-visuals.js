@@ -6,7 +6,7 @@ export const WRITING_STATUS_LABELS = {
 // never counted as a result or selected as a strength or improvement target.
 export function writingStrength(criteria = []) {
   const areas = criteria.filter((area) => !["spelling", "punctuation"].includes(area.key)
-    && Object.hasOwn(WRITING_STATUS_LABELS, area.status));
+    && Object.prototype.hasOwnProperty.call(WRITING_STATUS_LABELS, area.status));
   const assessed = areas.filter(area => area.status !== "not_assessed");
   const unassessed = areas.length - assessed.length;
   const strong = assessed.filter(area => area.status === "strength").length;
@@ -17,8 +17,8 @@ export function writingStrength(criteria = []) {
     assessed: assessed.length,
     unassessed,
     strong,
-    summary: [assessed.length ? `We checked ${assessed.length} writing ${assessed.length === 1 ? "skill" : "skills"}. ${strong} ${strong === 1 ? "shows" : "show"} strength.` : "We need more writing to check these skills.",
-      assessed.length && unassessed ? `${unassessed} ${unassessed === 1 ? "needs" : "need"} more writing to check.` : ""].filter(Boolean).join(" "),
+    // No counts and no scores: only a gentle note when there is too little writing to judge.
+    summary: !assessed.length ? "We need more writing to check these skills." : unassessed ? "Some skills need more writing to check." : "",
     keyStrength: key?.label || (assessed.length ? "Keep building your writing skills" : "Need more writing"),
     keyStrengthKey: key?.key || "",
     focus: focus?.label || (assessed.length ? "Keep stretching your skills" : "Need more writing"),
@@ -30,7 +30,7 @@ export function writingStrength(criteria = []) {
 export function writingStrengthLines(criteria = []) {
   const summary = writingStrength(criteria);
   return [summary.summary, ...summary.areas.map(area =>
-    `${area.label}: ${WRITING_STATUS_LABELS[area.status]}.${area.status === "not_assessed" && area.assessmentNote ? ` ${area.assessmentNote}` : ""}`)];
+    `${area.label}: ${WRITING_STATUS_LABELS[area.status]}.${area.status === "not_assessed" && area.assessmentNote ? ` ${area.assessmentNote}` : ""}`)].filter(Boolean);
 }
 
 // What each writing skill means, in words a child can read. Tapping a skill on the writing
@@ -87,11 +87,82 @@ export function skillExplanation(key) {
   return SKILL_GUIDE[key] || { what: "One of the skills writers use.", how: "" };
 }
 
-// The child's real strengths, quoting their writing: full strengths first, then areas that
-// are on track but still have something worth naming. What the "hero powers" card shows.
+// The child's real strengths, quoting their writing: writing-craft areas first (full strengths,
+// then areas that are on track but still have something worth naming). Spelling and punctuation
+// only fill the gaps when there are fewer than `max` craft entries. What the first slide shows.
 export function heroPowers(criteria = [], max = 3) {
   const named = criteria.filter((area) => area.strength);
-  const strong = named.filter((area) => area.status === "strength");
-  const steady = named.filter((area) => area.status === "steady");
-  return [...strong, ...steady].slice(0, max).map((area) => ({ key: area.key, label: area.label, text: area.strength }));
+  const pick = (areas) => [
+    ...areas.filter((area) => area.status === "strength"),
+    ...areas.filter((area) => area.status === "steady"),
+  ];
+  const isEditing = (area) => area.key === "spelling" || area.key === "punctuation";
+  const ordered = [...pick(named.filter((area) => !isEditing(area))), ...pick(named.filter(isEditing))];
+  return ordered.slice(0, max).map((area) => ({ key: area.key, label: area.label, text: area.strength }));
+}
+
+// What to do next, in plain words: power-up 1's skill title (with its number, so the first slide
+// can offer a button to it), or else the first next-step area's own words. Null if neither.
+export function nextFocus(criteria = [], powerUps = []) {
+  if (powerUps.length && powerUps[0].skill) return { text: powerUps[0].skill, powerUp: 1 };
+  const area = criteria.find((c) => c.status === "next_step" && c.nextStep);
+  return area ? { text: area.nextStep, powerUp: 0 } : null;
+}
+
+// The editing counts shown to the child. Years 1-2 hunt only capitals and full stops, each with a
+// short how-to-hunt tip; Years 3-6 keep spelling, punctuation and capitals. A count that is
+// missing or not a whole number is never guessed (it shows "?" and "Not available").
+const EDITING_CAPITALS = {
+  key: "capital_letters", short: "Capitals", plain: "Capital letters", errorLabel: "Capital letter errors", symbol: "Aa",
+  tip: "Check the first word of every sentence, names, and the word I.",
+};
+const EDITING_FULL_STOPS = {
+  key: "full_stops", short: "Full stops", plain: "Full stops", errorLabel: "Full stop errors", symbol: ".",
+  tip: "Read it out loud. Where your voice stops and a new idea starts, check for a full stop.",
+};
+const EDITING_SPELLING = { key: "spelling", short: "Spelling", plain: "Spelling", errorLabel: "Spelling errors", symbol: "abc" };
+const EDITING_PUNCTUATION = { key: "punctuation", short: "Punctuation", plain: "Punctuation", errorLabel: "Punctuation errors", symbol: "?!" };
+
+export function editingItems(yearLevel) {
+  return Number(yearLevel) <= 2
+    ? [EDITING_CAPITALS, EDITING_FULL_STOPS]
+    : [{ ...EDITING_CAPITALS, tip: "" }, EDITING_SPELLING, EDITING_PUNCTUATION]; // older years: counts only, no tips
+}
+
+export function editingCount(errorTotals, key) {
+  const value = errorTotals?.[key];
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+// Print and saved picture lines. Years 3-6 keep their old order (spelling, punctuation, capitals).
+// `long` picks the print wording ("Spelling errors") over the picture's ("Spelling").
+export function editingLines(errorTotals, yearLevel, { long = false } = {}) {
+  const items = Number(yearLevel) <= 2
+    ? [EDITING_CAPITALS, EDITING_FULL_STOPS]
+    : [EDITING_SPELLING, EDITING_PUNCTUATION, EDITING_CAPITALS];
+  return items.map((item) => {
+    const count = editingCount(errorTotals, item.key);
+    return `${long ? item.errorLabel : item.plain}: ${count === null ? "Not available" : count}`;
+  });
+}
+
+// The Mission complete tick list, built from the feedback: one row per power-up (its line and its
+// job), a Word power row if there is word power, an Edit row for the year, then "read it again".
+// `line` and `job` may be empty; the row then shows only what it has.
+export function missionRows(feedback, yearLevel) {
+  const rows = (feedback?.powerUps || []).map((p, index) => ({
+    key: `power-${index}`,
+    label: `Power-up ${index + 1}`,
+    line: p.yourLine || "",
+    job: p.nowYou || p.skill || "",
+  }));
+  if (feedback?.wordBoost) rows.push({ key: "word", label: "Word power", line: "", job: "Swap in stronger words where they fit." });
+  rows.push({
+    key: "edit",
+    label: "Edit",
+    line: "",
+    job: Number(yearLevel) <= 2 ? "Check your capital letters and full stops." : "Check your spelling, punctuation and capital letters.",
+  });
+  rows.push({ key: "read", label: "Read it again", line: "", job: "Read it again like a reader would. Does it sound even better?" });
+  return rows;
 }

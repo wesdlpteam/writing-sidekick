@@ -1,4 +1,4 @@
-import { writingStrengthLines, heroPowers } from "./feedback-visuals.js?v=20260910-section3";
+import { writingStrengthLines, heroPowers, editingLines } from "./feedback-visuals.js?v=20261013-s3";
 
 // Renders the feedback as one tall image so it can be saved to the camera roll.
 
@@ -149,13 +149,13 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel }) {
     const challenge = (boost.challenge || []).map((c) => c.word);
     addCard(DETAIL, "💪 Word power", [
       { label: "Stronger words", text: boost.swaps.map((s) => `${s.from} → ${s.to.join(", ")}`).join("\n") },
-      boost.before && boost.after && { label: "Your sentence", text: boost.before },
-      boost.before && boost.after && { label: "With word power", text: boost.after },
+      boost.before && boost.after && { label: "In your writing", text: boost.before },
+      boost.before && boost.after && { label: "Like this", text: boost.after },
       challenge.length && { label: "Synonym challenge", text: `Think of a synonym for: ${challenge.join(", ")}` },
     ]);
   }
   addCard(YELLOW, "📝 Editing: errors to find", [
-    `Spelling: ${feedback.errorTotals?.spelling ?? "Not available"}\nPunctuation: ${feedback.errorTotals?.punctuation ?? "Not available"}\nCapital letters: ${feedback.errorTotals?.capital_letters ?? "Not available"}`,
+    editingLines(feedback.errorTotals, yearLevel).join("\n"),
     "Go back to your writing. Find and fix the errors, then read it again to check.",
     "These numbers are a rough guide and may not be exact.",
   ]);

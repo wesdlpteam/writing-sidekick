@@ -10,16 +10,19 @@ Nothing is ever stored.
 
 ## What the feedback looks like
 
-The feedback comes as three slides, named to fit the superhero theme: Power-ups, Word lab and
-Level up. Coaching instructions are pitched at the child's year; worked examples demonstrate ambitious, attainable writing: Years 1 and 2 get picture-book
+The feedback comes as four slides, named to fit the superhero theme: What you did well,
+Power-ups, Word lab and Mission complete. Back, Next and Finish sit in a bar fixed to the bottom of
+the screen. Coaching instructions are pitched at the child's year; worked examples demonstrate ambitious, attainable writing: Years 1 and 2 get picture-book
 sentences, Years 3 and 4 plain words with a hint for any term, Years 5 and 6 the proper names
 of strategies.
 
-- Writing strength: one tappable chip per writing skill (audience, ideas, cohesion and so on),
-  coloured by how it went. A tap explains what the skill means in a child's words and shows
-  what the sidekick saw in their own writing. "What you did well" then lists the real strengths,
-  quoting the child, so the positives are as visible as the next steps.
-- One to three power-ups (one or two for Years 1 and 2): the areas with the biggest payoff for
+- What you did well (the first slide): up to three real strengths, each quoting the child, then
+  "Your next focus" with a button to Power-up 1. There are no scores or counts. Years 5 and 6
+  can open "See all your writing skills": one tappable chip per skill (audience, ideas, cohesion
+  and so on), coloured by how it went, each explaining what the skill means in a child's words.
+- One to three power-ups (one or two for Years 1 and 2), shown one at a time ("Power-up 1 of 3";
+  Next reads "I did it! Next power-up" until the last one, and Back steps back through them):
+  the areas with the biggest payoff for
   this piece. Each card has one teaching focus and one strategy, laid out as three numbered steps in
   the order the child works: 1 find this line in your book (their own words, quoted); 2 use
   the strategy (its name, a one-line how-to for this kind of sentence, and the strategy done
@@ -38,7 +41,10 @@ of strategies.
   to a stretch word, with the child's sentence rewritten), a synonym challenge from Year 2 up
   (three more of the child's own words, a box and a Check button each; a tiny AI call says
   whether the word they typed really is a synonym), and the editing counts to find and fix.
-- Mission complete: the send-off back to the book, with Save picture and Print.
+- Mission complete: a tick list built from the feedback (one row per power-up with its line and
+  job, then Word power, Edit and "Read it again like a reader"). Ticks live in memory only, and
+  tapping "I did it! Next power-up" ticks that power-up's row. Save picture, Print and a big
+  "I'm done" button (the same two-tap clear as Finish and clear) finish the job.
 - Level up: the child photographs the revised page. The app compares the two versions and
   gives specific praise for what really changed (which power-ups show up, quoting the new
   words; which practice words are now spelt right, checked by the server), plus one gentle
@@ -163,7 +169,8 @@ looks and launches like a normal app.
 
 - No accounts, no database, no analytics, no browser storage. The server function responds
   and forgets. On the iPad everything stays in memory until "Finish and clear", leaving the
-  page, or ten minutes untouched (a warning shows first).
+  page, or 25 minutes untouched on the feedback screens and 10 minutes on the others (a warning
+  shows first).
 - The photo and typed writing do go to OpenAI's API to be read and given feedback, and the
   read-aloud voice is OpenAI's too. `privacy.html` (linked from the app as "For adults") is a
   draft explanation for parents and staff; the school must confirm the retention arrangement

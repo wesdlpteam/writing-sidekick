@@ -1,10 +1,10 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers } from "./feedback-visuals.js?v=20260910-section3";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingLines, missionRows } from "./feedback-visuals.js?v=20261013-s3";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
 import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260911-audit";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261009-rough";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261013-s3";
 
 const MAX_PAGES = 2;
 
@@ -21,6 +21,7 @@ const $ = (id) => document.getElementById(id);
 function show(screenId) {
   hideError(); // an old message must not sit over the next screen's buttons
   $("app").classList.toggle("review-wide", screenId === "screen-review");
+  document.body.classList.toggle("on-feedback", screenId === "screen-feedback"); // lifts the error banner above the bottom bar
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === screenId));
   window.scrollTo(0, 0);
   focusHeading(document.querySelector(`#${screenId} h1`));
@@ -345,11 +346,7 @@ async function submitWriting() {
   }
 }
 
-const errorTotalLines = (feedback) => [
-  ["Spelling errors", "spelling"],
-  ["Punctuation errors", "punctuation"],
-  ["Capital letter errors", "capital_letters"],
-].map(([label, key]) => `${label}: ${feedback.errorTotals?.[key] ?? "Not available"}`);
+const errorTotalLines = (feedback, yearLevel) => editingLines(feedback.errorTotals, yearLevel, { long: true });
 const editingTask = "Go back to your writing. Find and fix the errors, then read it again to check.";
 // The audit's punctuation and capital calls vary from try to try, so the counts are a guide.
 const roughNote = "These numbers are a rough guide and may not be exact.";
@@ -358,17 +355,23 @@ function renderPractice() {
   $("practice-card").hidden = false;
   const list = $("practice-words");
   list.innerHTML = "";
-  for (const [label, key, symbol] of [["Capitals", "capital_letters", "Aa"], ["Spelling", "spelling", "abc"], ["Punctuation", "punctuation", "?!"]]) {
-    const value = state.feedback.errorTotals?.[key];
-    const valid = Number.isSafeInteger(value) && value >= 0;
+  // Years 1-2 hunt only capitals and full stops, each with a how-to-hunt tip; Years 3-6 keep
+  // spelling, punctuation and capitals.
+  const items = editingItems(state.yearLevel);
+  list.classList.toggle("editing-junior", items.some((item) => item.tip));
+  let confirmed = 0;
+  for (const item of items) {
+    const value = editingCount(state.feedback.errorTotals, item.key);
+    const valid = value !== null;
+    if (valid) confirmed++;
     const li = document.createElement("li");
     li.className = valid && value === 0 ? "editing-clear" : "editing-find";
     const icon = document.createElement("span");
     icon.className = "editing-symbol";
-    icon.textContent = symbol;
+    icon.textContent = item.symbol;
     icon.setAttribute("aria-hidden", "true");
     const title = document.createElement("strong");
-    title.textContent = label;
+    title.textContent = item.short;
     const ring = document.createElement("span");
     ring.className = "editing-ring";
     ring.textContent = valid ? value : "?";
@@ -376,11 +379,11 @@ function renderPractice() {
     caption.className = "editing-caption";
     caption.textContent = !valid ? "Not available" : value === 0 ? "No errors found" : value === 1 ? "error to find" : "errors to find";
     li.append(icon, title, ring, caption);
+    if (item.tip) li.appendChild(el("span", "editing-tip", item.tip));
     list.appendChild(li);
   }
   $("practice-tip").hidden = false;
-  const confirmed = Object.values(state.feedback.errorTotals || {}).filter(n => Number.isSafeInteger(n) && n >= 0).length;
-  $("practice-tip").textContent = confirmed === 3 ? editingTask : confirmed > 0
+  $("practice-tip").textContent = confirmed === items.length ? editingTask : confirmed > 0
     ? "Use the counts shown to check your writing. Ask your teacher to help with any count marked Not available."
     : "We couldn't confirm the error counts this time. Read your writing with your teacher and check it together.";
 }
@@ -406,7 +409,10 @@ function renderBoost() {
   const hasExample = boost.before && boost.after;
   $("boost-example").hidden = !hasExample;
   if (hasExample) {
-    $("boost-before").textContent = boost.before;
+    // "In your writing" is the child's own sentence, with the word being swapped in bold when it
+    // can be found. "Like this" is a made-up sentence on another topic using a stronger word.
+    const swapWord = (boost.swaps || []).map((swap) => swap.from).find((from) => wordRanges(boost.before, from).length);
+    $("boost-before").replaceChildren(swapWord ? sentenceWithWord(boost.before, swapWord) : boost.before);
     $("boost-after").textContent = boost.after;
   }
   // The synonym challenge starts in Year 2 (the server sends none for Year 1 anyway).
@@ -536,11 +542,14 @@ function step(label, nodes) {
 function renderPowerUps(powerUps) {
   const box = $("power-ups");
   box.innerHTML = "";
+  powerIndex = 0;
   powerUps.forEach((p, index) => {
     const card = el("section", "power-card");
     card.id = `power-up-${index + 1}`;
+    card.hidden = index !== 0; // one card at a time; setPower() moves between them
     const eyebrow = el("p", "power-eyebrow");
-    eyebrow.append(emoji("⚡"), `Power-up ${index + 1}`);
+    // More than one power-up: this is the "Power-up 1 of 3" marker. A single one needs no count.
+    eyebrow.append(emoji("⚡"), powerUps.length > 1 ? `Power-up ${index + 1} of ${powerUps.length}` : `Power-up ${index + 1}`);
     if (p.areaLabel) eyebrow.appendChild(el("span", "power-area", p.areaLabel));
     card.append(eyebrow, el("h3", "power-title", p.skill));
     if (p.why) card.appendChild(el("p", "power-why", p.why));
@@ -556,7 +565,12 @@ function renderPowerUps(powerUps) {
       how.push(example);
     }
     if (how.length) steps.appendChild(step(p.move ? ["Use the strategy: ", el("strong", "", p.move.name)] : "See an example", how));
-    if (p.nowYou) steps.appendChild(step("Do this", [el("p", "step-task", p.nowYou)]));
+    if (p.nowYou) {
+      const task = [el("p", "step-task", p.nowYou)];
+      // Younger writers say the new sentence to a partner before they write it.
+      if (state.yearLevel <= 3) task.push(el("p", "step-say", "Say your new sentence out loud to a partner first. Then write it."));
+      steps.appendChild(step("Do this", task));
+    }
     card.appendChild(steps);
     box.appendChild(card);
   });
@@ -572,9 +586,20 @@ const STATUS = {
 // The ten-area check-up is no longer shown to the child; it goes into the teacher report
 // (print and saved picture) with the highest-impact goal.
 
-// The writing strength card: one tappable chip per skill, coloured by how it went. A tap
-// opens the explanation (what the skill means, in a child's words) with what the sidekick saw
-// in their own writing. "Key strength" and "Next focus" open the same panel.
+// The skill grid: one tappable chip per skill, coloured by how it went. A tap opens the
+// explanation (what the skill means, in a child's words) with what the sidekick saw in their
+// own writing. Years 5-6 only, behind the "See all your writing skills" button and closed to
+// begin with. Years 1-4 never see it.
+const isSenior = () => state.yearLevel >= 5;
+
+function setSkillsOpen(open) {
+  $("skills-card").hidden = !open;
+  const toggle = $("btn-all-skills");
+  toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  toggle.textContent = open ? "Hide your writing skills" : "See all your writing skills";
+  if (!open) closeSkill();
+}
+
 function renderStrength() {
   const summary = writingStrength(state.feedback.criteria);
   const bar = $("strength-bar");
@@ -591,8 +616,8 @@ function renderStrength() {
     chip.addEventListener("click", () => showSkill(area.key));
     bar.appendChild(chip);
   }
-  const description = summary.summary;
-  $("strength-summary").textContent = description;
+  $("strength-summary").textContent = summary.summary;
+  $("strength-summary").hidden = !summary.summary;
   for (const [id, label, key] of [["strength-key", summary.keyStrength, summary.keyStrengthKey], ["strength-focus", summary.focus, summary.focusKey]]) {
     const btn = $(id);
     btn.textContent = label;
@@ -600,6 +625,8 @@ function renderStrength() {
     btn.disabled = !key;
   }
   closeSkill();
+  $("btn-all-skills").hidden = !isSenior();
+  setSkillsOpen(false);
 }
 
 function closeSkill() {
@@ -655,48 +682,76 @@ $("skill-detail-close").addEventListener("click", closeSkill);
 // The child's own words inside a sentence of praise, picked out: quoted text becomes a <q>,
 // which draws its own curly quotes, so the quotes stand out from the comment. Single quotes
 // only count when they open after a space and close before a space or punctuation, so the
-// apostrophes in can't and I'm are left alone.
+// apostrophes in can't and I'm are left alone. (No lookbehind: older iPads cannot parse one,
+// so a single quote's opening space is matched, then skipped over.)
 function withQuotes(text) {
   const frag = document.createDocumentFragment();
-  const re = /“([^”]+)”|"([^"]+)"|‘([^’]+)’|(?:^|(?<=[\s(]))'([^'\n]+?)'(?=[\s.,;:!?)]|$)/g;
+  const re = /“([^”]+)”|"([^"]+)"|‘([^’]+)’|(^|[\s(])'([^'\n]+?)'(?=[\s.,;:!?)]|$)/g;
   let last = 0;
   let match;
   while ((match = re.exec(text))) {
-    if (match.index > last) frag.append(text.slice(last, match.index));
-    frag.append(el("q", "quote", match[1] ?? match[2] ?? match[3] ?? match[4]));
+    const start = match.index + (match[5] !== undefined ? match[4].length : 0);
+    if (start > last) frag.append(text.slice(last, start));
+    frag.append(el("q", "quote", match[1] ?? match[2] ?? match[3] ?? match[5]));
     last = match.index + match[0].length;
   }
   if (last < text.length) frag.append(text.slice(last));
   return frag;
 }
 
-// The sentence a challenge word came from, with the word itself in bold, so the child can
-// think of a synonym that fits the way they used it.
+// Where a whole word sits in a sentence (not inside a longer word), as [start, end] pairs.
+// Plain scanning instead of a lookbehind, which older iPads cannot parse.
+function wordRanges(sentence, word) {
+  if (!word || !word.trim()) return [];
+  const isLetter = (ch) => Boolean(ch) && /[\p{L}\p{N}]/u.test(ch);
+  const re = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu");
+  const ranges = [];
+  let match;
+  while ((match = re.exec(sentence))) {
+    const end = match.index + match[0].length;
+    if (!isLetter(sentence[match.index - 1]) && !isLetter(sentence[end])) ranges.push([match.index, end]);
+  }
+  return ranges;
+}
+
+// A sentence with the given word in bold wherever it stands alone, so the child can see the
+// word being talked about (and think of a synonym that fits the way they used it).
 function sentenceWithWord(sentence, word) {
   const frag = document.createDocumentFragment();
-  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const parts = sentence.split(new RegExp(`(?<![\\p{L}\\p{N}])(${escaped})(?![\\p{L}\\p{N}])`, "iu"));
-  parts.forEach((part, index) => {
-    if (!part) return;
-    frag.append(index % 2 ? el("strong", "", part) : part);
-  });
+  let last = 0;
+  for (const [start, end] of wordRanges(sentence, word)) {
+    if (start > last) frag.append(sentence.slice(last, start));
+    frag.append(el("strong", "", sentence.slice(start, end)));
+    last = end;
+  }
+  if (last < sentence.length) frag.append(sentence.slice(last));
   return frag;
 }
 
-// What the child did well, quoting their writing: the positive half of the feedback.
+// The first slide: what the child did well, quoting their writing (up to three). Years 1-4 have
+// no skill grid, so their area chips are plain labels; Years 5-6 can tap a chip to open the
+// grid at that skill.
 function renderHeroPowers() {
   const powers = heroPowers(state.feedback.criteria);
-  $("powers-card").hidden = powers.length === 0;
+  $("powers-card").hidden = false;
+  $("powers-caption").hidden = powers.length === 0;
+  $("powers-empty").hidden = powers.length > 0;
   const list = $("powers-list");
   list.innerHTML = "";
   for (const power of powers) {
     const li = el("li", "power-item");
-    const chip = el("button", "power-area", power.label);
-    chip.type = "button";
-    chip.addEventListener("click", () => {
-      showSkill(power.key);
-      $("skill-detail").scrollIntoView({ behavior: "smooth", block: "center" });
-    });
+    let chip;
+    if (isSenior()) {
+      chip = el("button", "power-area", power.label);
+      chip.type = "button";
+      chip.addEventListener("click", () => {
+        setSkillsOpen(true);
+        showSkill(power.key);
+        $("skill-detail").scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    } else {
+      chip = el("span", "power-area", power.label);
+    }
     const text = el("p", "power-text");
     text.appendChild(withQuotes(power.text));
     li.append(chip, text);
@@ -704,16 +759,32 @@ function renderHeroPowers() {
   }
 }
 
+// "Your next focus": power-up 1's skill title with a button to the power-up, or (no power-ups)
+// the first next step's own words and no button.
+function renderFocus() {
+  const focus = nextFocus(state.feedback.criteria, state.feedback.powerUps || []);
+  $("focus-card").hidden = !focus;
+  $("focus-text").textContent = focus ? focus.text : "";
+  $("btn-see-power").hidden = !focus || !focus.powerUp;
+}
+
+$("btn-see-power").addEventListener("click", () => {
+  const at = activeSlides().findIndex((slide) => slide.key === "power");
+  if (at >= 0) showSlide(at);
+});
+
+$("btn-all-skills").addEventListener("click", () => setSkillsOpen($("skills-card").hidden));
+
 function renderFeedback() {
   const { powerUps } = state.feedback;
+  ticks.clear();
   renderStrength();
   renderHeroPowers();
+  renderFocus();
   renderPractice();
   renderBoost();
   rebuildShareImage();
   renderPowerUps(powerUps);
-  $("mission-revise").hidden = !powerUps.length;
-  $("mission-word-power").hidden = !state.feedback.wordBoost;
   showSlide(0);
   resetIdle();
 }
@@ -722,12 +793,16 @@ function renderFeedback() {
 
 // The server's one-line headline is not shown: Nathan found it doubled up on the rest.
 const SLIDES = [
-  { key: "strength", label: "Writing strengths" },
+  { key: "strength", label: "What you did well" },
   { key: "power", label: "Power-ups" },
   { key: "words", label: "Word lab" },
   { key: "finish", label: "Mission complete" },
 ];
 let slideIndex = 0;
+let powerIndex = 0; // which power-up is showing (0-based)
+// Mission ticks live in memory only, like everything else: keys come from missionRows().
+const ticks = new Set();
+const powerCount = () => state.feedback?.powerUps?.length || 0;
 
 // The words slide only exists when there is word power or spelling to show.
 function activeSlides() {
@@ -749,17 +824,38 @@ function renderSteps(slides, index) {
   });
 }
 
-function showSlide(index) {
+// The bottom bar: Back steps back through the power-ups first; Next reads "I did it! Next
+// power-up" while more power-ups remain, then moves on to the next slide.
+function updateNav() {
+  const slides = activeSlides();
+  const onPower = slides[slideIndex].key === "power";
+  const morePowers = onPower && powerIndex < powerCount() - 1;
+  const next = slides[slideIndex + 1];
+  $("btn-slide-back").hidden = slideIndex === 0 && !(onPower && powerIndex > 0);
+  $("btn-slide-next").hidden = !next && !morePowers;
+  $("btn-slide-next").textContent = morePowers
+    ? "I did it! Next power-up →"
+    : next ? `${onPower && powerCount() ? "I did it! " : ""}Next: ${next.label} →` : "";
+}
+
+function setPower(index) {
+  powerIndex = Math.max(0, Math.min(powerCount() - 1, index));
+  document.querySelectorAll("#power-ups .power-card").forEach((card, i) => {
+    card.hidden = i !== powerIndex;
+  });
+  updateNav();
+}
+
+function showSlide(index, { power = 0 } = {}) {
   const slides = activeSlides();
   slideIndex = Math.max(0, Math.min(slides.length - 1, index));
   const current = slides[slideIndex].key;
   document.querySelectorAll(".fb-slide").forEach((s) => s.classList.toggle("active", s.dataset.slide === current));
+  if (current === "power") setPower(power);
+  if (current === "finish") renderMission();
   playSlideClip(current);
   renderSteps(slides, slideIndex);
-  const next = slides[slideIndex + 1];
-  $("btn-slide-back").hidden = slideIndex === 0;
-  $("btn-slide-next").hidden = !next;
-  if (next) $("btn-slide-next").textContent = `Next: ${next.label} →`;
+  updateNav();
   window.scrollTo(0, 0);
   focusHeading(document.querySelector(`.fb-slide[data-slide="${current}"] .fb-heading`));
 }
@@ -781,8 +877,69 @@ function playSlideClip(current) {
   });
 }
 
-$("btn-slide-back").addEventListener("click", () => showSlide(slideIndex - 1));
-$("btn-slide-next").addEventListener("click", () => showSlide(slideIndex + 1));
+// Mission complete: a tick list built from the feedback. Each row has a real checkbox the child
+// can tick; "I did it! Next power-up" ticks that power-up's row too.
+function renderMission() {
+  const list = $("mission-list");
+  list.replaceChildren();
+  if (!state.feedback) return;
+  for (const row of missionRows(state.feedback, state.yearLevel)) {
+    const item = el("li", "mission-item");
+    const label = el("label", "mission-row");
+    const box = el("input");
+    box.type = "checkbox";
+    box.dataset.key = row.key;
+    box.checked = ticks.has(row.key);
+    box.addEventListener("change", () => {
+      if (box.checked) ticks.add(row.key);
+      else ticks.delete(row.key);
+    });
+    const text = el("span", "mission-text");
+    text.appendChild(el("strong", "mission-label", row.label));
+    if (row.line) {
+      const line = el("span", "mission-part", "Find this line: ");
+      line.appendChild(el("q", "mission-line", row.line));
+      text.appendChild(line);
+    }
+    if (row.job) text.appendChild(el("span", "mission-part", row.key.startsWith("power-") ? `Do this: ${row.job}` : row.job));
+    label.append(box, text);
+    item.appendChild(label);
+    list.appendChild(item);
+  }
+}
+
+function focusPowerTitle() {
+  window.scrollTo(0, 0);
+  focusHeading(document.querySelector("#power-ups .power-card:not([hidden]) .power-title"));
+}
+
+$("btn-slide-back").addEventListener("click", () => {
+  const onPower = activeSlides()[slideIndex].key === "power";
+  if (onPower && powerIndex > 0) {
+    setPower(powerIndex - 1);
+    focusPowerTitle();
+  } else {
+    showSlide(slideIndex - 1, { power: Number.MAX_SAFE_INTEGER }); // coming back lands on the last power-up
+  }
+});
+$("btn-slide-next").addEventListener("click", () => {
+  const onPower = activeSlides()[slideIndex].key === "power";
+  if (onPower) ticks.add(`power-${powerIndex}`); // "I did it!" ticks the mission row, the last one too
+  if (onPower && powerIndex < powerCount() - 1) {
+    setPower(powerIndex + 1);
+    focusPowerTitle();
+  } else {
+    showSlide(slideIndex + 1);
+  }
+});
+
+// The Back / Next / Finish bar is fixed to the bottom of the screen, so the slide leaves room for it.
+const slideBar = document.querySelector(".slide-nav");
+if (window.ResizeObserver) {
+  new ResizeObserver(() => {
+    if (slideBar.offsetHeight) document.documentElement.style.setProperty("--bar-h", `${slideBar.offsetHeight}px`);
+  }).observe(slideBar);
+}
 
 // ---- save picture / print / restart ---------------------------------------
 
@@ -868,7 +1025,7 @@ $("btn-print").addEventListener("click", () => {
   const h = document.createElement("h2");
   h.textContent = "Editing: errors to find";
   const ul = document.createElement("ul");
-  for (const line of errorTotalLines(state.feedback)) {
+  for (const line of errorTotalLines(state.feedback, state.yearLevel)) {
     const li = document.createElement("li");
     li.textContent = line;
     ul.appendChild(li);
@@ -894,7 +1051,7 @@ $("btn-print").addEventListener("click", () => {
     boostBox.appendChild(ul);
     if (boost.before && boost.after) {
       const p = document.createElement("p");
-      p.textContent = `Your sentence: ${boost.before} With word power: ${boost.after}`;
+      p.textContent = `In your writing: ${boost.before} Like this: ${boost.after}`;
       boostBox.appendChild(p);
     }
     if (boost.challenge?.length) {
@@ -914,19 +1071,26 @@ function clearEverything() {
   state.pages = [];
   state.transcript = "";
   state.feedback = null;
+  ticks.clear();
+  powerIndex = 0;
   shareCache = { key: "", blob: null };
   $("transcript").value = "";
   $("transcript-check-note").hidden = true;
   $("transcript-check-note").textContent = "";
   $("include-photos").checked = false;
   $("camera-title").textContent = "Photo time";
-  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "boost-swaps", "challenge-list", "print-pages", "print-strength", "print-powers", "print-powerups", "print-practice", "print-boost"]) {
+  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "mission-list", "boost-swaps", "challenge-list", "print-pages", "print-strength", "print-powers", "print-powerups", "print-practice", "print-boost"]) {
     $(id).innerHTML = "";
   }
   for (const id of ["strength-summary", "strength-key", "strength-focus", "skill-detail-title", "skill-detail-what", "skill-detail-how", "skill-detail-note", "print-transcript"]) $(id).textContent = "";
   for (const id of ["skill-detail-strength", "skill-detail-next"]) $(id).lastElementChild.textContent = "";
   $("boost-before").textContent = "";
   $("boost-after").textContent = "";
+  $("focus-text").textContent = "";
+  $("focus-card").hidden = true;
+  $("powers-empty").hidden = true;
+  $("btn-all-skills").hidden = true;
+  $("skills-card").hidden = true;
   $("powers-card").hidden = true;
   $("boost-challenge").hidden = true;
   closeSkill();
@@ -968,13 +1132,16 @@ document.querySelectorAll(".btn-finish").forEach((button) => {
   });
 });
 
-// Left alone with work on screen, the iPad warns after nine minutes and clears itself a
-// minute later, so the next child cannot find the last one's writing. Any tap or key press
-// starts the clock again. Nothing clears while the camera or another app is in front.
-// (?idle=<seconds> shortens the wait for testing.)
+// Left alone with work on screen, the iPad warns and then clears itself, so the next child cannot
+// find the last one's writing: 9 minutes then 1 minute on the camera and typing screens; on the
+// feedback screens (where a child reads and works from the slides) 20 minutes then 5. Any tap or
+// key press starts the clock again. Nothing clears while the camera or another app is in front.
+// (?idle=<seconds> shortens the wait for testing, on every screen.)
 const IDLE_TEST_SECONDS = Number(new URLSearchParams(location.search).get("idle")) || 0;
 const IDLE_WARN_MS = IDLE_TEST_SECONDS ? IDLE_TEST_SECONDS * 1000 : 9 * 60_000;
 const IDLE_CLEAR_MS = IDLE_TEST_SECONDS ? 4_000 : 60_000;
+const IDLE_FEEDBACK_WARN_MS = IDLE_TEST_SECONDS ? IDLE_TEST_SECONDS * 1000 : 20 * 60_000;
+const IDLE_FEEDBACK_CLEAR_MS = IDLE_TEST_SECONDS ? 4_000 : 5 * 60_000;
 let idleWarnTimer = null;
 let idleClearTimer = null;
 
@@ -985,6 +1152,10 @@ function resetIdle() {
   clearTimeout(idleClearTimer);
   $("idle-banner").hidden = true;
   if (!hasWork()) return;
+  // Feedback exists from the moment the slides are built, so this holds on every feedback slide.
+  const onFeedback = state.feedback !== null;
+  const warnMs = onFeedback ? IDLE_FEEDBACK_WARN_MS : IDLE_WARN_MS;
+  const clearMs = onFeedback ? IDLE_FEEDBACK_CLEAR_MS : IDLE_CLEAR_MS;
   idleWarnTimer = setTimeout(() => {
     if (document.hidden) {
       resetIdle();
@@ -1000,8 +1171,8 @@ function resetIdle() {
       disarmFinish();
       clearEverything();
       show("screen-start");
-    }, IDLE_CLEAR_MS);
-  }, IDLE_WARN_MS);
+    }, clearMs);
+  }, warnMs);
 }
 
 for (const type of ["pointerdown", "keydown", "touchstart", "input"]) {
