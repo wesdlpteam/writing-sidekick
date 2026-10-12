@@ -4,7 +4,9 @@ import { editingTotals, inspectEditing, unavailableTotals } from '../api/_editin
 import { handleFeedback, powerUpProblems, hasIndependentPassages } from '../api/feedback.js';
 
 const entry = (quote, correction, category = 'spelling', occurrence = 1) => ({quote, correction, category, occurrence});
-const count = (transcript, errors, complete = true) => editingTotals({complete, errors}, transcript);
+// The three older counts, without full_stops (which has its own tests below).
+const bare = ({ full_stops, ...rest }) => rest;
+const count = (transcript, errors, complete = true) => bare(editingTotals({complete, errors}, transcript));
 
 test('counts evidenced occurrences, not model totals or a five-error limit', () => {
   assert.deepEqual(count(Array(12).fill('becos').join(' '), Array.from({length:12}, (_,i)=>entry('becos','because','spelling',i+1))), {spelling:12,punctuation:0,capital_letters:0});
@@ -82,11 +84,11 @@ test('a note that rewrites several words is not passed off as spelling', () => {
 
 test('unverifiable audits never fabricate a total or zero', () => {
   for (const errors of [[entry('absent','word')],[entry('cat','dog')],[entry('cats','cat','spelling',2)],[entry('cats','Cats','punctuation')],[entry('cats','dogs','capital_letters')],[entry('cats','dogs','spacing')],[entry('cats','cat'),entry('cats','dog')], [entry('[unclear]','word')]]) {
-    assert.deepEqual(count('cats [unclear]',errors), unavailableTotals());
+    assert.deepEqual(count('cats [unclear]',errors), bare(unavailableTotals()));
   }
-  assert.deepEqual(count('correct',[],false),unavailableTotals());
+  assert.deepEqual(count('correct',[],false),bare(unavailableTotals()));
   assert.deepEqual(editingTotals(null,'correct'),unavailableTotals());
-  assert.deepEqual(count('[unclear]',[]),unavailableTotals());
+  assert.deepEqual(count('[unclear]',[]),bare(unavailableTotals()));
 });
 
 test('transition models must change the transition', () => {
@@ -136,7 +138,7 @@ test('reviewed evidence determines totals; corrections stay private', async () =
   let calls=0;
   const r=await handleFeedback({yearLevel:4,transcript:'My famly likes cats.'},{env,fetchImpl:async(_url,options)=>{const stage=stageOf(JSON.parse(options.body));calls++;return reply(stage==='draft'?draft:stage==='audit'?{editing:{complete:true,errors:[entry('famly','family')]}}:{approved:true,feedback:null});}});
   assert.equal(r.status,200);
-  assert.deepEqual(r.payload.errorTotals,{spelling:1,punctuation:0,capital_letters:0});
+  assert.deepEqual(bare(r.payload.errorTotals),{spelling:1,punctuation:0,capital_letters:0});
   assert.equal(JSON.stringify(r.payload).includes('family'),false);
   assert.equal(r.payload.editing,undefined);
 });
@@ -164,11 +166,11 @@ test('the final editor can repair malformed generation JSON in its one review pa
 test('younger writers now reach three power-ups too, and never see a raw strategy key', async () => {
   const extra = {...draft,power_ups:[
     {...draft.power_ups[0],skill:'Use sentence_expansion'},
-    {...draft.power_ups[0],area:'vocabulary'},
-    {...draft.power_ups[0],area:'cohesion'},
+    {...draft.power_ups[0],area:'vocabulary',your_line:'We go to the park on Sunday.'},
+    {...draft.power_ups[0],area:'cohesion',your_line:'The park has a big slide.'},
   ]};
   let calls=0;
-  const r=await handleFeedback({yearLevel:2,transcript:'My famly likes cats.'},{env,fetchImpl:async(_url,options)=>{calls++;const stage=stageOf(JSON.parse(options.body));return reply(stage==='draft'?extra:stage==='audit'?{editing:{complete:true,errors:[]}}:{approved:true,feedback:extra});}});
+  const r=await handleFeedback({yearLevel:2,transcript:'My famly likes cats. We go to the park on Sunday. The park has a big slide.'},{env,fetchImpl:async(_url,options)=>{calls++;const stage=stageOf(JSON.parse(options.body));return reply(stage==='draft'?extra:stage==='audit'?{editing:{complete:true,errors:[]}}:{approved:true,feedback:extra});}});
   assert.equal(r.status,200);
   assert.equal(r.payload.powerUps.length,3);
   assert.equal(r.payload.powerUps[0].skill,'Use Sentence expansion');
@@ -194,7 +196,7 @@ test('a bundled editing note is untangled, with no slow extra call', async () =>
   assert.equal(r.status,200);
   assert.equal(requests.length,3,'audit, draft and review only');
   assert.ok(!requests.some((body)=>stageOf(body)==='recheck'));
-  assert.deepEqual(r.payload.errorTotals,{spelling:0,punctuation:1,capital_letters:1});
+  assert.deepEqual(bare(r.payload.errorTotals),{spelling:0,punctuation:1,capital_letters:1});
   assert.equal(r.payload.headline,draft.headline);
   assert.equal(JSON.stringify(r.payload).includes('mixed changes'),false);
   assert.equal(r.payload.editing,undefined);
@@ -212,14 +214,14 @@ test('a flagged audit still keeps the categories it verified', async () => {
   }});
   assert.equal(r.status,200);
   assert.equal(calls,3);
-  assert.deepEqual(r.payload.errorTotals,{spelling:1,punctuation:null,capital_letters:0});
+  assert.deepEqual(bare(r.payload.errorTotals),{spelling:1,punctuation:null,capital_letters:0});
 });
 
 test('valid shared-word evidence does not make an extra provider call', async () => {
   let calls=0;
   const r=await handleFeedback({yearLevel:4,transcript:'dont'},{env,fetchImpl:async(_url,options)=>{const stage=stageOf(JSON.parse(options.body));calls++;return reply(stage==='draft'?draft:stage==='audit'?{editing:{complete:true,errors:[entry('dont',"don't",'punctuation'),entry('dont','Dont','capital_letters')]}}:{approved:true,feedback:draft});}});
   assert.equal(calls,3);
-  assert.deepEqual(r.payload.errorTotals,{spelling:0,punctuation:1,capital_letters:1});
+  assert.deepEqual(bare(r.payload.errorTotals),{spelling:0,punctuation:1,capital_letters:1});
 });
 
 test('an incomplete audit leaves every count unavailable without another call', async () => {
@@ -232,7 +234,7 @@ test('an incomplete audit leaves every count unavailable without another call', 
   }});
   assert.equal(calls,3);
   assert.equal(r.status,200);
-  assert.deepEqual(r.payload.errorTotals,unavailableTotals());
+  assert.deepEqual(bare(r.payload.errorTotals),bare(unavailableTotals()));
 });
 
 test('a stretch keeps genuine strength ratings and private attainment evidence stays private', async () => {
@@ -252,4 +254,36 @@ test('a stretch keeps genuine strength ratings and private attainment evidence s
   assert.equal(review.reasoning_effort,'medium');
   assert.match(systemText(review),/FEEDBACK OBJECT SCHEMA/);
   assert.match(systemText(review),/ASSESSMENT AREAS/);
+});
+
+// full_stops: the part of punctuation that involves an end mark (. ! ?), the one count Years 1 and 2 see.
+test('full stops count only the places where an end mark is added, removed or changed', () => {
+  const totals = (transcript, errors) => editingTotals({complete:true, errors}, transcript);
+  assert.deepEqual(totals('we ran home', [entry('home','home.','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:1}, 'a full stop added');
+  assert.deepEqual(totals('Yes sir', [entry('Yes sir','Yes, sir','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:0}, 'only a comma: punctuation, not a full stop');
+  assert.deepEqual(totals('what is that', [entry('that','that?','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:1}, 'a question mark is an end mark');
+  assert.deepEqual(totals('we ran home, We sat', [entry('home, We','home. We','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:1}, 'a comma that should be a full stop');
+  assert.deepEqual(totals('we ran home we sat down', [entry('home we','home. we','punctuation'),entry('down','down.','punctuation')]), {spelling:0,punctuation:2,capital_letters:0,full_stops:2});
+  assert.deepEqual(totals('said Jack lets go', [entry('Jack','Jack.','punctuation'),entry('Jack lets','Jack. "Let\'s','punctuation')]), {spelling:0,punctuation:3,capital_letters:1,full_stops:1}, 'a full stop, an opening mark and an apostrophe');
+  assert.deepEqual(totals('dont stop', [entry('dont',"don't",'punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:0}, 'an apostrophe is not a full stop');
+  assert.deepEqual(totals('help".', [entry('help".','help."','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:0}, 'moving the stop inside speech marks is not a missing full stop');
+  assert.deepEqual(totals('we ran home', [entry('home','home.','punctuation'),entry('home','home.','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:1}, 'one place described twice is counted once');
+  assert.deepEqual(totals('really', []), {spelling:0,punctuation:0,capital_letters:0,full_stops:0});
+});
+
+test('full stops are unknown whenever punctuation is unknown', () => {
+  const totals = (transcript, errors) => editingTotals({complete:true, errors}, transcript);
+  assert.deepEqual(totals('famly dont', [entry('famly','family'),entry('missing','missing.','punctuation')]), {spelling:1,punctuation:null,capital_letters:0,full_stops:null});
+  assert.equal(unavailableTotals().full_stops, null);
+  assert.equal(editingTotals(null, 'correct').full_stops, null);
+  assert.equal(editingTotals({complete:true,errors:[]}, 'it is [unclear]').full_stops, null);
+});
+
+test('the feedback payload carries full_stops beside the other counts', async () => {
+  const run = async (transcript, errors) => (await handleFeedback({yearLevel:2,transcript},{env,fetchImpl:async(_url,options)=>{
+    const stage=stageOf(JSON.parse(options.body));
+    return reply(stage==='draft'?draft:stage==='audit'?{editing:{complete:true,errors}}:{approved:true,feedback:draft});
+  }})).payload.errorTotals;
+  assert.deepEqual(await run('My famly likes cats', [entry('cats','cats.','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:1});
+  assert.deepEqual(await run('My famly likes cats, dogs', [entry('cats, dogs','cats dogs','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:0});
 });

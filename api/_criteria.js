@@ -16,7 +16,7 @@ export const CRITERIA = {
     label: "Text structure",
     sub: "beginning, middle and end",
     guide:
-      "Does the piece have the shape its type needs, and do the parts work together? Story or recount: a beginning that sets things up, a problem or main event, and an ending that finishes the story rather than just stopping. Persuasive: an introduction that states the position, a body with one reason at a time, a conclusion that comes back to the position. Report: an opening statement, grouped facts, an ending. Poem: a deliberate shape of lines and verses.",
+      "Does the piece have the shape its type needs, and do the parts work together? Story or recount: a beginning that sets things up, a problem or main event, and an ending that finishes the story rather than just stopping. Persuasive: an introduction that states the position, a body with one reason at a time, a conclusion that comes back to the position (in Years 1 to 4, a clear position up front followed by real reasons, in one paragraph or several, is enough; a call to action at the end is a strength). Report: an opening statement, grouped facts, an ending. Poem: a deliberate shape of lines and verses.",
   },
   ideas: {
     label: "Ideas",
@@ -34,7 +34,7 @@ export const CRITERIA = {
     label: "Persuasive devices",
     sub: "the ways to convince",
     guide:
-      "The ways a writer convinces a reader: an opinion backed by reasons, modal words (should, must, might), rhetorical questions, talking straight to the reader, emotive words, repetition, facts or examples, answering the other side. Judge how many are used and whether they actually work.",
+      "The ways a writer convinces a reader: an opinion backed by reasons, modal words (should, must, might), rhetorical questions, talking straight to the reader, emotive words, repetition, facts or examples, answering the other side. Judge the quality of the reasons (a fact, an example or an explanation, not the opinion said again; personal experience counts) and whether the devices actually work, never just how many are used. In Years 1 to 4 this is an opinion piece: a clear position up front and real reasons are the goal, and evidence or answering the other side are stretches, never a next step. In Years 5 and 6 the writer may answer the other side in one 'Although ...' sentence or in its own paragraph, never raising and rebutting in the same paragraph.",
   },
   vocabulary: {
     label: "Vocabulary",
@@ -46,13 +46,13 @@ export const CRITERIA = {
     label: "Cohesion",
     sub: "how your ideas link up",
     guide:
-      "Does the writing flow as one piece? Pronouns that clearly refer back, transition words (then, later, meanwhile, however, because, for example), word families and synonyms instead of repeating the same noun, and tense that stays steady.",
+      "Does the writing flow as one piece? Pronouns that clearly refer back, transition words that link sentences and also paragraphs (then, later, meanwhile, however, because, for example), word families and synonyms instead of repeating the same noun, and tense that stays steady.",
   },
   paragraphing: {
     label: "Paragraphing",
     sub: "chunking your ideas",
     guide:
-      "Is the text chunked so the reader can follow it? A new paragraph for a new time, place, person or idea in a story; one paragraph per reason in persuasive writing, opening with a topic sentence and closing with a concluding sentence; verses in a poem. One block of text is the normal starting point for the youngest writers, so judge by year level.",
+      "Is the text chunked so the reader can follow it? A new paragraph for a new time, place, person or idea in a story; one main idea per paragraph, so a paragraph holding two main ideas should be split; in persuasive writing one paragraph per reason, each body paragraph opening with a topic sentence, and the whole piece finishing with ONE concluding statement (a single paragraph ends with its own concluding sentence); verses in a poem. One block of text is the normal starting point for the youngest writers, so judge by year level.",
   },
   sentence_structure: {
     label: "Sentence structure",
@@ -130,40 +130,59 @@ export const MOVES = {
     rule: "Say an idea as a statement, a question, a command or an exclamation. Swapping one in changes the pace and wakes the reader up.",
     example: "What a monster wave that was!",
   },
+  // The book's own term, kept with its meaning. Its fragment example is a missing who or what
+  // (a missing subject) or a missing verb; the book holds back dependent-clause fragments.
   fragment_fix: {
-    name: "Whole sentences",
+    name: "Sentences and fragments",
     minYear: 1,
-    rule: "A half sentence is only part of an idea, like 'Because it was raining.' It leaves the reader waiting. Add the missing who and what so it makes sense on its own.",
-    example: "We stayed inside because it was raining.",
+    rule: "A fragment (a half sentence that is only part of an idea) leaves the reader waiting, like 'Ran down the hill.' It has no who or what. Add the missing part so it makes sense on its own.",
+    example: "The dog ran down the hill.",
   },
   run_on_fix: {
     name: "Run-on sentences",
     minYear: 1,
-    rule: "A run-on keeps going with and, so, but then and then, so the reader never gets a rest. Find where one whole idea finishes, put a full stop there, and start the next one with a capital letter. Keep only the and, but or so that really helps.",
+    rule: "A run-on keeps going with and, so, but then and then, so the reader never gets a rest. Find where one whole idea finishes, put a full stop there, and start the next one with a capital letter. Do not start the new sentence with and, but or so. Keep only the and, but or so that really helps.",
     example: "The bell rang for lunch. We grabbed our bags and ran for the oval.",
   },
+  // Because and but come first; so (the result) arrives in Year 2.
   because_but_so: {
     name: "Because, but, so",
     minYear: 1,
     rule: "Finish a thin sentence with because (the reason), but (a change of direction) or so (the result of that reason or event). Each one pushes you to say more.",
+    ruleFor: (year) => (year >= 2
+      ? undefined
+      : "Finish a thin sentence with because (the reason) or but (a change of direction). Each one pushes you to say more."),
     example: "The dog barked because a possum was on the fence.",
   },
+  // Years 1 and 2 answer when, where and why; how joins from Year 3.
   sentence_expansion: {
     name: "Sentence expansion",
     minYear: 1,
-    rule: "Start with a short sentence that makes sense on its own. Pick the questions worth answering (when, where, why or how), jot quick notes, then add those details inside the same sentence. Keep the words you started with, and put the when at the front.",
+    rule: "Start with a kernel sentence (a short sentence that makes sense on its own). Pick the questions worth answering (when, where, why or how), jot quick notes, then add those details inside the same sentence. Keep the words you started with, and put the when at the front.",
+    ruleFor: (year) => (year >= 3
+      ? undefined
+      : "Start with a kernel sentence (a short sentence that makes sense on its own). Pick the questions worth answering (when, where or why), jot quick notes, then add those details inside the same sentence. Keep the words you started with, and put the when at the front."),
     example: "At sunrise, the surfer paddled out past the break to catch the first wave.",
   },
+  // The book's order. Years 1 to 3 teach the first four; Year 4 and up the full list.
   subordinating_conjunction: {
     name: "Subordinating conjunction start",
-    minYear: 2,
-    rule: "Begin with a subordinating conjunction like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
+    minYear: 1,
+    rule: "Begin with a subordinating conjunction (After, Before, If, When, Even though, Although, Whenever, Since, While or Unless), write that first part, add a comma, then finish the sentence.",
+    ruleFor: (year) => (year >= 4
+      ? undefined
+      : "Begin with a subordinating conjunction (After, Before, If or When), write that first part, add a comma, then finish the sentence."),
     example: "When the bell rang, we sprinted to the oval.",
   },
+  // Years 2 and 3 teach time and sequence, conclusion and illustration; Year 4 adds change of
+  // direction and emphasis. Transitions link paragraphs as well as sentences.
   transition: {
     name: "Transition word",
     minYear: 2,
-    rule: "A transition word or phrase at the start of a sentence that links it to the one before: First, Next, Later or Finally for time and sequence; For example to illustrate; However or On the other hand to change direction; Therefore or In the end to conclude; In fact or Most of all to emphasise. Choose the relationship first: Secondly starts a new ordered reason with a topic sentence and supporting detail; For example develops that same reason; However introduces a contrast. They are not interchangeable. Show the previous reason when using an ordered transition.",
+    rule: "A transition word or phrase at the start of a sentence or paragraph that links it to the one before: First, Next, Later or Finally for time and sequence; For example to illustrate; However or On the other hand to change direction; Therefore or In the end to conclude; In addition, Most importantly or In particular to emphasise. Choose the relationship first: Secondly starts a new ordered reason with a topic sentence and supporting detail; For example develops that same reason; However introduces a contrast. They are not interchangeable. Show the previous reason when using an ordered transition.",
+    ruleFor: (year) => (year >= 4
+      ? undefined
+      : "A transition word or phrase at the start of a sentence or paragraph that links it to the one before: First, Next, Later or Finally for time and sequence; Therefore or In the end to conclude; For example to illustrate. Choose the relationship first: Secondly starts a new ordered reason with a topic sentence and supporting detail; For example develops that same reason. They are not interchangeable. Show the previous reason when using an ordered transition."),
     example: "Later, the rain finally stopped.",
   },
   vary_vocabulary: {
@@ -187,19 +206,24 @@ export const MOVES = {
   paragraph_focus: {
     name: "Keep ideas on topic",
     minYear: 1,
-    rule: "Read the paragraph's main idea. Remove a sentence that does not support it. Keep the useful sentences in their original order and wording. Check that the paragraph still makes sense.",
+    rule: "Read the paragraph's main idea. Remove a sentence that does not support it, or that only says the same thing as another sentence. Keep the useful sentences in their original order and wording. Check that the paragraph still makes sense.",
     example: "The pond supports wildlife. Frogs shelter among its reeds.",
   },
+  // The four strategies below are for paragraph-style writing: stories and poems do not get them.
   topic_sentence: {
     name: "Topic sentence",
     minYear: 3,
-    rule: "The first sentence of a paragraph tells the reader its main idea. In persuasive writing, keep it short and concise, stating one main reason. Put evidence and elaboration in the supporting sentences after it. Do not make an effective topic sentence longer just to make it sound advanced.",
+    paragraphOnly: true,
+    rule: "The first sentence of a paragraph tells the reader its main idea. In persuasive writing, keep it short and concise, stating your side or one main reason. Put evidence and elaboration in the supporting sentences after it. A question or an exclamation can be a topic sentence too. Do not make an effective topic sentence longer just to make it sound advanced.",
+    offer: (year) => `A topic sentence may give the writer's position with the reasons in the details that follow, or, in a piece of several paragraphs, one reason. A flat one can be lifted with a different sentence type, a subordinating conjunction start${year >= 4 ? " or an appositive" : ""}: add words, never evidence. A question or exclamation topic sentence is not a defect.`,
     example: "Our school needs a bigger playground for three reasons.",
   },
   concluding_sentence: {
     name: "Concluding sentence",
     minYear: 3,
-    rule: "The last sentence of a paragraph, saying the topic sentence's idea again in a new way so the paragraph feels finished.",
+    paragraphOnly: true,
+    rule: "The last sentence of a paragraph. It says the topic sentence's idea again in new words, never word for word, so the paragraph feels finished. It can give your opinion or say what should happen, and it can start with a concluding transition like In the end or Therefore.",
+    offer: "A single paragraph ends with a concluding sentence. A piece of several paragraphs needs topic sentences on its body paragraphs and ONE final concluding statement (or a closing paragraph that mirrors the introduction), never one on every paragraph. It must not copy the topic sentence's structure. A call to action (using so, for what should happen) is a good ending.",
     example: "That is why a bigger playground would make every lunchtime better.",
   },
   appositive: {
@@ -211,36 +235,51 @@ export const MOVES = {
   general_to_specific_intro: {
     name: "General to specific introduction",
     minYear: 5,
+    paragraphOnly: true,
     rule: "Open with a broad statement about the topic, narrow to a specific one, then state your position or main idea as the last sentence of the introduction.",
+    offer: "Offer this only when the piece is already several paragraphs. The introduction needs at least three sentences with the position last, and the conclusion later rewords that position.",
     example: "Every school has a playground. Ours is the smallest in the district. It is time we built a bigger one.",
   },
   specific_to_general_conclusion: {
     name: "Specific to general conclusion",
     minYear: 5,
+    paragraphOnly: true,
     rule: "Do the introduction in reverse: restate your position, sum up your specific points, then finish with a broad closing thought.",
+    offer: "Offer this only for a piece that already has an introduction and body paragraphs; the conclusion rewords the position from the introduction.",
     example: "A bigger playground is worth every cent. It would ease the crowding and give every class room to run. Good schools give children space to play.",
   },
 };
 
-export function movesFor(yearLevel) {
+// Stories and poems are not offered the paragraph-structure strategies.
+const NO_PARAGRAPH_STRATEGIES = new Set(["narrative", "poetry"]);
+const allowedFor = (m, genre) => !(m.paragraphOnly && NO_PARAGRAPH_STRATEGIES.has(genre));
+const ruleForYear = (m, yearLevel) => m.ruleFor?.(yearLevel) ?? m.rule;
+const offerForYear = (m, yearLevel) => (typeof m.offer === "function" ? m.offer(yearLevel) : m.offer);
+
+export function movesFor(yearLevel, genre = "") {
   return Object.entries(MOVES)
-    .filter(([, m]) => m.minYear <= yearLevel)
-    .map(([key, m]) => ({ key, ...m }));
+    .filter(([, m]) => m.minYear <= yearLevel && allowedFor(m, genre))
+    .map(([key, { ruleFor: _drop, offer: _offer, ...m }]) => ({ key, ...m, rule: ruleForYear(MOVES[key], yearLevel), offer: offerForYear(MOVES[key], yearLevel) }));
 }
 
-export function movesPrompt(yearLevel) {
-  const lines = movesFor(yearLevel).map((m) => `- ${m.key}: ${m.name}. ${m.rule}`);
+export function movesPrompt(yearLevel, genre = "") {
+  const lines = movesFor(yearLevel, genre).map((m) => `- ${m.key}: ${m.name}. ${m.rule}${m.offer ? ` (${m.offer})` : ""}`);
+  const gated = NO_PARAGRAPH_STRATEGIES.has(genre)
+    ? `\nThis piece is a ${genre === "poetry" ? "poem" : "story"}: do not ask for a topic sentence, a concluding sentence, or a general-to-specific introduction or specific-to-general conclusion, and do not name them in "move".`
+    : "";
   return `Writing strategies the school teaches (the child practises these in class, so build power-ups on them wherever they fit, and phrase "now_you" as a task that uses the strategy on their own writing, for example "Find your sentence about the waves and expand it: add when and where"). When a power-up's "example_after" clearly shows one of these strategies, name it with the exact key in "move"; otherwise use null:
-${lines.join("\n")}
+${lines.join("\n")}${gated}
 Name a strategy only when "example_after" really does it: sentence_expansion adds when, where, why or how inside ONE sentence; sentence_combining joins two or more of the child's sentences into fewer sentences; run_on_fix is its opposite, splitting ONE over-long chained sentence into two or more complete sentences (never call that combining); elaborate adds a NEW sentence of detail after one of theirs; because_but_so extends a sentence with because, but or so. If none fits exactly, use null.
 Revising comes before editing: power-ups are revising strategies. Spelling and punctuation are editing and belong in error_totals and the spelling and punctuation areas.
-Call them "writing strategies" (never moves, tricks or techniques) and use the strategy names above whenever you talk about one, so the child hears the same words as in class: say "transition word" (never signpost word, connective, linking word or time connective), "subordinating conjunction" (never joining word, opener or sentence starter), "topic sentence" and "concluding sentence" (never T.S., C.S. or SPO), "revise" for improving the writing and "edit" for fixing spelling and punctuation. "Kernel" and "fragment" are staffroom words: never write either, or "kernel sentence", in anything the child reads. Say "a short sentence that makes sense on its own" for a kernel, "keep the words you started with" when asking them to preserve it, and "half sentence" for a fragment.
+The year limits above apply only to what you TEACH. Never mark down a child's own correct use of a later conjunction or transition (Since, Although, On the other hand); name it as a strength.
+Call them "writing strategies" (never moves, tricks or techniques) and use the strategy names above whenever you talk about one, so the child hears the same words as in class: say "transition word" (never signpost word, connective, linking word or time connective), "subordinating conjunction" (never joining word, opener or sentence starter), "topic sentence" and "concluding sentence" (never T.S., C.S. or SPO), "revise" for improving the writing and "edit" for fixing spelling and punctuation. The book terms "fragment" and "kernel sentence" are allowed, but the first time you write one in anything the child reads, put its meaning in brackets straight after it: fragment (a half sentence that is only part of an idea), kernel sentence (a short sentence that makes sense on its own). Never write "kernel" on its own. Say "keep the words you started with" when asking them to preserve a kernel sentence.
 Phrase "now_you" the way the school's own feedback is phrased, pointing at a sentence: expand it (add when, where, why or how), combine sentences 2 and 3, split your long sentence where the first whole idea ends, insert a transition, begin it with a subordinating conjunction, vary vocabulary, give an example, or improve your topic sentence or concluding sentence.`;
 }
 
-// The explanation shown to the child, or null if the key is unknown or too advanced for the year.
-export function describeMove(key, yearLevel) {
+// The explanation shown to the child, or null if the key is unknown, too advanced for the year,
+// or not for this kind of writing.
+export function describeMove(key, yearLevel, genre = "") {
   const m = MOVES[key];
-  if (!m || m.minYear > yearLevel) return null;
-  return { key, name: m.name, rule: m.rule, example: m.example };
+  if (!m || m.minYear > yearLevel || !allowedFor(m, genre)) return null;
+  return { key, name: m.name, rule: ruleForYear(m, yearLevel), example: m.example };
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, findRunOns } from "../api/feedback.js";
+import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, findRunOns, defineBookTerms, shortenLine, linesOverlap, windowAround, madeUpAfter, powerUpProblemsEach } from "../api/feedback.js";
 
 // A system prompt arrives as one string, or (newer models) as cacheable parts; this reads either.
 const systemText = (body) => [].concat(body.messages?.[0]?.content ?? "").map((p) => (typeof p === "string" ? p : p.text)).join("");
@@ -39,7 +39,7 @@ const GOOD_PAYLOAD = {
       area: "vocabulary",
       skill: "Show how fast with a strong verb",
       why: "'ran fast' tells us; a strong verb shows us.",
-      your_line: "The dog ran fast.",
+      your_line: "My famly came becos it was fun.",
       move: null,
       rule: "Swap a plain verb and its helper word for one exact verb.",
       example_before: "The boy went quickly.",
@@ -55,7 +55,7 @@ const GOOD_PAYLOAD = {
   word_boost: {
     swaps: [{ from: "fast", to: ["quick", "speedy", "rapid", "lightning-quick"] }],
     before: "The dog ran fast.",
-    after: "The dog ran lightning-quick.",
+    after: "The rapid train rushed through the quiet valley.",
     challenge: ["sunny", "fun", "came"],
   },
 };
@@ -353,7 +353,8 @@ test("feedback prompt: year guide, rules, the ten areas, skill bank, writing mov
   assert.match(sys, /EXACTLY 4 synonyms/);
   assert.match(sys, /from the simplest to the most sophisticated/);
   assert.match(sys, /"challenge" lists 3 OTHER plain words/);
-  assert.match(sys, /not just a one-word swap/i);
+  assert.match(sys, /a sentence YOU make up, on a different topic from the child's writing/i);
+  assert.match(sys, /never the child's sentence rewritten/i);
   assert.match(sys, /NAPLAN-informed craft/, "distilled marking criteria guide model quality");
   assert.equal(capture.body.model, "gpt-5.4-mini", "OPENAI_MODEL still picks the feedback model");
   const userParts = capture.body.messages[1].content;
@@ -402,7 +403,7 @@ test("word power only swaps words the child used, and its sentence must be their
     word_boost: { swaps: [{ from: "good", to: ["great"] }, { from: "fast", to: ["speedy"] }], before: "The cat sat on the mat.", after: "The cat perched on the mat." },
   };
   const r = await feedbackFor(fixture);
-  assert.deepEqual(r.payload.wordBoost, { swaps: [{ from: "fast", to: ["speedy"] }], before: "", after: "", challenge: [] });
+  assert.deepEqual(r.payload.wordBoost, { swaps: [{ from: "fast", to: ["speedy"] }], before: "", after: null, challenge: [] });
   const none = await feedbackFor({ ...GOOD_PAYLOAD, word_boost: { swaps: [{ from: "good", to: ["great"] }], before: "The dog ran fast.", after: "The dog sprinted." } });
   assert.equal(none.payload.wordBoost, null, "no real swaps means no word power");
 });
@@ -441,8 +442,8 @@ test("a power-up example that is really the child's line rewritten is dropped; a
   const fixture = {
     ...GOOD_PAYLOAD,
     power_ups: [
-      GOOD_PAYLOAD.power_ups[0],
-      { ...GOOD_PAYLOAD.power_ups[1], example_before: "The dog ran fast!", example_after: "The dog zoomed across the grass." },
+      { ...GOOD_PAYLOAD.power_ups[0], your_line: "My famly came becos it was fun." },
+      { ...GOOD_PAYLOAD.power_ups[1], your_line: "The dog ran fast.", example_before: "The dog ran fast!", example_after: "The dog zoomed across the grass." },
       { area: "ideas", skill: "Add a twist", why: "Because.", your_line: "It was a sunny day.", example_before: "The sky was blue.", example_after: "It was a sunny day, until the storm rolled in." },
     ],
   };
@@ -570,7 +571,7 @@ test("feedback response is normalised: headline, ten areas in marker order, powe
     move: {
       key: "subordinating_conjunction",
       name: "Subordinating conjunction start",
-      rule: "Begin with a subordinating conjunction like Although, When, Since, After, Before, If or Even though, write that first part, add a comma, then finish the sentence.",
+      rule: "Begin with a subordinating conjunction (After, Before, If or When), write that first part, add a comma, then finish the sentence.",
       example: "When the bell rang, we sprinted to the oval.",
     },
     nowYou: "Start your line with While or When.",
@@ -782,7 +783,7 @@ test("word boost passes through", async () => {
   assert.deepEqual(r.payload.wordBoost, {
     swaps: [{ from: "fast", to: ["quick", "speedy", "rapid", "lightning-quick"] }],
     before: "The dog ran fast.",
-    after: "The dog ran lightning-quick.",
+    after: "The rapid train rushed through the quiet valley.",
     challenge: [
       { word: "sunny", sentence: "It was a sunny day." },
       { word: "fun", sentence: "My famly came becos it was fun." },
@@ -910,13 +911,13 @@ test("upstream error -> 502 without leaking details", async () => {
 
 test("unverified model totals are ignored even when they look valid", async () => {
   const r = await feedbackFor({ ...GOOD_PAYLOAD, error_totals: { spelling: 12, punctuation: 3, capital_letters: 0 } });
-  assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null });
+  assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null, full_stops: null });
 });
 
 test("missing or invalid totals are unavailable, never reported as zero errors", async () => {
   for (const error_totals of [undefined, { spelling: -1, punctuation: 2.5, capital_letters: "3" }]) {
     const r = await feedbackFor({ ...GOOD_PAYLOAD, error_totals });
-    assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null });
+    assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null, full_stops: null });
   }
 });
 
@@ -944,7 +945,7 @@ test("editing audit runs as its own call beside the review, not inside it", asyn
   };
   const r = await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl, env: ENV });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.payload.errorTotals, { spelling: 2, punctuation: 0, capital_letters: 0 });
+  assert.deepEqual(r.payload.errorTotals, { spelling: 2, punctuation: 0, capital_letters: 0, full_stops: 0 });
   const draft = calls.find((c) => c.stage === "draft");
   const review = calls.find((c) => c.stage === "review");
   const auditCall = calls.find((c) => c.stage === "audit");
@@ -1009,7 +1010,7 @@ test("Years 1 and 2 now get up to three power-ups, like the older years", async 
   payload.power_ups = [
     GOOD_PAYLOAD.power_ups[0],
     GOOD_PAYLOAD.power_ups[1],
-    { ...GOOD_PAYLOAD.power_ups[1], area: "ideas", skill: "Say why the dog ran", now_you: "Add why your dog was running." },
+    { ...GOOD_PAYLOAD.power_ups[1], area: "ideas", skill: "Say why the dog ran", your_line: "It was a sunny day.", now_you: "Add why your dog was running." },
     { ...GOOD_PAYLOAD.power_ups[1], area: "cohesion", skill: "Link your two sentences", now_you: "Join them with because." },
   ];
   for (const yearLevel of [1, 2, 3]) {
@@ -1048,17 +1049,53 @@ test("run-on repair is never labelled on a job that asks the child to join sente
 // internal identifiers that no screen, print-out or saved picture renders.
 const visibleText = (payload) => JSON.stringify(payload, (field, value) => (field === "key" ? undefined : value));
 
-test("the staffroom word 'kernel' never reaches the child", async () => {
+test("the book term 'kernel sentence' reaches the child with its meaning, once, and never bare", async () => {
   const payload = structuredClone(GOOD_PAYLOAD);
   payload.power_ups[0].rule = "Keep the kernel sentence and add when and where.";
-  payload.power_ups[0].why = "Kernel sentences like this one are a good start.";
+  payload.power_ups[0].why = "Kernel sentences like this one are a good start, and a kernel sentence (a tiny whole thought) stays short.";
   payload.power_ups[0].now_you = "Keep your kernel's words.";
   payload.areas.sentence_structure = area("steady", "Your kernel is complete.", "Expand one kernel sentence.");
   const r = await feedbackFor(payload);
-  assert.doesNotMatch(visibleText(r.payload), /kernel/i);
-  assert.equal(r.payload.powerUps[0].rule, "Keep the short sentence and add when and where.");
-  assert.equal(r.payload.powerUps[0].why, "Short sentences like this one are a good start.");
-  assert.equal(r.payload.powerUps[0].nowYou, "Keep your short sentence's words.");
+  const MEANING = "a short sentence that makes sense on its own";
+  assert.equal(r.payload.powerUps[0].rule, `Keep the kernel sentence (${MEANING}) and add when and where.`);
+  assert.equal(r.payload.powerUps[0].why, "Kernel sentences (short sentences that make sense on their own) like this one are a good start, and a kernel sentence (a tiny whole thought) stays short.", "plural gets the plural meaning; a bracket that follows later is left alone");
+  assert.equal(r.payload.powerUps[0].nowYou, `Keep your kernel sentence (${MEANING})'s words.`);
+  const sentenceStructure = r.payload.criteria.find((c) => c.key === "sentence_structure");
+  assert.equal(sentenceStructure.strength, `Your kernel sentence (${MEANING}) is complete.`);
+  assert.equal(sentenceStructure.nextStep, `Expand one kernel sentence (${MEANING}).`);
+  assert.doesNotMatch(visibleText(r.payload), /\bkernel(?!\s+sentences?\b)/i, "never kernel on its own");
+});
+
+test("the book term 'fragment' reaches the child with its meaning the first time in each string", async () => {
+  const payload = structuredClone(GOOD_PAYLOAD);
+  payload.power_ups[0].rule = "Fix the fragment by adding who and what.";
+  payload.power_ups[0].why = "Sentence fragments leave the reader waiting, and one fragment is enough.";
+  payload.power_ups[1].why = "A fragment (a half sentence) is easy to spot.";
+  payload.areas.sentence_structure = area("next_step", "", "Check each line for fragments.");
+  const r = await feedbackFor(payload);
+  assert.equal(r.payload.powerUps[0].rule, "Fix the fragment (a half sentence that is only part of an idea) by adding who and what.");
+  assert.equal(r.payload.powerUps[0].why, "Sentence fragments (half sentences that are only part of an idea) leave the reader waiting, and one fragment is enough.");
+  assert.equal(r.payload.powerUps[1].why, "A fragment (a half sentence) is easy to spot.", "no second definition when a bracket follows");
+  assert.equal(r.payload.criteria.find((c) => c.key === "sentence_structure").nextStep, "Check each line for fragments (half sentences that are only part of an idea).");
+});
+
+test("defineBookTerms: kernel sentence, bare kernel, fragment, and skill titles left tidy", () => {
+  assert.equal(defineBookTerms("Start with a kernel."), "Start with a kernel sentence (a short sentence that makes sense on its own).");
+  assert.equal(defineBookTerms("Two kernels here."), "Two kernel sentences (short sentences that make sense on their own) here.");
+  assert.equal(defineBookTerms("Kernel sentence first, then a kernel."), "Kernel sentence (a short sentence that makes sense on its own) first, then a kernel sentence.");
+  assert.equal(defineBookTerms("A kernel sentence (the short one) works."), "A kernel sentence (the short one) works.");
+  assert.equal(defineBookTerms("No sentence fragments allowed."), "No sentence fragments (half sentences that are only part of an idea) allowed.");
+  assert.equal(defineBookTerms("It is fragmented."), "It is fragmented.", "other words are untouched");
+  assert.equal(defineBookTerms("Fix this fragment", { define: false }), "Fix this fragment");
+  assert.equal(defineBookTerms("Fix this kernel", { define: false }), "Fix this kernel sentence");
+  assert.equal(defineBookTerms("Nothing to define."), "Nothing to define.");
+});
+
+test("a skill title keeps the book term short, with no bracket", async () => {
+  const payload = structuredClone(GOOD_PAYLOAD);
+  payload.power_ups[0].skill = "Use fragment_fix";
+  const r = await feedbackFor(payload);
+  assert.equal(r.payload.powerUps[0].skill, "Use Sentences and fragments");
 });
 
 test("a substantial draft is asked for three power-ups, whatever the year", async () => {
@@ -1071,16 +1108,200 @@ test("a substantial draft is asked for three power-ups, whatever the year", asyn
   }
 });
 
-test("the staffroom word 'fragment' never reaches the child either", async () => {
-  const payload = structuredClone(GOOD_PAYLOAD);
-  payload.power_ups[0].rule = "Fix the fragment by adding who and what.";
-  payload.power_ups[0].why = "Sentence fragments leave the reader waiting.";
-  payload.areas.sentence_structure = area("next_step", "", "Check each line for fragments.");
-  const r = await feedbackFor(payload);
-  assert.doesNotMatch(visibleText(r.payload), /fragment/i);
-  assert.equal(r.payload.powerUps[0].rule, "Fix the half sentence by adding who and what.");
-  assert.equal(r.payload.powerUps[0].why, "Half sentences leave the reader waiting.");
-  assert.equal(r.payload.criteria.find((c) => c.key === "sentence_structure").nextStep, "Check each line for half sentences.");
+// ---- teaching rules: Stage 2 ----------------------------------------------------
+
+// A transcript with enough separate sentences to give each power-up its own line.
+const FOUR = "The dog ran fast.\nIt was a sunny day.\nMy famly came becos it was fun.\nWe ate cake at the park and then went home to sleep.";
+const pu = (area, line, extra = {}) => ({
+  area, skill: `Lift ${area}`, why: "This line already works.", your_line: line, move: null, rule: "Do the thing.",
+  example_before: "The bird sang.", example_after: "At dawn, the bird sang from the gum tree.", now_you: "Try it on your line.", ...extra,
+});
+const withPowerUps = (power_ups) => ({ ...GOOD_PAYLOAD, power_ups });
+const FOUR_BODY = { transcript: FOUR, yearLevel: 3, genre: "narrative" };
+
+test("a failing power-up is dropped on its own; the rest stay and the area links shift up", async () => {
+  const bad = pu("cohesion", "It was a sunny day.", { move: "transition", example_before: "Firstly, dogs are noisy.", example_after: "Firstly, dogs are noisy." });
+  const reviewed = withPowerUps([pu("sentence_structure", "The dog ran fast."), bad, pu("vocabulary", "My famly came becos it was fun.")]);
+  const fetchImpl = async (url, options) => {
+    const body = JSON.parse(options.body);
+    const system = systemText(body);
+    const content = system.startsWith("EDITING_") ? { editing: { complete: true, errors: [] } }
+      : system.startsWith("QUALITY_REVIEW:") ? { approved: true, feedback: reviewed } : reviewed;
+    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(content) } }] }) };
+  };
+  const r = await handleFeedback(FOUR_BODY, { fetchImpl, env: ENV });
+  assert.equal(r.status, 200, "no 502 for one bad power-up");
+  assert.deepEqual(r.payload.powerUps.map((p) => p.area), ["sentence_structure", "vocabulary"]);
+  const link = (key) => r.payload.criteria.find((c) => c.key === key).powerUp;
+  assert.equal(link("sentence_structure"), 1);
+  assert.equal(link("cohesion"), null, "the dropped power-up leaves no link behind");
+  assert.equal(link("vocabulary"), 2, "later power-ups move up one place");
+});
+
+test("powerUpProblemsEach reports per power-up, and powerUpProblems stays the flat list", () => {
+  const good = { move: "elaborate", example_before: "A.", example_after: "A. B." };
+  const bad = { move: "transition", example_before: "Firstly, dogs bark.", example_after: "Firstly, dogs bark." };
+  assert.deepEqual(powerUpProblemsEach({ power_ups: [good, bad, good] }), [[], ["transition unchanged"], []]);
+  assert.deepEqual(powerUpProblemsEach({}), []);
+  assert.deepEqual(powerUpProblemsEach(null), []);
+});
+
+test("when every power-up fails the guard and a craft area is assessable, the answer is still the 502", async () => {
+  const bad = pu("cohesion", "It was a sunny day.", { move: "transition", example_before: "Firstly, dogs are noisy.", example_after: "Firstly, dogs are noisy." });
+  const r = await feedbackFor(withPowerUps([bad]), FOUR_BODY);
+  assert.equal(r.status, 502);
+  assert.match(r.payload.error, /try again/i);
+});
+
+test("a later power-up on the same words as an earlier one is dropped", async () => {
+  const first = pu("sentence_structure", "We ate cake at the park and then went home to sleep.");
+  const inside = pu("vocabulary", "ate cake at the park");
+  const sharedRun = pu("cohesion", "We ate cake at the park and then went home to sleep.");
+  const r = await feedbackFor(withPowerUps([first, inside, sharedRun, pu("ideas", "The dog ran fast.")]), FOUR_BODY);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.payload.powerUps.map((p) => p.area), ["sentence_structure", "ideas"]);
+  assert.equal(linesOverlap("one two three four five six seven eight nine", "x one two three four five six seven eight"), true, "an 8-word shared run overlaps");
+  assert.equal(linesOverlap("one two three four five six seven nine", "x one two three four five six seven eight"), false, "7 shared words do not");
+  assert.equal(linesOverlap("The dog ran fast.", "the dog ran FAST"), true, "one holds the other, whatever the case or punctuation");
+  assert.equal(linesOverlap("The dog ran fast.", ""), false);
+});
+
+test("your line over 25 words shows its first 18 words and an ellipsis; the full quote is still checked", async () => {
+  const long = "so it was a real problem so Mia lit the lantern from her bag and then she walked down the dark road and then she saw a gate and then it was shut";
+  assert.ok(long.split(" ").length > 25);
+  const r = await feedbackFor(withPowerUps([pu("sentence_structure", long)]), { transcript: long, yearLevel: 3, genre: "narrative" });
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.powerUps[0].yourLine, "so it was a real problem so Mia lit the lantern from her bag and then she walked…");
+  assert.equal(r.payload.powerUps[0].yourLine.split(" ").length, 18);
+  // an invented long line is still refused in full, not shown cut
+  const invented = "The elephant danced all night under a silver moon and then it rested by the river with its calf near a tall gum tree for hours";
+  const bad = await feedbackFor(withPowerUps([pu("sentence_structure", invented)]), { transcript: long, yearLevel: 3, genre: "narrative" });
+  assert.equal(bad.payload.powerUps[0].yourLine, "");
+  assert.equal(shortenLine("short line here"), "short line here");
+  assert.equal(shortenLine(Array(25).fill("a").join(" ")), Array(25).fill("a").join(" "), "25 words are not cut");
+  assert.equal(shortenLine(Array(26).fill("a").join(" ")), Array(18).fill("a").join(" ") + "…");
+});
+
+test("synonym challenge sentences are cut to a window of about 12 words around the word", async () => {
+  const transcript = "Yesterday after school my little sister and I walked slowly along the winding creek path, and we saw a tiny frog sitting quietly on a flat grey rock near the water.";
+  const payload = { ...GOOD_PAYLOAD, word_boost: { swaps: [{ from: "little", to: ["small", "tiny", "petite", "diminutive"] }], before: transcript, after: "", challenge: ["walked", "saw", "water"] } };
+  const r = await feedbackFor(payload, { transcript, yearLevel: 3, genre: "narrative" });
+  const byWord = Object.fromEntries(r.payload.wordBoost.challenge.map((c) => [c.word, c.sentence]));
+  assert.equal(byWord.walked, "…my little sister and I walked slowly along the winding creek path,…");
+  assert.equal(byWord.saw, "…winding creek path, and we saw a tiny frog sitting quietly on…");
+  assert.equal(byWord.water, "…tiny frog sitting quietly on a flat grey rock near the water.");
+  for (const s of Object.values(byWord)) assert.ok(s.replace(/…/g, "").trim().split(/\s+/).length <= 12);
+  assert.equal(windowAround("A short one.", "short"), "A short one.", "short sentences are left whole");
+});
+
+test("word power 'after': a made-up sentence on another topic that uses a ladder word, else null", async () => {
+  const boost = (after, extra = {}) => withWordBoost({ swaps: [{ from: "fast", to: ["quick", "speedy", "rapid", "lightning-quick"] }], before: "The dog ran fast.", after, challenge: [], ...extra });
+  const withWordBoost = (word_boost) => ({ ...GOOD_PAYLOAD, word_boost });
+  const run = async (after, extra) => (await feedbackFor(boost(after, extra))).payload.wordBoost;
+  // kept: another topic, one ladder word
+  assert.equal((await run("The rapid train rushed through the quiet valley.")).after, "The rapid train rushed through the quiet valley.");
+  assert.equal((await run("The rapid train rushed through the quiet valley.")).before, "The dog ran fast.", "before stays the child's exact sentence");
+  // null: the child's sentence, or one that contains it
+  assert.equal((await run("The dog ran fast.")).after, null);
+  assert.equal((await run("The dog ran fast. Then it rested.")).after, null, "contains the child's sentence");
+  // null: a rewrite on the same topic
+  assert.equal((await run("The dog ran speedy across the park.")).after, null, "same topic words");
+  // null: a sentence already in the child's writing
+  assert.equal((await run("It was a sunny day.", { swaps: [{ from: "fast", to: ["sunny"] }] })).after, null, "taken from the child's own writing");
+  // null: no ladder word in it
+  assert.equal((await run("The train rushed through the quiet valley.")).after, null, "uses none of the ladder words");
+  assert.equal((await run("")).after, null);
+  assert.equal(madeUpAfter("The rapid train rushed on.", { before: "", ladder: ["rapid"], transcript: "x" }), null, "no before, no after");
+});
+
+test("genre gate: a story's power-up cannot name a topic-sentence move, a persuasive piece can", async () => {
+  const payload = withPowerUps([pu("sentence_structure", "The dog ran fast.", { move: "topic_sentence" })]);
+  const story = await feedbackFor(payload, { transcript: TEXT, yearLevel: 4, genre: "narrative" });
+  assert.equal(story.payload.powerUps[0].move, null);
+  const poem = await feedbackFor(payload, { transcript: TEXT, yearLevel: 4, genre: "poetry" });
+  assert.equal(poem.payload.powerUps[0].move, null);
+  const essay = await feedbackFor(payload, { transcript: TEXT, yearLevel: 4, genre: "persuasive" });
+  assert.equal(essay.payload.powerUps[0].move.key, "topic_sentence");
+  const unchosen = await feedbackFor(payload, { transcript: TEXT, yearLevel: 4, genre: "" });
+  assert.equal(unchosen.payload.powerUps[0].move.key, "topic_sentence");
+  // the other strategies are unaffected in a story
+  const fine = await feedbackFor(withPowerUps([pu("sentence_structure", "The dog ran fast.", { move: "elaborate" })]), { transcript: TEXT, yearLevel: 4, genre: "narrative" });
+  assert.equal(fine.payload.powerUps[0].move.key, "elaborate");
+});
+
+test("genre reaches the prompts: stories and poems are not offered paragraph strategies, persuasive pieces are", async () => {
+  const story = {}, essay = {};
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 5, genre: "narrative" }, story);
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 5, genre: "persuasive" }, essay);
+  assert.doesNotMatch(systemText(story.body), /- topic_sentence:|- concluding_sentence:|- general_to_specific_intro:|- specific_to_general_conclusion:/);
+  assert.match(systemText(essay.body), /- topic_sentence:/);
+  assert.match(systemText(essay.body), /- general_to_specific_intro: .*Offer this only when the piece is already several paragraphs/);
+  // both calls (draft and review) carry the same gate
+  const reviews = [];
+  const fetchImpl = async (url, options) => {
+    const body = JSON.parse(options.body);
+    const system = systemText(body);
+    if (system.startsWith("QUALITY_REVIEW:")) reviews.push(system);
+    const content = system.startsWith("EDITING_") ? { editing: { complete: true, errors: [] } }
+      : system.startsWith("QUALITY_REVIEW:") ? { approved: true, feedback: GOOD_PAYLOAD } : GOOD_PAYLOAD;
+    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(content) } }] }) };
+  };
+  await handleFeedback({ transcript: TEXT, yearLevel: 5, genre: "narrative" }, { fetchImpl, env: ENV });
+  assert.equal(reviews.length, 1);
+  assert.doesNotMatch(reviews[0], /- topic_sentence:/);
+});
+
+test("the prompts carry the year-aware rules and the persuasive opinion rules", async () => {
+  const y1 = {}, y2 = {}, y5 = {};
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 1, genre: "persuasive" }, y1);
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 2, genre: "persuasive" }, y2);
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 5, genre: "persuasive" }, y5);
+  const s2 = systemText(y2.body), s5 = systemText(y5.body);
+  assert.match(s2, /\(After, Before, If or When\)/);
+  assert.doesNotMatch(s2, /Whenever, Since, While or Unless/);
+  assert.match(s5, /After, Before, If, When, Even though, Although, Whenever, Since, While or Unless/);
+  assert.match(s2, /\(when, where or why\)/);
+  assert.match(systemText(y1.body), /Finish a thin sentence with because \(the reason\) or but \(a change of direction\)\. Each/);
+  assert.match(s2, /or so \(the result of that reason or event\)/);
+  assert.match(s2, /in Years 1 to 4 a reason from the child's own experience counts/);
+  assert.match(s2, /evidence and answering the other side are stretches, never a next_step/);
+  assert.match(s2, /Never supply facts, sources or numbers about the child's own topic/);
+  assert.match(s2, /ONE final concluding statement/);
+  assert.match(s2, /Years 1 to 4 this is an opinion piece/);
+  assert.match(s2, /strength, next_step and assessment_note/, "plain-words limits cover the strengths and next steps");
+  assert.doesNotMatch(s2, /say "joining word", not/, "no clash with the strategy names");
+});
+
+test("the review prompt allows the book terms with their meaning and still bans bare 'kernel'", async () => {
+  const reviews = [];
+  const fetchImpl = async (url, options) => {
+    const system = systemText(JSON.parse(options.body));
+    if (system.startsWith("QUALITY_REVIEW:")) reviews.push(system);
+    const content = system.startsWith("EDITING_") ? { editing: { complete: true, errors: [] } }
+      : system.startsWith("QUALITY_REVIEW:") ? { approved: true, feedback: GOOD_PAYLOAD } : GOOD_PAYLOAD;
+    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(content) } }] }) };
+  };
+  await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl, env: ENV });
+  assert.match(reviews[0], /The book terms "fragment" and "kernel sentence" are allowed only with their meaning in brackets/);
+  assert.doesNotMatch(reviews[0], /staffroom word/);
+  assert.match(reviews[0], /Never supply facts, sources or numbers about the child's own topic/);
+});
+
+test("reading: an upstream failure says the helper is busy; the photo message is for an unusable reply", async () => {
+  const busyMessage = /busy right now.*tap Read my writing again/i;
+  const down = await handleFeedback({ image: IMG, yearLevel: 3 }, { fetchImpl: async () => ({ ok: false, status: 503, json: async () => ({}) }), env: ENV });
+  assert.equal(down.status, 502);
+  assert.match(down.payload.error, busyMessage);
+  assert.doesNotMatch(down.payload.error, /photo/i);
+  const thrown = await handleFeedback({ image: IMG, yearLevel: 3 }, { fetchImpl: async () => { throw new Error("timeout"); }, env: ENV });
+  assert.match(thrown.payload.error, busyMessage);
+  const empty = await handleFeedback({ image: IMG, yearLevel: 3 }, { fetchImpl: mockFetch(""), env: ENV });
+  assert.match(empty.payload.error, busyMessage, "an empty reply is a failed call");
+  const garbled = await handleFeedback({ image: IMG, yearLevel: 3 }, { fetchImpl: mockFetch("sorry no"), env: ENV });
+  assert.equal(garbled.status, 502);
+  assert.match(garbled.payload.error, /trouble reading that photo/);
+  const noTranscript = await handleFeedback({ image: IMG, yearLevel: 3 }, { fetchImpl: mockFetch(JSON.stringify({ text: "x" })), env: ENV });
+  assert.match(noTranscript.payload.error, /trouble reading that photo/);
 });
 
 // ---- cost: prompt cache and the flex lane ------------------------------------

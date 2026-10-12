@@ -1,5 +1,6 @@
 // Evidence stays server-side. Totals are counted here, never supplied by the model.
-export const unavailableTotals = () => ({ spelling: null, punctuation: null, capital_letters: null });
+// full_stops is the part of punctuation that involves an end mark (. ! ?): the one count Years 1 and 2 see.
+export const unavailableTotals = () => ({ spelling: null, punctuation: null, capital_letters: null, full_stops: null });
 
 export const EDITING_RULES = `Audit the WHOLE transcript independently. Return editing: {complete:true, errors:[{category:"spelling"|"punctuation"|"capital_letters"|"spacing", quote:"exact smallest affected word or phrase", occurrence:1, correction:"corrected version of quote"}]}.
 occurrence is the 1-based whole-word or whole-phrase occurrence of that exact quote in the transcript; do not count a word embedded inside a longer word. For missing punctuation quote the adjacent word(s) and include the mark in correction. One entry per error occurrence; repeated misspellings require separate entries. Each correction changes ONLY its named category. If one word needs a capital and an apostrophe, return two entries sharing the original quote: dont -> Dont for capital_letters and dont -> don't for punctuation. Do not bundle several kinds of fix into one correction. Keep the quote's original spelling and case when fixing punctuation. Never estimate a total. Return complete:false if you cannot finish the audit.
@@ -69,7 +70,7 @@ export function changesIn(quote, correction) {
   const pairs = lcsPairs(qPos.map((i) => q[i].toLowerCase()), cPos.map((i) => c[i].toLowerCase()));
   const qMatched = new Map(pairs);
   const cToQ = new Map(pairs.map(([a, b]) => [b, a]));
-  const spelling = new Set(), capital = new Set(), punctuation = new Set();
+  const spelling = new Set(), capital = new Set(), punctuation = new Set(), endMarks = new Set();
   qPos.forEach((pos, k) => { if (!qMatched.has(k)) spelling.add(pos); });
   // An added letter belongs to the word it lands in: anchor it on a kept letter of that same word.
   const cWord = (k) => c.slice(0, cPos[k]).split(" ").length;
@@ -102,16 +103,21 @@ export function changesIn(quote, correction) {
     if (sameMarks(qm.combined.get(gap) || "", cm.combined.get(gap) || "")) continue; // moved across a space: spacing
     for (const side of ["end", "start"]) {
       const key = `${gap}|${side}`;
-      if (!sameMarks(qm.bySide.get(key) || "", cm.bySide.get(key) || "")) punctuation.add(key);
+      const was = qm.bySide.get(key) || "", now = cm.bySide.get(key) || "";
+      if (sameMarks(was, now)) continue;
+      punctuation.add(key);
+      // An end-mark place: the full stops, question marks and exclamation marks there differ.
+      if (was.replace(/[^.!?]/g, "") !== now.replace(/[^.!?]/g, "")) endMarks.add(key);
     }
   }
-  return { spelling, capital, punctuation };
+  return { spelling, capital, punctuation, endMarks };
 }
 
 export function inspectEditing(audit, transcript) {
   if (/\[unclear\]/i.test(transcript)) return { totals: unavailableTotals(), issues: ["unresolved reading"], retryable: false };
   if (audit?.complete !== true || !Array.isArray(audit.errors)) return { totals: unavailableTotals(), issues: ["incomplete audit"], retryable: true };
   const found = { spelling: new Set(), punctuation: new Set(), capital_letters: new Set() };
+  const fullStops = new Set();
   const unverified = { spelling: 0, punctuation: 0, capital_letters: 0 };
   const invalid = new Set();
   const issues = [];
@@ -163,13 +169,17 @@ export function inspectEditing(audit, transcript) {
     // A place is keyed by the transcript letter it follows, so it is the same however it was quoted.
     for (const place of change.punctuation) {
       const [gap, side] = place.split("|");
-      found.punctuation.add(`${Number(gap) < 0 ? letterBefore(start - 1) : start + Number(gap)}|${side}`);
+      const spot = `${Number(gap) < 0 ? letterBefore(start - 1) : start + Number(gap)}|${side}`;
+      found.punctuation.add(spot);
+      if (change.endMarks.has(place)) fullStops.add(spot);
     }
   }
   const totals = {};
   for (const key of Object.keys(found)) {
     totals[key] = invalid.has(key) || (found[key].size === 0 && unverified[key] > 0) ? null : found[key].size;
   }
+  // Full stops are a part of punctuation, so they are unknown whenever punctuation is.
+  totals.full_stops = totals.punctuation === null ? null : fullStops.size;
   return { totals, issues, retryable: false };
 }
 

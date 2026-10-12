@@ -1,7 +1,7 @@
 import { TWR_SENTENCE_GUIDANCE, TWR_ASSESSMENT_GUIDANCE, preservesExpansionKernel, removesWholeSentences } from "./_twr.js";
 import { EDITING_RULES, inspectEditing, unavailableTotals } from "./_editing.js";
 import { getYearGuide, getGenreGuide, FEEDBACK_RULES, readingLevel, MODEL_QUALITY } from "./_curriculum.js";
-import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, STATUSES } from "./_criteria.js";
+import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, MOVES, STATUSES } from "./_criteria.js";
 import { handlePreamble } from "./_cors.js";
 import { apiUrl, fetchWithTimeout } from "./_provider.js";
 import { minimiseContactDetails } from "./_privacy.js";
@@ -28,6 +28,7 @@ const AUDIT_MAX_MS = 90_000;
 const DEFAULT_FEEDBACK_MODEL = "gpt-5.6-terra";
 const DEFAULT_TRANSCRIBE_MODEL = "gpt-6-sol";
 const PHOTO_ERROR = "Hmm, I had trouble reading that photo. Try taking it again with the page flat and in good light.";
+const BUSY_ERROR = "The reading helper is busy right now. Wait a moment, then tap Read my writing again.";
 const FEEDBACK_ERROR = "Hmm, I couldn't put your feedback together that time. Please try again.";
 
 const TRANSCRIBE_RULES = `You are transcribing a primary-school child's handwriting from photos of their page or pages. Your only job is a faithful, letter-for-letter transcript. Never correct, tidy or improve anything. You are not giving feedback.
@@ -76,13 +77,13 @@ const FEEDBACK_PRINCIPLES = `What good feedback looks like (follow this): it ans
 
 Skill bank to choose power-ups from (pick only what fits this piece, year and genre; never list them all). The school teaches writing one sentence at a time with these strategies, so reach for them first:
 - Because, but, so: finish a thin sentence with a reason, a turn or a result.
-- Subordinating conjunction start: Although, When, Since, After, Before, If, Even though, then a comma, then the rest.
-- Sentence expansion: take a short complete sentence and add when, where, why or how (the when usually at the front with a comma).
+- Subordinating conjunction start: one of the starting words listed for this year under the strategies, then a comma, then the rest.
+- Sentence expansion: take a short complete sentence and add the questions listed for this year under the strategies (the when usually at the front with a comma).
 - Sentence combining: join choppy short sentences with and, but, because, so, a pronoun or a describing phrase.
 - Run-on repair: split one over-long sentence chained with and, so, but then and then into separate complete sentences, keeping only the ands and sos that earn their place. This is the opposite of combining.
-- Transition words between sentences and paragraphs: time and sequence (First, Later, Finally), illustration (For example), change of direction (However), conclusion (Therefore, In the end), emphasis (In fact).
+- Transition words between sentences and between paragraphs: use only the kinds listed for this year under the strategies, choosing the relationship first.
 - Appositives (Year 4 and up): a describing phrase between commas straight after a person or thing.
-- Topic sentence first and concluding sentence last in a paragraph (Year 3 and up); a new paragraph for each new time, place, idea or reason.
+- Topic sentence first and concluding sentence last in a paragraph (Year 3 and up, persuasive and report writing only, never stories or poems). A piece of several paragraphs needs topic sentences on its body paragraphs and ONE final concluding statement, not one on every paragraph. A new paragraph for each new time, place, person or idea, with one main idea in each: split a paragraph that holds two.
 - Sentence types: swap in a question, a command or an exclamation for effect.
 - Vary vocabulary: exact verbs and nouns instead of went, got, big, nice, said.
 Other craft that still matters:
@@ -91,7 +92,7 @@ Other craft that still matters:
 - Dialogue with speech marks, and how it was said (Year 3 and up).
 - Openings that hook (a question, a sound, action, dialogue) and endings that resolve or reflect.
 - Figurative language: simile, metaphor, personification (Year 3 and up); onomatopoeia and alliteration (Years 1 and 2).
-- Persuasive: a clear position, reasons with evidence or examples, emotive and modal words, talking to the reader.
+- Persuasive: a clear position up front and real reasons (a fact, an example or an explanation, not the opinion said again; personal experience counts), then emotive and modal words and talking to the reader. In Years 1 to 4 evidence and answering the other side are stretches, never a next_step; from Year 5 the other side fits in one "Although ..." sentence or its own paragraph. A call to action at the end is a strength.
 - Information: heading, facts, technical words, present tense, general nouns.
 - Poems: images, repetition, rhythm and line breaks.
 - Punctuation for effect: question marks, exclamation marks, commas in lists, ellipsis, as suits the year.
@@ -117,7 +118,7 @@ const outputSpec = (powerUpCount, { challenge }) => `The child has already check
       "area": "the area key this power-up lifts",
       "skill": "the job in four to six child-friendly words, e.g. 'Finish the big moment'",
       "why": "ONE short sentence: what your_line already does well, then what this strategy will add",
-      "your_line": "one exact sentence or phrase copied from the child's writing where this skill belongs",
+      "your_line": "one exact sentence or phrase copied from the child's writing where this skill belongs (if their sentence is long, copy only the part where the skill belongs, 25 words at most)",
       "move": "the key of the writing strategy the task asks the child to use on that line, or null if none of the listed strategies fits",
       "rule": "one short line telling the child how to do that strategy on this kind of sentence, e.g. 'Finish the sentence with so and say what happened next.'",
       "example_before": "a NEW sentence you make up that is like the child's line (same kind of sentence, same weakness, similar length) but about something else on a different topic",
@@ -128,14 +129,14 @@ const outputSpec = (powerUpCount, { challenge }) => `The child has already check
   "word_boost": {
     "swaps": [ { "from": "big", "to": ["large", "huge", "enormous", "colossal"] } ],
     "before": "one exact sentence the child wrote",
-    "after": "that moment rewritten to show real word power, e.g. before: 'The waves were huge and I got dumped!' after: 'The gigantic waves crashed over me and dumped me in the sand!'",
+    "after": "a NEW sentence you make up on a completely different topic that uses one of the swap words from the list above, e.g. child's sentence: 'The waves were huge and I got dumped!' after: 'A colossal tree toppled across the quiet road after the storm.'",
     "challenge": ["three", "other", "words"]
   }
 }
-Rules for areas: include an entry for every area key listed above (and only those keys). For not_assessed, supply assessment_note and leave strength and next_step empty; do not give a power-up in that area. "strength" quotes the child's actual words and names the skill (for example "You used a transition word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. Be generous and honest with strengths: every real thing the child did well deserves naming, because the child sees these. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
+Rules for areas: include an entry for every area key listed above (and only those keys). For not_assessed, supply assessment_note and leave strength and next_step empty; do not give a power-up in that area. "strength" quotes the child's actual words and names the skill (for example "You used a transition word, 'After that', to link your events") so they can do it again on purpose; use "" only when the area shows nothing yet. Be generous and honest with strengths: every real thing the child did well deserves naming, because the child sees these. Praise must be accurate: say what the quoted words actually do (a short punchy sentence, a clear time word, an exact verb). Never claim an effect the words do not create: do not say the reader can see, hear, feel, smell or taste something unless the words give that sensory detail. When a strong moment has no sensory detail, praise what it does and treat the missing detail as a possible next step. "next_step" is one concrete sentence a child of this year could act on today, never generic advice.
 Rules for power_ups: ${powerUpCount} (or [] only when no writing-craft area can be assessed), the most useful first, each lifting a DIFFERENT area; extend a genuine strength with a specific stretch when appropriate, without downgrading its status, so the "area" keys must all differ and match the area list. Order by what would lift this piece most, never by the order of the area list: while any area is rated next_step, the next power-up goes to the most damaging one of those. Stretch an area you rated strength only once every next_step area a power-up could help already has one, or when there are no next_step areas. A piece with weak sentence control does not lead with a stretch on its ideas. Choose from the skill bank. Every part of a power-up is about ONE teaching focus and ONE strategy: "why", "rule", the example and "now_you" all use the strategy named in "move" on the line in "your_line", Use a short passage of two or three sentences when teaching a paragraph strategy, transitions or elaboration. Match the scope to the strategy. Name in "move" the strategy the task actually asks for: a task to split a long sentence is never sentence_combining, and a task to add a transition is transition. "why" opens with something genuinely good about the line before saying what the strategy adds, so the child hears what to keep. "your_line" must be copied from the child's writing, and each power-up should use a different line where the writing allows it (and a different line from word_boost's "before"). "example_before" and "example_after" show the strategy on a sentence LIKE the child's, never on the child's own sentence: do not rewrite "your_line" and keep the example on a different topic, because the child must improve their own line themselves. "example_after" must keep every idea of "example_before" EXCEPT paragraph_focus, which removes an irrelevant whole sentence and keeps all remaining sentences unchanged, be correct natural English a teacher would accept, and be attainable from the control demonstrated in this draft, without lowering fluent younger writing to beginner level. "now_you" is one short, concrete instruction to use the strategy on their own line (they can then use it in the other places it fits), never a general habit. Power-ups are writing-craft skills only: never use a power-up for spelling or handwriting, and use one for punctuation only when it is a pattern across the piece (such as punctuating speech), never a single slip, because those belong in error_totals.
 Editing is audited separately: do not generate error_totals or list incorrect words, corrections, locations or spelling tips in the student feedback. In editing areas give general checking strategies without revealing errors. Never assert an error count.
-Rules for word_boost: pick 1 or 2 plain words the child actually wrote that could be stronger; for each, give EXACTLY 4 synonyms that genuinely upgrade it, in order from the simplest to the most sophisticated, each one a step up from the last, all true synonyms in the child's sentence, with the last one a stretch word for this year level. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" must be a genuine rewrite of that sentence, not just a one-word swap: use at least one suggested word AND show what strong writing looks like by upgrading the verb, restructuring, or adding one vivid detail, while keeping the child's meaning, voice and year level. The gap between before and after should make the child think "wow, I could write like that". ${challenge ? `"challenge" lists 3 OTHER plain words the child wrote (not the swap words) that have good synonyms a child of this year could think of themselves; the child will type their own synonym for each and have it checked. Use [] if the writing has no suitable words.` : `"challenge" must be [] for this Year 1 writer.`} Use null for word_boost only if their word choices are already strong.
+Rules for word_boost: pick 1 or 2 plain words the child actually wrote that could be stronger; for each, give EXACTLY 4 synonyms that genuinely upgrade it, in order from the simplest to the most sophisticated, each one a step up from the last, all true synonyms in the child's sentence, with the last one a stretch word for this year level. "before" must be one exact sentence copied from the child's writing (their spelling and all). "after" is a sentence YOU make up, on a different topic from the child's writing and about nothing in it, that uses at least one of the suggested words naturally at the child's year level. It is never the child's sentence rewritten, so the child must make their own sentence stronger themselves. Do not reuse the child's other words or ideas in it. ${challenge ? `"challenge" lists 3 OTHER plain words the child wrote (not the swap words) that have good synonyms a child of this year could think of themselves; the child will type their own synonym for each and have it checked. Use [] if the writing has no suitable words.` : `"challenge" must be [] for this Year 1 writer.`} Use null for word_boost only if their word choices are already strong.
 Be very specific everywhere: every comment must quote or point to actual words, phrases or sentences from this child's writing, never generic advice that could apply to anyone's work.`;
 
 // Step 3: the child revised in their book and photographed the new version. Compare the two,
@@ -286,6 +287,83 @@ function copiesLine(example, yourLine) {
   return overlap / Math.max(lineSet.size, words.length) >= 0.75;
 }
 
+// A long quoted line is shown short: past 25 words, its first 18 and an ellipsis. The checks that
+// the line is the child's own, and that two power-ups do not share it, use the full line.
+const LONG_LINE_WORDS = 25;
+const SHOWN_LINE_WORDS = 18;
+export function shortenLine(line) {
+  const words = String(line || "").trim().split(/\s+/).filter(Boolean);
+  return words.length > LONG_LINE_WORDS ? `${words.slice(0, SHOWN_LINE_WORDS).join(" ")}…` : words.join(" ");
+}
+
+// Two lines overlap when one holds the other or they share a run of eight or more words.
+const OVERLAP_RUN = 8;
+export function linesOverlap(a, b) {
+  if (!a || !b) return false;
+  if (containsRun(a, b) || containsRun(b, a)) return true;
+  const runs = (value) => {
+    const words = wordsOf(value);
+    const found = new Set();
+    for (let i = 0; i + OVERLAP_RUN <= words.length; i++) found.add(words.slice(i, i + OVERLAP_RUN).join(" "));
+    return found;
+  };
+  const mine = runs(a);
+  return [...runs(b)].some((run) => mine.has(run));
+}
+
+// A challenge word is shown with its sentence, cut to a window of about 12 words around it.
+const CHALLENGE_WINDOW = 12;
+export function windowAround(sentence, word) {
+  const tokens = String(sentence || "").split(/\s+/).filter(Boolean);
+  if (tokens.length <= CHALLENGE_WINDOW) return tokens.join(" ");
+  const target = wordsOf(word)[0];
+  const found = tokens.findIndex((t) => wordsOf(t).includes(target));
+  const middle = found < 0 ? 0 : found;
+  let start = Math.max(0, middle - 5);
+  const end = Math.min(tokens.length, start + CHALLENGE_WINDOW);
+  start = Math.max(0, end - CHALLENGE_WINDOW);
+  return `${start > 0 ? "…" : ""}${tokens.slice(start, end).join(" ")}${end < tokens.length ? "…" : ""}`;
+}
+
+// The word-power "after" is a made-up sentence on another topic that shows a ladder word in use.
+// It is dropped when it is the child's sentence (or sits inside their writing), shares their
+// topic words, or uses none of the ladder words.
+const TOPIC_STOP = new Set("the and was were for you but are not had has his her she him its our out all any can one two who how why too got get put let met set say said that this with have from they them then than there their what when which would could should about into over very just your like also been some more most much only other such after before while still even a an in on at of to is it as be by he we me my up so do if or no".split(" "));
+const topicWords = (value) => wordsOf(value).filter((w) => w.length >= 3 && !TOPIC_STOP.has(w));
+export function madeUpAfter(after, { before, ladder, transcript }) {
+  const sentence = text(after);
+  if (!sentence || !before) return null;
+  if (copiesLine(sentence, before) || containsRun(transcript, sentence)) return null;
+  if (!ladder.some((word) => containsRun(sentence, word))) return null;
+  const used = new Set(ladder.flatMap(wordsOf));
+  const theirs = new Set(topicWords(before));
+  const shared = new Set(topicWords(sentence).filter((w) => theirs.has(w) && !used.has(w)));
+  return shared.size >= 2 ? null : sentence;
+}
+
+// The two book terms may reach the child, but only with their meaning the first time. The first
+// use in a string that has no bracket after it gets the meaning added; a bare "kernel" always
+// becomes "kernel sentence". `define: false` keeps short labels (skill titles) tidy.
+const FRAGMENT_MEANING = ["a half sentence that is only part of an idea", "half sentences that are only part of an idea"];
+const KERNEL_MEANING = ["a short sentence that makes sense on its own", "short sentences that make sense on their own"];
+export function defineBookTerms(value, { define = true } = {}) {
+  let out = String(value ?? "");
+  const handle = (pattern, shape, meaning) => {
+    let first = true;
+    out = out.replace(pattern, (match, offset, whole) => {
+      const plural = /s$/i.test(match);
+      const term = shape(match, plural);
+      if (!first) return term;
+      first = false;
+      if (!define || /^\s*\(/.test(whole.slice(offset + match.length))) return term;
+      return `${term} (${meaning[plural ? 1 : 0]})`;
+    });
+  };
+  handle(/\bkernels?(?:\s+sentences?)?\b/gi, (match, plural) => (/sentence/i.test(match) ? match : `${match.replace(/s$/i, "")} sentence${plural ? "s" : ""}`), KERNEL_MEANING);
+  handle(/\b(?:sentence\s+)?fragments?\b/gi, (match) => match, FRAGMENT_MEANING);
+  return out;
+}
+
 // The data URL must hold a real JPEG, PNG or WebP (the app always sends JPEG). The first few
 // bytes say which, without decoding the whole image.
 function looksLikeImage(dataUrl) {
@@ -315,21 +393,17 @@ const powerUpCountRule = (transcript) =>
 // Turns the model's JSON into the shape the app renders, or null when it is unusable.
 // `areas` is the list from criteriaFor(genre); the genre slot may offer two keys, of which
 // the first one present is kept.
-function validateFeedback(data, { areas, yearLevel, transcript }) {
+function validateFeedback(data, { areas, yearLevel, genre = "", transcript }) {
   if (!data || typeof data !== "object") return null;
 
-  // Strategy keys become the names the child hears in class. "Kernel" and "fragment" are
-  // staffroom words for the short sentence an expansion starts from and for a sentence that
-  // stops half way, so they are swapped for the plain words even if a prompt rule is ignored.
-  const plainWord = (plain) => (match) => {
-    const word = /s$/i.test(match) ? `${plain}s` : plain;
-    return /^[A-Z]/.test(match) ? `${word[0].toUpperCase()}${word.slice(1)}` : word;
-  };
-  const studentText = (value) =>
-    text(value)
-      .replace(/\b[a-z]+(?:_[a-z]+)+\b/g, (key) => describeMove(key, yearLevel)?.name || key)
-      .replace(/\bkernels?(?:\s+sentences?)?\b/gi, plainWord("short sentence"))
-      .replace(/\b(?:sentence\s+)?fragments?\b/gi, plainWord("half sentence"));
+  // Strategy keys become the names the child hears in class. "Fragment" and "kernel sentence" are
+  // the book's own terms: they stay, with their meaning added after the first use in each string
+  // even if a prompt rule is ignored.
+  const studentText = (value, options) =>
+    defineBookTerms(
+      text(value).replace(/\b[a-z]+(?:_[a-z]+)+\b/g, (key) => describeMove(key, yearLevel, genre)?.name || MOVES[key]?.name || key),
+      options,
+    );
   const raw = data.areas && typeof data.areas === "object" ? data.areas : {};
   const criteria = [];
   let slotFilled = false;
@@ -353,22 +427,27 @@ function validateFeedback(data, { areas, yearLevel, transcript }) {
 
   const knownKeys = new Set(criteria.map((c) => c.key));
   const powerUps = [];
+  const fullLines = []; // the full quote behind each kept power-up, for the overlap check
   for (const p of Array.isArray(data.power_ups) ? data.power_ups : []) {
     if (!p || typeof p !== "object" || !studentText(p.skill) || !studentText(p.why)) continue;
     // Spelling is editing, never a power-up; each area carries at most one power-up.
     if (p.area === "spelling" || powerUps.some((q) => q.area && q.area === p.area)) continue;
     const area = knownKeys.has(p.area) ? p.area : "";
     if (criteria.find(c => c.key === area)?.status === "not_assessed") continue;
-    const yourLine = quoteFromTranscript(p.your_line, transcript);
+    const fullLine = quoteFromTranscript(p.your_line, transcript);
+    // A later power-up that points at the same words as an earlier one is dropped.
+    if (fullLines.some((kept) => linesOverlap(kept, fullLine))) continue;
+    const yourLine = shortenLine(fullLine);
     // The worked example is a sentence like theirs. If the model rewrote their own line after
     // all, the example goes; the strategy note still carries its own example.
     const before = text(p.example_before);
     const after = text(p.example_after);
-    const fresh = before && after && !copiesLine(before, yourLine) && !copiesLine(after, yourLine)
+    const fresh = before && after && !copiesLine(before, fullLine) && !copiesLine(after, fullLine)
       && !containsRun(transcript, after);
-    const skill = studentText(p.skill);
+    const skill = studentText(p.skill, { define: false });
     const nowYou = studentText(p.now_you);
-    const move = moveFitsTask(p.move, skill, nowYou, p.rule) ? describeMove(p.move, yearLevel) : null;
+    const move = moveFitsTask(p.move, skill, nowYou, p.rule) ? describeMove(p.move, yearLevel, genre) : null;
+    fullLines.push(fullLine);
     powerUps.push({
       area,
       areaLabel: area ? criteria.find((c) => c.key === area).label : "",
@@ -420,6 +499,7 @@ function validateFeedback(data, { areas, yearLevel, transcript }) {
     if (swaps.length) {
       // The "before" sentence must be the child's own; without it there is no "after" either.
       const before = quoteFromTranscript(boost.before, transcript);
+      const after = madeUpAfter(boost.after, { before, ladder: swaps.flatMap((s) => s.to), transcript });
       // Challenge words: the child's own words, not the swap words, shown with their sentence.
       const taken = new Set(swaps.map((s) => normalise(s.from)));
       const challenge = [];
@@ -428,10 +508,12 @@ function validateFeedback(data, { areas, yearLevel, transcript }) {
         const key = normalise(word);
         if (!word || wordsOf(word).length !== 1 || taken.has(key) || !hasWord(transcript, word)) continue;
         taken.add(key);
-        challenge.push({ word, sentence: sentenceWith(transcript, word) });
+        challenge.push({ word, sentence: windowAround(sentenceWith(transcript, word), word) });
         if (challenge.length === 3) break;
       }
-      wordBoost = { swaps, before, after: before ? text(boost.after) : "", challenge };
+      // A long run-on would fill the card, so the child sees the few words around the swap word.
+      const swapWord = swaps.find((s) => hasWord(before, s.from))?.from || swaps[0].from;
+      wordBoost = { swaps, before: before && windowAround(before, swapWord), after, challenge };
     }
   }
 
@@ -565,6 +647,11 @@ async function transcribePages({ images, env, fetchImpl }) {
     timeout: 35_000,
     flex: true,
   });
+  // Nothing came back at all (the helper was busy, slow or down): say so, so the child just tries
+  // again. The photo message is only for a reply that arrived but holds no usable transcript.
+  if (typeof content !== "string" || !content.trim()) {
+    return { status: 502, payload: { error: BUSY_ERROR } };
+  }
   const data = extractJson(content);
   if (!data || typeof data.transcript !== "string") {
     return { status: 502, payload: { error: PHOTO_ERROR } };
@@ -635,7 +722,7 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
     TWR_SENTENCE_GUIDANCE,
     TWR_ASSESSMENT_GUIDANCE,
     scope,
-    movesPrompt(yearLevel),
+    movesPrompt(yearLevel, kind),
     readingLevel(yearLevel),
   ]
     .filter(Boolean)
@@ -707,12 +794,12 @@ ASSESSMENT AREAS: ${criteriaPrompt(kind)}
 TEACHING QUALITY: ${MODEL_QUALITY}
 SOURCE-BASED STRATEGY RULES: ${TWR_SENTENCE_GUIDANCE}
 ASSESSMENT AND SUPPORT: ${TWR_ASSESSMENT_GUIDANCE}
-STRATEGIES: ${movesPrompt(yearLevel)}
+STRATEGIES: ${movesPrompt(yearLevel, kind)}
 FEEDBACK OBJECT SCHEMA (apply this to the nested feedback object, not the outer review wrapper): ${outputSpec(powerUpCountRule(transcript), { challenge: yearLevel >= CHALLENGE_MIN_YEAR })}
 Match model ambition to demonstrated attainment as well as year. For fluent writers, actively REWRITE bland models. For paragraph_focus, a precise deletion is the complete improvement; do not add decorative detail or complexity. For other strategies where the draft shows readiness, combine at least two of: precise verbs/nouns, developed supporting detail or consequence, controlled complex sentence structure, purposeful imagery or persuasive language. This is a quality target, not a word-count target. A conjunction inserted between two bare sentences, an adjective swap, or Therefore attached to an unchanged simple claim is too basic. Keep ONE strategy as the teaching focus while showing what excellent attainable writing sounds like. Before passages may be short; after models may use two or three sentences and paragraph breaks. Provide necessary context for transitions and conclusions in the before passage. Keep coaching instructions short; Use the demonstrated writing to calibrate model prose independently of coaching reading level. For foundational writers, keep one achievable improvement; for fluent younger writers, preserve their demonstrated sophistication.
-Check each power-up: its exact quote exists in the transcript; the named strategy is the change actually demonstrated; why/rule/model/task all match; the area rating remains honest, including strength when the task is a stretch; a new reason has a topic sentence and supporting detail; conclusions synthesize existing reasons. The before/after model must be on a DIFFERENT topic from the child's writing. Repair incorrect transition models, repeated targets when other lines are available, hollow conclusions, and low-ambition examples. Do not recommend adding features already present. Several unrelated classroom exercises are not one unfinished essay.
-Check word_boost: four genuinely suitable synonyms in increasing sophistication; never list words that change the intended meaning. Omit unsuitable challenge words instead of inventing synonyms. The rewritten sentence must preserve meaning.
-Use child-facing strategy NAMES, never underscore keys such as sentence_expansion in visible text, and never the staffroom word "kernel": say "a short sentence that makes sense on its own". Check not_assessed areas have a limitation note and no praise, task or power-up. Keep skill titles to four to six words and now_you to one instruction under 15 words, without repeating the quote. Coaching reading level: ${readingLevel(yearLevel)}
+Check every strength is true of the words it quotes: rewrite any that credit the reader with seeing, hearing, feeling, smelling or tasting something the words do not describe. Check each power-up: its exact quote exists in the transcript; the named strategy is the change actually demonstrated; why/rule/model/task all match; the area rating remains honest, including strength when the task is a stretch; a new reason has a topic sentence and supporting detail; conclusions synthesize existing reasons. The before/after model must be on a DIFFERENT topic from the child's writing. Repair incorrect transition models, repeated targets when other lines are available, hollow conclusions, and low-ambition examples. Do not recommend adding features already present. Never supply facts, sources or numbers about the child's own topic. Several unrelated classroom exercises are not one unfinished essay.
+Check word_boost: four genuinely suitable synonyms in increasing sophistication; never list words that change the intended meaning. Omit unsuitable challenge words instead of inventing synonyms. The "after" sentence must be made up on a different topic, use one of the swap words correctly, and never rewrite or copy the child's sentence.
+Use child-facing strategy NAMES, never underscore keys such as sentence_expansion in visible text. The book terms "fragment" and "kernel sentence" are allowed only with their meaning in brackets straight after the first use (kernel sentence (a short sentence that makes sense on its own)), and never "kernel" alone. Check not_assessed areas have a limitation note and no praise, task or power-up. Keep skill titles to four to six words and now_you to one instruction under 15 words, without repeating the quote. Coaching reading level: ${readingLevel(yearLevel)}
 Student-visible editing comments MUST NOT identify error words, corrections or their locations, even in area next_step. Give only a general checking method there. Spelling, punctuation and capital errors are audited by a separate private call: do not list or count them here.
 ${scope}
 Ensure every repaired model still follows the SOURCE-BASED STRATEGY RULES: preserve the kernel in expansion and all supplied facts in combining.
@@ -734,13 +821,16 @@ Ensure every repaired model still follows the SOURCE-BASED STRATEGY RULES: prese
     console.warn(`[feedback] ${why} after ${Date.now() - started}ms`);
     return { status: 502, payload: { error: FEEDBACK_ERROR } };
   }
-  const reviewed = review.feedback ?? draft;
-  const guardIssues = powerUpProblems(reviewed);
-  if (guardIssues.length) {
-    console.warn(`[feedback] power-up guard failed: ${guardIssues.join("; ")} after ${Date.now() - started}ms`);
-    return { status: 502, payload: { error: FEEDBACK_ERROR } };
+  let reviewed = review.feedback ?? draft;
+  // A power-up that fails the guard is dropped on its own; the rest are kept. Validation below
+  // links each area to the power-ups that are left, and returns nothing (502) only if none remain
+  // while a craft area can be assessed.
+  const flagged = powerUpProblemsEach(reviewed);
+  if (flagged.some((issues) => issues.length)) {
+    console.warn(`[feedback] power-up guard dropped ${flagged.filter((i) => i.length).length}: ${flagged.flat().join("; ")} after ${Date.now() - started}ms`);
+    reviewed = { ...reviewed, power_ups: reviewed.power_ups.filter((_, i) => !flagged[i].length) };
   }
-  const payload = validateFeedback(reviewed, { areas, yearLevel, transcript });
+  const payload = validateFeedback(reviewed, { areas, yearLevel, genre: kind, transcript });
   if (!payload) {
     console.warn(`[feedback] reviewed feedback failed validation after ${Date.now() - started}ms`);
     return { status: 502, payload: { error: FEEDBACK_ERROR } };
@@ -758,7 +848,11 @@ Ensure every repaired model still follows the SOURCE-BASED STRATEGY RULES: prese
 
 // A transition model must actually change a linking phrase, not just add detail.
 export function powerUpProblems(data) {
-  const issues = [];
+  return powerUpProblemsEach(data).flat();
+}
+
+// One list of problems per power-up, in the order the model gave them ([] = fine).
+export function powerUpProblemsEach(data) {
   // Structural check only: the teaching reviewer judges the meaning. A closed
   // vocabulary cannot cover valid links such as "To make this work, ...".
   const sentences = s => String(s || '').toLowerCase().split(/[.!?]+(?:\s+|$)|\n+/).map(s=>s.trim()).filter(Boolean);
@@ -771,13 +865,14 @@ export function powerUpProblems(data) {
     });
   };
   const transitions = (s) => [...String(s || "").toLowerCase().matchAll(/(?:^|[.!?]\s+|\n\s*)(firstly|secondly|thirdly|finally|however|therefore|furthermore|moreover|additionally|instead|meanwhile|later|next|then|first|second|third|also|initially|previously|eventually|consequently|nevertheless|notably|specifically|for example|for instance|to illustrate|in conclusion|in summary|in short|in the end|in addition|in fact|in particular|most importantly|most of all|as a result|on the other hand|on the contrary|to begin with)\b/g)].map(m => m[1]).join("|");
-  for (const p of Array.isArray(data?.power_ups) ? data.power_ups : []) {
+  return (Array.isArray(data?.power_ups) ? data.power_ups : []).map((p) => {
+    const issues = [];
     if (p?.move === "sentence_expansion" && !preservesExpansionKernel(p.example_before, p.example_after)) issues.push("expansion changed kernel");
     if (p?.move === "paragraph_focus" && !removesWholeSentences(p.example_before, p.example_after)) issues.push("focus must remove whole sentences only");
     const movedToParagraph = /\n\s*\n/.test(p?.example_after || "") && !/\n\s*\n/.test(p?.example_before || "");
     if (p?.move === "transition" && transitions(p.example_before) === transitions(p.example_after) && !movedToParagraph && !changedOpener(p.example_before, p.example_after)) issues.push("transition unchanged");
-  }
-  return issues;
+    return issues;
+  });
 }
 
 // Reads and bounds a level-up request; returns { error } for a bad one.
