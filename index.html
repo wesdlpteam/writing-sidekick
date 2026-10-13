@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20261013-s3">
+  <link rel="stylesheet" href="css/app.css?v=20261013-s4">
 </head>
 <body>
   <main id="app">
@@ -107,6 +107,7 @@
         <h2 id="strength-title" class="fb-heading"><span class="h-emoji" aria-hidden="true">&#x2B50; </span>What you did well</h2>
         <p class="lead fb-lead">Here is what your writing already does well. Keep doing it!</p>
         <section id="powers-card" class="powers-card" aria-labelledby="strength-title" hidden>
+          <div id="listen-strength" class="listen-slot"></div>
           <p id="powers-caption" class="visual-caption">Real words from your writing.</p>
           <ul id="powers-list" class="powers-list"></ul>
           <p id="powers-empty" class="powers-empty" hidden>You had a go, and that is a great start.</p>
@@ -114,6 +115,7 @@
         <section id="focus-card" class="focus-card" aria-labelledby="focus-title" hidden>
           <h3 id="focus-title" class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F3AF; </span>Your next focus</h3>
           <p id="focus-text" class="focus-text"></p>
+          <div id="listen-focus" class="listen-slot"></div>
           <button id="btn-see-power" class="secondary" type="button" hidden>See Power-up 1</button>
         </section>
         <button id="btn-all-skills" class="ghost small skills-toggle" type="button" aria-expanded="false" aria-controls="skills-card" hidden>See all your writing skills</button>
@@ -153,6 +155,7 @@
         <div class="pencil-card">
           <p class="pencil-title"><span class="h-emoji" aria-hidden="true">&#x270D;&#xFE0F; </span>Pick up your pencil</p>
           <p>Go back to your book and change your own writing. Here is how.</p>
+          <div id="listen-pencil" class="listen-slot"></div>
           <ol class="pencil-steps">
             <li>To add words, write a <strong>^</strong> where they go in. Write the new words above it.</li>
             <li>To swap a word, draw one neat line through it. Write the new word above.</li>
@@ -168,6 +171,7 @@
         <div id="boost-card" class="practice-card boost-card" hidden>
           <div class="title-row">
             <h3 class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F4AA; </span>Word power</h3>
+            <div id="listen-boost" class="listen-slot"></div>
           </div>
           <p class="visual-caption boost-caption">Each word gets four upgrades, from a small step up to a big one. Pick the one that fits your sentence best.</p>
           <ul id="boost-swaps"></ul>
@@ -177,6 +181,7 @@
           </div>
           <div id="boost-challenge" class="boost-challenge" hidden>
             <p class="challenge-title"><span class="h-emoji" aria-hidden="true">&#x26A1; </span>Your turn: synonym challenge</p>
+            <div id="listen-challenge" class="listen-slot"></div>
             <p class="challenge-lead">Here are three more words from your writing. Type a synonym (a word that means the same thing) for each one, then tap Check. Even one is a win.</p>
             <ul id="challenge-list" class="challenge-list"></ul>
           </div>
@@ -184,6 +189,7 @@
         <div id="practice-card" class="practice-card" hidden>
           <div class="title-row">
             <h3 class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F4DD; </span>Editing</h3>
+            <div id="listen-editing" class="listen-slot"></div>
           </div>
           <p class="visual-caption">Errors to find in your writing</p>
           <ul id="practice-words"></ul>
@@ -198,6 +204,7 @@
         <div class="mission-card">
           <p class="mission-title"><span class="h-emoji" aria-hidden="true">&#x1F4A5; </span>Your mission</p>
           <p class="mission-hint">Tick each job when you have done it in your book.</p>
+          <div id="listen-mission" class="listen-slot"></div>
           <ul id="mission-list" class="mission-list"></ul>
         </div>
         <p class="lead fb-lead mission-save">Want to keep this feedback? Save a picture or print it before you finish.</p>
@@ -260,7 +267,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20261013-s3");
+      await import("./js/app.js?v=20261013-s4");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

@@ -564,18 +564,22 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
   color: var(--muted);
   border: 1.5px solid rgba(19, 26, 48, 0.28);
   border-radius: 999px;
-  padding: 4px 11px;
-  min-height: 40px;
+  padding: 6px 14px;
+  min-height: 44px;
   font-family: var(--font-body);
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   box-shadow: none;
   white-space: nowrap;
 }
 .listen:hover { color: var(--ink); border-color: var(--ink); }
 .listen[data-state="loading"] { opacity: 0.6; }
 .listen[data-state="playing"] { background: var(--gold-soft); color: var(--ink); border-color: var(--gold-deep); }
-.listen.compact { padding: 3px 9px; font-size: 0.78rem; margin-top: 8px; min-height: 36px; }
+/* Where a Listen button sits on a card: empty (Years 4-6) it takes no room. */
+.listen-slot { margin: 8px 0 4px; }
+.listen-slot:empty { display: none; }
+.title-row .listen-slot { margin: 0; }
+.power-card > .listen-slot { margin: 0 0 10px; }
 /* On the dark sky (camera screen) the pill goes light so it can still be found. */
 .screen-listen .listen { color: var(--sky-muted); border-color: rgba(170, 182, 218, 0.45); }
 .screen-listen .listen:hover { color: var(--sky-text); border-color: var(--sky-text); }

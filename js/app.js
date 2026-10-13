@@ -1,5 +1,7 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingLines, missionRows } from "./feedback-visuals.js?v=20261013-s3";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, missionRows, EDITING_TASK, ROUGH_NOTE } from "./feedback-visuals.js?v=20261013-s4";
+import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261013-s4";
+import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, missionSpoken } from "./spoken.js?v=20261013-s4";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
@@ -19,6 +21,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 function show(screenId) {
+  stopSpeaking(); // a voice never carries over to another screen
   hideError(); // an old message must not sit over the next screen's buttons
   $("app").classList.toggle("review-wide", screenId === "screen-review");
   document.body.classList.toggle("on-feedback", screenId === "screen-feedback"); // lifts the error banner above the bottom bar
@@ -347,9 +350,8 @@ async function submitWriting() {
 }
 
 const errorTotalLines = (feedback, yearLevel) => editingLines(feedback.errorTotals, yearLevel, { long: true });
-const editingTask = "Go back to your writing. Find and fix the errors, then read it again to check.";
-// The audit's punctuation and capital calls vary from try to try, so the counts are a guide.
-const roughNote = "These numbers are a rough guide and may not be exact.";
+const editingTask = EDITING_TASK;
+const roughNote = ROUGH_NOTE;
 
 function renderPractice() {
   $("practice-card").hidden = false;
@@ -377,15 +379,13 @@ function renderPractice() {
     ring.textContent = valid ? value : "?";
     const caption = document.createElement("span");
     caption.className = "editing-caption";
-    caption.textContent = !valid ? "Not available" : value === 0 ? "No errors found" : value === 1 ? "error to find" : "errors to find";
+    caption.textContent = editingCaption(value);
     li.append(icon, title, ring, caption);
     if (item.tip) li.appendChild(el("span", "editing-tip", item.tip));
     list.appendChild(li);
   }
   $("practice-tip").hidden = false;
-  $("practice-tip").textContent = confirmed === items.length ? editingTask : confirmed > 0
-    ? "Use the counts shown to check your writing. Ask your teacher to help with any count marked Not available."
-    : "We couldn't confirm the error counts this time. Read your writing with your teacher and check it together.";
+  $("practice-tip").textContent = editingAdvice(confirmed, items.length);
 }
 
 // Word power: each plain word climbs a ladder of four synonyms, from a small step up to a
@@ -552,6 +552,9 @@ function renderPowerUps(powerUps) {
     eyebrow.append(emoji("⚡"), powerUps.length > 1 ? `Power-up ${index + 1} of ${powerUps.length}` : `Power-up ${index + 1}`);
     if (p.areaLabel) eyebrow.appendChild(el("span", "power-area", p.areaLabel));
     card.append(eyebrow, el("h3", "power-title", p.skill));
+    const listenHost = el("div", "listen-slot");
+    mountListen(listenHost, `power-up ${index + 1}`, () => powerUpSpoken(state.feedback?.powerUps?.[index], { sayAloud: state.yearLevel <= 3 }));
+    card.appendChild(listenHost);
     if (p.why) card.appendChild(el("p", "power-why", p.why));
     const steps = el("ol", "power-steps");
     if (p.yourLine) steps.appendChild(step("Find this line in your book", [el("q", "step-line", p.yourLine)]));
@@ -568,7 +571,7 @@ function renderPowerUps(powerUps) {
     if (p.nowYou) {
       const task = [el("p", "step-task", p.nowYou)];
       // Younger writers say the new sentence to a partner before they write it.
-      if (state.yearLevel <= 3) task.push(el("p", "step-say", "Say your new sentence out loud to a partner first. Then write it."));
+      if (state.yearLevel <= 3) task.push(el("p", "step-say", SAY_ALOUD));
       steps.appendChild(step("Do this", task));
     }
     card.appendChild(steps);
@@ -775,6 +778,34 @@ $("btn-see-power").addEventListener("click", () => {
 
 $("btn-all-skills").addEventListener("click", () => setSkillsOpen($("skills-card").hidden));
 
+// ---- read aloud (Years 1 to 3 only) -----------------------------------------
+
+// Puts a Listen button in a slot, or leaves it empty (Years 4 to 6, or nothing to read). The text
+// is built when the button is tapped, from the feedback on screen at that moment.
+function mountListen(host, what, text) {
+  host.replaceChildren();
+  if (!listensForYear(state.yearLevel)) return;
+  host.appendChild(listenButton(text, { what }));
+}
+
+const textOf = (selector) => document.querySelector(selector)?.textContent || "";
+
+function renderListens() {
+  const fb = state.feedback;
+  mountListen($("listen-strength"), "what you did well", () => strengthsSpoken(fb.criteria));
+  if (!heroPowers(fb.criteria).length) $("listen-strength").replaceChildren();
+  mountListen($("listen-focus"), "your next focus", () => focusSpoken(fb.criteria, fb.powerUps || []));
+  if (!nextFocus(fb.criteria, fb.powerUps || [])) $("listen-focus").replaceChildren();
+  mountListen($("listen-pencil"), "how to use your pencil", () =>
+    staticSpoken("Pick up your pencil", textOf(".pencil-card > p:not(.pencil-title)"), ...[...document.querySelectorAll(".pencil-steps li")].map((li) => li.textContent)));
+  mountListen($("listen-boost"), "word power", () => wordPowerSpoken(fb.wordBoost));
+  const challenge = state.yearLevel >= 2 ? fb.wordBoost?.challenge || [] : [];
+  mountListen($("listen-challenge"), "the synonym challenge", () => challengeSpoken(textOf(".challenge-lead"), challenge));
+  if (!challenge.length) $("listen-challenge").replaceChildren();
+  mountListen($("listen-editing"), "the editing counts", () => editingSpoken(fb.errorTotals, state.yearLevel));
+  mountListen($("listen-mission"), "your mission", () => missionSpoken(fb, state.yearLevel));
+}
+
 function renderFeedback() {
   const { powerUps } = state.feedback;
   ticks.clear();
@@ -783,6 +814,7 @@ function renderFeedback() {
   renderFocus();
   renderPractice();
   renderBoost();
+  renderListens();
   rebuildShareImage();
   renderPowerUps(powerUps);
   showSlide(0);
@@ -839,6 +871,7 @@ function updateNav() {
 }
 
 function setPower(index) {
+  stopSpeaking();
   powerIndex = Math.max(0, Math.min(powerCount() - 1, index));
   document.querySelectorAll("#power-ups .power-card").forEach((card, i) => {
     card.hidden = i !== powerIndex;
@@ -847,6 +880,7 @@ function setPower(index) {
 }
 
 function showSlide(index, { power = 0 } = {}) {
+  stopSpeaking();
   const slides = activeSlides();
   slideIndex = Math.max(0, Math.min(slides.length - 1, index));
   const current = slides[slideIndex].key;
@@ -1068,6 +1102,7 @@ $("btn-print").addEventListener("click", () => {
 // Everything the app holds about this piece of writing, gone: photos, typing, feedback,
 // the prepared share picture, and the copies drawn on screen.
 function clearEverything() {
+  clearSpeechCache(); // stops any voice and forgets the downloaded audio
   state.pages = [];
   state.transcript = "";
   state.feedback = null;
@@ -1079,7 +1114,7 @@ function clearEverything() {
   $("transcript-check-note").textContent = "";
   $("include-photos").checked = false;
   $("camera-title").textContent = "Photo time";
-  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "mission-list", "boost-swaps", "challenge-list", "print-pages", "print-strength", "print-powers", "print-powerups", "print-practice", "print-boost"]) {
+  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "mission-list", "boost-swaps", "challenge-list", "print-pages", "print-strength", "print-powers", "print-powerups", "print-practice", "print-boost", "listen-strength", "listen-focus", "listen-pencil", "listen-boost", "listen-challenge", "listen-editing", "listen-mission"]) {
     $(id).innerHTML = "";
   }
   for (const id of ["strength-summary", "strength-key", "strength-focus", "skill-detail-title", "skill-detail-what", "skill-detail-how", "skill-detail-note", "print-transcript"]) $(id).textContent = "";
@@ -1179,11 +1214,15 @@ for (const type of ["pointerdown", "keydown", "touchstart", "input"]) {
   document.addEventListener(type, resetIdle, { passive: true });
 }
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) resetIdle();
+  if (document.hidden) stopSpeaking();
+  else resetIdle();
 });
 
 
 // ---- error banner ----------------------------------------------------------
+
+// A Listen button that could not play raises this; it shows in the usual banner.
+document.addEventListener("speech-error", (event) => showError(event.detail));
 
 $("btn-error-close").addEventListener("click", () => {
   $("error-banner").hidden = true;

@@ -134,6 +134,22 @@ export function editingCount(errorTotals, key) {
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
 
+// The words under an editing count ("No errors found", "error to find"), and the advice line
+// under the counts. Shared by the card and by the read-aloud text so the two always agree.
+export function editingCaption(value) {
+  return value === null ? "Not available" : value === 0 ? "No errors found" : value === 1 ? "error to find" : "errors to find";
+}
+
+export const EDITING_TASK = "Go back to your writing. Find and fix the errors, then read it again to check.";
+// The audit's punctuation and capital calls vary from try to try, so the counts are a guide.
+export const ROUGH_NOTE = "These numbers are a rough guide and may not be exact.";
+
+export function editingAdvice(confirmed, total) {
+  return confirmed === total ? EDITING_TASK : confirmed > 0
+    ? "Use the counts shown to check your writing. Ask your teacher to help with any count marked Not available."
+    : "We couldn't confirm the error counts this time. Read your writing with your teacher and check it together.";
+}
+
 // Print and saved picture lines. Years 3-6 keep their old order (spelling, punctuation, capitals).
 // `long` picks the print wording ("Spelling errors") over the picture's ("Spelling").
 export function editingLines(errorTotals, yearLevel, { long = false } = {}) {

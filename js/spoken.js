@@ -1,0 +1,139 @@
+import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261013-s4";
+
+// The words the Listen buttons read aloud (Years 1 to 3). Everything here is plain text built
+// from the same feedback the cards show, so the voice and the page always agree. No browser
+// code lives here, so it can be tested on its own.
+
+// api/speak.js refuses anything longer than this.
+export const MAX_SPOKEN = 1500;
+
+// Younger writers say the new sentence to a partner before they write it (shown on the card too).
+export const SAY_ALOUD = "Say your new sentence out loud to a partner first. Then write it.";
+
+export const listensForYear = (yearLevel) => Number(yearLevel) >= 1 && Number(yearLevel) <= 3;
+
+// Words only: no arrows or marks read out, brackets become pauses, spaces tidied.
+export function plain(text) {
+  return (typeof text === "string" ? text : "")
+    .replace(/\s*(?:->|→|=>)\s*/g, " becomes ")
+    .replace(/\^/g, "caret")
+    .replace(/\s*\(([^)]*)\)/g, ", $1,")
+    .replace(/,\s*,/g, ",")
+    .replace(/,\s*([.!?])/g, "$1")
+    .replace(/[*_`#|~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// One tidy sentence: ends in a full stop unless it already ends in . ! ? or an ellipsis
+// (a closing quote after the stop is fine). Empty stays empty.
+export function sentence(text) {
+  const t = plain(text);
+  if (!t) return "";
+  return /[.!?…]["'”’)]*$/.test(t) ? t : `${t}.`;
+}
+
+const noStop = (text) => plain(text).replace(/[.!?]+$/, "");
+
+const join = (...parts) => parts.map(sentence).filter(Boolean).join(" ");
+
+export const joinOr = (items) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}` : items[0] || "");
+
+// Keeps a request under the server's cap. Cuts at the end of the last whole sentence that fits.
+export function fit(text, max = MAX_SPOKEN) {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  if (stop > 0) return cut.slice(0, stop + 1);
+  const space = cut.lastIndexOf(" ");
+  return space > 0 ? cut.slice(0, space) : cut;
+}
+
+// Text that sits on the page already (the pencil steps, the challenge instructions), read in order.
+export const staticSpoken = (...parts) => fit(join(...parts));
+
+export function strengthsSpoken(criteria) {
+  const powers = heroPowers(criteria);
+  if (!powers.length) return "";
+  return fit(join("What you did well", ...powers.flatMap((power) => [power.label, power.text])));
+}
+
+export function focusSpoken(criteria, powerUps) {
+  const focus = nextFocus(criteria, powerUps);
+  return focus ? fit(join("Your next focus", focus.text)) : "";
+}
+
+// One power-up card, top to bottom as it shows: title, why, the line in the book, the strategy
+// (name, rule, before and after), the job, and the say-it-out-loud line.
+export function powerUpSpoken(p, { sayAloud = false } = {}) {
+  if (!p) return "";
+  return fit(
+    join(
+      p.skill,
+      p.why,
+      p.yourLine && "Find this line in your book",
+      p.yourLine,
+      p.move ? `Use the strategy, ${p.move.name}` : p.rule || p.example ? "See an example" : "",
+      p.rule,
+      p.example && `For example, ${noStop(p.example.before)} becomes ${p.example.after}`,
+      p.nowYou && "Do this",
+      p.nowYou,
+      sayAloud && p.nowYou && SAY_ALOUD,
+    ),
+  );
+}
+
+// Word power: each word with its four stronger words, then the two example sentences.
+export function wordPowerSpoken(boost) {
+  if (!boost) return "";
+  const swaps = (boost.swaps || []).map(({ from, to }) => `Instead of ${from}, try ${joinOr(to)}`);
+  return fit(
+    join(
+      "Word power",
+      swaps.length && "Each word gets four upgrades, from a small step up to a big one",
+      ...swaps,
+      boost.before && boost.after && "In your writing",
+      boost.before && boost.after && boost.before,
+      boost.before && boost.after && "Like this",
+      boost.before && boost.after && boost.after,
+    ),
+  );
+}
+
+// The synonym challenge: its title and instructions, then the words to think about.
+export function challengeSpoken(instructions, challenge = []) {
+  const words = challenge.map((item) => item.word).filter(Boolean);
+  return fit(join("Your turn, synonym challenge", instructions, words.length && `The words are ${joinOr(words)}`));
+}
+
+export function editingCountSpoken(value) {
+  return value === null ? editingCaption(null) : value === 0 ? editingCaption(0) : `${value} ${editingCaption(value)}`;
+}
+
+// The editing card: each count with its tip, then the advice and the rough-guide note.
+export function editingSpoken(errorTotals, yearLevel) {
+  const items = editingItems(yearLevel);
+  const counts = items.map((item) => editingCount(errorTotals, item.key));
+  const confirmed = counts.filter((value) => value !== null).length;
+  return fit(
+    join(
+      "Editing",
+      "Here are the errors to find in your writing",
+      ...items.flatMap((item, i) => [item.short, editingCountSpoken(counts[i]), item.tip]),
+      editingAdvice(confirmed, items.length),
+      ROUGH_NOTE,
+    ),
+  );
+}
+
+// The Mission complete list, row by row.
+export function missionSpoken(feedback, yearLevel) {
+  const rows = missionRows(feedback, yearLevel).flatMap((row) => [
+    row.label,
+    row.line && "Find this line",
+    row.line,
+    row.job && row.key.startsWith("power-") ? "Do this" : "",
+    row.job,
+  ]);
+  return fit(join("Your mission", "Tick each job when you have done it in your book", ...rows));
+}

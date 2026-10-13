@@ -132,12 +132,12 @@ function collectBody(req) {
 // Practice mode cannot talk, so the Listen buttons play a short two-note chime instead.
 function mockChime() {
   const rate = 22050;
-  const seconds = 0.7;
+  const seconds = 3.5; // long enough to tap Stop or change slide while it plays
   const samples = Math.floor(rate * seconds);
   const data = Buffer.alloc(samples * 2);
   for (let i = 0; i < samples; i++) {
     const t = i / rate;
-    const freq = t < 0.35 ? 523 : 659;
+    const freq = t % 0.7 < 0.35 ? 523 : 659;
     const envelope = Math.min(1, (t % 0.35) * 40) * Math.max(0, 1 - (t % 0.35) / 0.35);
     data.writeInt16LE(Math.round(Math.sin(2 * Math.PI * freq * t) * envelope * 12000), i * 2);
   }
