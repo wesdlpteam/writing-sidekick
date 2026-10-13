@@ -1,11 +1,11 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
 import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261013-s6";
-import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261013-s6";
+import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
 import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261013-s6";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
-import { transcribePage, getFeedback, getLevelUp, checkSynonym, detectOrientation } from "./api.js?v=20261013-s6";
+import { transcribePage, getFeedback, getLevelUp, checkSynonym, detectOrientation } from "./api.js?v=20261014-voice";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261013-s6";
 
 const MAX_PAGES = 2;
@@ -1283,7 +1283,7 @@ $("btn-print").addEventListener("click", () => {
 // the prepared share picture, and the copies drawn on screen.
 function clearEverything() {
   dropHeadStart(); // no feedback for this child may arrive after the iPad is cleared
-  clearSpeechCache(); // stops any voice and forgets the downloaded audio
+  clearSpeechCache(); // stops any voice that is speaking
   state.pages = [];
   state.transcript = "";
   state.feedback = null;

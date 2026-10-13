@@ -22,7 +22,6 @@
       <li>The typed copy of the writing, after the student has checked and fixed it.</li>
       <li>The year level and the kind of writing the student chose.</li>
       <li>Any sentence the student types when they try a power-up ("Revise it").</li>
-      <li>The feedback text, when a Listen button is tapped, so it can be read aloud.</li>
     </ul>
     <p>There are no accounts, no names are asked for, and students are reminded to cover their name before taking the photo. The app has no database, no analytics and uses no cookies or browser storage.</p>
 
@@ -30,7 +29,7 @@
     <ul>
       <li>The photo is sent to OpenAI's API to be turned into typed text.</li>
       <li>The checked writing is first passed through OpenAI's safety (moderation) check, then, if it is ordinary writing, sent to OpenAI's API for feedback. Phone numbers, email addresses and street addresses are blanked out before that step.</li>
-      <li>Feedback text is sent to OpenAI's API to be turned into speech when a Listen button is tapped.</li>
+      <li>The Listen buttons (Years 1 to 3) read feedback aloud using the iPad's own built-in voice. The words stay on the iPad and are not sent anywhere.</li>
       <li>These requests pass through a small server function hosted on Vercel. It holds the OpenAI key, forwards the request and returns the answer. It keeps no copy.</li>
     </ul>
 

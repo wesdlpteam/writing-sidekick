@@ -55,8 +55,9 @@ of strategies.
   (tap one to see that area's strength and next step) and the "What you did well" card.
   The saved picture and the print-out hold the child's feedback alone; there is no
   teacher report.
-- A Listen button on every card reads it aloud in a warm, sincere voice (OpenAI's "marin"
-  voice), so younger readers can hear their feedback.
+- In Years 1 to 3, a Listen button on every card reads it aloud in the iPad's own built-in voice
+  (it prefers an Australian English voice), so younger readers can hear their feedback. It is free
+  and the words never leave the iPad.
 
 The app is student-only for now: there is no teacher settings screen, students choose their
 own year level, and the check-up and Listen buttons are always on.
@@ -132,9 +133,10 @@ testing every current model on the invented samples: same quality as `gpt-5.4`, 
 and time). `OPENAI_MODEL` changes the feedback model and `OPENAI_TRANSCRIBE_MODEL` the reading
 step. The independent teaching/editing reviewer follows the feedback default; `OPENAI_REVIEW_MODEL`
 overrides it. Any model you pick must accept `reasoning_effort: "none"` (gpt-6.1-sol and
-gpt-6-astra do not). The Listen buttons
-use `gpt-4o-mini-tts` with the `marin` voice; `OPENAI_TTS_MODEL` and `OPENAI_TTS_VOICE`
-change that.
+gpt-6-astra do not). The Listen buttons no longer use OpenAI: they use the iPad's own voice.
+The old paid voice (`api/speak.js`, `gpt-4o-mini-tts` with `marin`) is switched off; set
+`SPEAK_ENABLED=1` in Vercel to turn it back on (`OPENAI_TTS_MODEL` and `OPENAI_TTS_VOICE` then
+apply), and the app would need changing to call it again.
 
 Two things keep the cost down (measured 2026-10-01: about 3c per piece in a class, down from 9c):
 
@@ -171,8 +173,8 @@ looks and launches like a normal app.
   and forgets. On the iPad everything stays in memory until "Finish and clear", leaving the
   page, or 25 minutes untouched on the feedback screens and 10 minutes on the others (a warning
   shows first).
-- The photo and typed writing do go to OpenAI's API to be read and given feedback, and the
-  read-aloud voice is OpenAI's too. `privacy.html` (linked from the app as "For adults") is a
+- The photo and typed writing do go to OpenAI's API to be read and given feedback. The read-aloud
+  voice is the iPad's own, so those words stay on the iPad. `privacy.html` (linked from the app as "For adults") is a
   draft explanation for parents and staff; the school must confirm the retention arrangement
   on its OpenAI account and the processing regions, then approve the wording.
 - Photos are only included in a saved picture or print-out when the child ticks the box.
@@ -199,7 +201,7 @@ looks and launches like a normal app.
 - `index.html`, `css/`, `js/`: the app the student sees
 - `art/`: the Writing Sidekick hero artwork
 - `api/feedback.js`: the server function that talks to OpenAI (both steps)
-- `api/speak.js`: the read-aloud function (text in, mp3 out); `api/_cors.js` (the request gate)
+- `api/speak.js`: the old paid read-aloud function (off unless `SPEAK_ENABLED=1`; the app uses the iPad's voice, `js/speech.js`); `api/_cors.js` (the request gate)
   and `api/_provider.js` (provider address and timeouts) are shared by both
 - `api/_safety.js`: the safeguarding check and the trusted-adult response
 - `privacy.html`: the adult-facing explanation of where writing goes (draft)

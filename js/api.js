@@ -68,32 +68,3 @@ export function checkSynonym({ yearLevel, word, attempt, sentence }) {
 export function getLevelUp({ yearLevel, genre, levelUp }) {
   return post({ yearLevel, genre, levelUp });
 }
-
-// Read-aloud: one card's text -> mp3 bytes (an ArrayBuffer)
-export async function speak(text) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30_000);
-  let response;
-  try {
-    response = await fetch(`${API_BASE}/api/speak`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-      signal: controller.signal,
-    });
-  } catch {
-    throw sendFail();
-  } finally {
-    clearTimeout(timer);
-  }
-  if (!response.ok) {
-    let data = {};
-    try {
-      data = await response.json();
-    } catch {
-      // fall through to the friendly message
-    }
-    throw new Error(data.error || FRIENDLY_FAIL);
-  }
-  return response.arrayBuffer();
-}

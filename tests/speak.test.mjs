@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import handler, { handleSpeak } from "../api/speak.js";
 
-const ENV = { OPENAI_API_KEY: "sk-test" };
+const ENV = { OPENAI_API_KEY: "sk-test", SPEAK_ENABLED: "1" }; // the paid voice is off unless this is set
 const AUDIO = new Uint8Array([0x49, 0x44, 0x33, 4, 0, 0]); // looks like an mp3 header
 
 function mockFetch({ capture, ok = true, status = 200, bytes = AUDIO } = {}) {
@@ -16,6 +16,31 @@ function mockFetch({ capture, ok = true, status = 200, bytes = AUDIO } = {}) {
   };
 }
 
+test("off by default: 410 and no call to OpenAI, even with a key and good text", async () => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    return { ok: true, status: 200, arrayBuffer: async () => AUDIO.buffer.slice(0) };
+  };
+  for (const flag of [undefined, "", "0", "false", "off", "no"]) {
+    const env = flag === undefined ? { OPENAI_API_KEY: "sk-test" } : { OPENAI_API_KEY: "sk-test", SPEAK_ENABLED: flag };
+    const r = await handleSpeak({ text: "Hello there." }, { fetchImpl, env });
+    assert.equal(r.status, 410, `flag ${JSON.stringify(flag)}`);
+    assert.match(r.payload.error, /switched off/i);
+    assert.equal(r.audio, undefined);
+  }
+  assert.equal((await handleSpeak({ text: "Hello" }, { fetchImpl, env: undefined })).status, 410);
+  assert.equal(calls, 0, "nothing is sent to OpenAI while it is off");
+});
+
+test("on with SPEAK_ENABLED=1 or true: the paid voice works again", async () => {
+  for (const flag of ["1", "true", "TRUE", " 1 "]) {
+    const r = await handleSpeak({ text: "Hello there." }, { fetchImpl: mockFetch(), env: { OPENAI_API_KEY: "sk-test", SPEAK_ENABLED: flag } });
+    assert.equal(r.status, 200, `flag ${JSON.stringify(flag)}`);
+    assert.deepEqual([...r.audio], [...AUDIO]);
+  }
+});
+
 test("empty or missing text -> 400", async () => {
   for (const body of [{}, { text: "" }, { text: "   " }, { text: 7 }, null]) {
     const r = await handleSpeak(body, { fetchImpl: mockFetch(), env: ENV });
@@ -26,7 +51,7 @@ test("empty or missing text -> 400", async () => {
 test("too much text -> 400, no key -> 500", async () => {
   const long = await handleSpeak({ text: "a".repeat(1501) }, { fetchImpl: mockFetch(), env: ENV });
   assert.equal(long.status, 400);
-  const noKey = await handleSpeak({ text: "Hello" }, { fetchImpl: mockFetch(), env: {} });
+  const noKey = await handleSpeak({ text: "Hello" }, { fetchImpl: mockFetch(), env: { SPEAK_ENABLED: "1" } });
   assert.equal(noKey.status, 500);
   assert.match(noKey.payload.error, /teacher/i);
 });
@@ -95,6 +120,13 @@ test("handler: no Origin -> 403 before anything else", async () => {
   assert.equal(res.statusCode, 403);
 });
 
+test("handler: with the flag off, an allowed origin gets 410 json and no audio", async () => {
+  const res = fakeRes();
+  await handler({ method: "POST", headers: { origin: "https://wesdlpteam.github.io", "content-type": "application/json" }, body: { text: "Hello there." } }, res);
+  assert.equal(res.statusCode, 410);
+  assert.match(res.body.error, /switched off/i);
+});
+
 test("speech request carries a timeout signal and honours OPENAI_BASE_URL", async () => {
   const seen = {};
   const fetchImpl = async (url, options) => {
@@ -109,7 +141,12 @@ test("speech request carries a timeout signal and honours OPENAI_BASE_URL", asyn
 
 test("handler: bad request answers json with no-store and the allow-origin header", async () => {
   const res = fakeRes();
-  await handler({ method: "POST", headers: { origin: "https://wesdlpteam.github.io", "content-type": "application/json" }, body: { text: "" } }, res);
+  process.env.SPEAK_ENABLED = "1"; // the handler reads the real environment; the paid voice is off without this
+  try {
+    await handler({ method: "POST", headers: { origin: "https://wesdlpteam.github.io", "content-type": "application/json" }, body: { text: "" } }, res);
+  } finally {
+    delete process.env.SPEAK_ENABLED;
+  }
   assert.equal(res.statusCode, 400);
   assert.equal(res.headers["cache-control"], "no-store");
   assert.equal(res.headers["access-control-allow-origin"], "https://wesdlpteam.github.io");
