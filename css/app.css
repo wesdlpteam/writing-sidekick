@@ -529,9 +529,10 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .stage-art, .stage-video { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
 /* Power-up: the golden aura spills out of the panel and onto the heading. */
 /* On the Power-ups slide the art is a short banner, so the first card starts in the first screen. */
-.stage-banner { height: 180px; margin: 4px 0 14px; }
-.stage-banner .stage-video { height: 100%; aspect-ratio: auto; object-fit: cover; object-position: 50% 28%; }
-@media (max-width: 520px) { .stage-banner { height: 130px; } }
+/* The whole hero shows, head to boots: the full picture, smaller and centred, so the first
+   power-up still starts on the first screen. */
+.stage-banner { width: min(100%, 420px); margin: 4px auto 14px; }
+.stage-banner .stage-video { height: auto; aspect-ratio: 16 / 10; object-fit: contain; }
 .stage-power { box-shadow: 5px 5px 0 var(--gold-deep), 0 0 44px rgba(255, 194, 51, 0.45); }
 .fb-slide[data-slide="power"] .fb-heading { text-shadow: 3px 3px 0 var(--ink), 0 0 22px rgba(255, 194, 51, 0.75); }
 /* Mission complete: the finish line, lit like the power-up heading. */
