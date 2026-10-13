@@ -22,7 +22,6 @@ const AREAS = {
 };
 
 const GOOD_PAYLOAD = {
-  headline: "'The dog ran fast.' is a clear, complete sentence. A strong verb and a W-start would make it fly.",
   areas: AREAS,
   power_ups: [
     {
@@ -114,12 +113,12 @@ test("unassessed areas retain a limitation note and cannot receive praise or a p
 });
 
 test("no assessable craft evidence returns no invented power-ups and supplies a neutral note", async () => {
-  const payload = {...GOOD_PAYLOAD,headline:'',power_ups:[],areas:Object.fromEntries(Object.keys(AREAS).map(k=>[k,{status:'not_assessed'}]))};
+  const payload = {...GOOD_PAYLOAD,power_ups:[],areas:Object.fromEntries(Object.keys(AREAS).map(k=>[k,{status:'not_assessed'}]))};
   const result = await feedbackFor(payload);
   assert.equal(result.status, 200);
   assert.deepEqual(result.payload.powerUps, []);
   assert.ok(result.payload.criteria.every(c=>c.status==='not_assessed' && c.assessmentNote && !c.strength && !c.nextStep));
-  assert.match(result.payload.headline, /does not show enough/);
+  assert.equal('headline' in result.payload, false);
 });
 
 // ---- shared validation -----------------------------------------------------
@@ -538,11 +537,11 @@ test("a malformed feedback reply blames the feedback, not the photo", async () =
   assert.match(r.payload.error, /feedback/i);
 });
 
-test("feedback response is normalised: headline, ten areas in marker order, power-ups with named moves", async () => {
+test("feedback response is normalised: ten areas in marker order, power-ups with named moves", async () => {
   const r = await feedbackFor(GOOD_PAYLOAD);
   assert.equal(r.status, 200);
   assert.equal(r.payload.transcript, TEXT);
-  assert.equal(r.payload.headline, GOOD_PAYLOAD.headline);
+  assert.equal('headline' in r.payload, false, "no headline is returned: no screen, print, picture or voice used it");
   assert.deepEqual(
     r.payload.criteria.map((c) => c.key),
     ["audience", "text_structure", "ideas", "character_setting", "vocabulary", "cohesion", "paragraphing", "sentence_structure", "punctuation", "spelling"],
@@ -641,7 +640,7 @@ test("areas: one missing is tolerated, most missing -> 502, unknown status becom
   assert.equal(r2.status, 502);
 
   const odd = { ...AREAS, ideas: area("amazing", "x", "y"), audience: "junk", paragraphing: area("steady", "", "") };
-  const r3 = await feedbackFor({ ...GOOD_PAYLOAD, areas: odd });
+  const r3 = await feedbackFor({ ...GOOD_PAYLOAD, areas: odd }, { transcript: TEXT, yearLevel: 5, genre: "narrative" }); // Years 1-4 keep all-empty steady areas, see below
   assert.equal(r3.status, 200);
   assert.equal(r3.payload.criteria.find((c) => c.key === "ideas").status, "not_assessed");
   assert.ok(!r3.payload.criteria.some((c) => c.key === "audience"));
@@ -709,12 +708,86 @@ test("power-ups: unknown area kept unlinked, junk dropped, capped at three, none
   assert.equal(none.status, 502, "feedback without next steps is useless");
 });
 
-test("missing headline falls back to the first power-up", async () => {
-  const bare = { ...GOOD_PAYLOAD };
-  delete bare.headline;
-  const r = await feedbackFor(bare);
+test("a headline from the model is ignored, never returned", async () => {
+  const r = await feedbackFor({ ...GOOD_PAYLOAD, headline: "Great job." });
   assert.equal(r.status, 200);
-  assert.equal(r.payload.headline, "Start with a subordinating conjunction. Both of your sentences start with 'The' and 'It'. A When or While start makes the reader lean in.");
+  assert.equal("headline" in r.payload, false);
+  assert.doesNotMatch(JSON.stringify(r.payload), /Great job/);
+});
+
+// ---- unseen text is not asked for: no headline, and next_step only where a child sees it ------
+
+async function stagePrompts(yearLevel, genre = "narrative") {
+  const calls = [];
+  const reply = (content) => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(content) } }] }) });
+  const fetchImpl = async (url, options) => {
+    if (String(url).endsWith("/moderations")) return { ok: true, status: 200, json: async () => ({ results: [{ flagged: false, category_scores: {} }] }) };
+    const system = systemText(JSON.parse(options.body));
+    if (system.startsWith("EDITING_AUDIT:")) return reply({ editing: { complete: false, errors: [] } });
+    const stage = system.startsWith("QUALITY_REVIEW:") ? "review" : "draft";
+    calls.push({ stage, system });
+    return reply(stage === "review" ? { approved: true, feedback: GOOD_PAYLOAD } : GOOD_PAYLOAD);
+  };
+  await handleFeedback({ transcript: TEXT, yearLevel, genre }, { fetchImpl, env: ENV });
+  return { draft: calls.find((c) => c.stage === "draft").system, review: calls.find((c) => c.stage === "review").system };
+}
+
+test("neither the draft nor the review is asked for a headline", async () => {
+  for (const year of [1, 3, 4, 5, 6]) {
+    const { draft, review } = await stagePrompts(year);
+    assert.doesNotMatch(draft, /headline/i, `draft, Year ${year}`);
+    assert.doesNotMatch(review, /headline/i, `review, Year ${year}`);
+    assert.match(review, /Preserve its JSON field names \(areas, power_ups, word_boost\)/);
+  }
+});
+
+test("Years 1 to 4 are asked for next_step only on next_step areas", async () => {
+  for (const year of [1, 2, 3, 4]) {
+    const { draft, review } = await stagePrompts(year);
+    for (const [name, sys] of [["draft", draft], ["review", review]]) {
+      assert.match(sys, /"next_step": "only when status is next_step: one sentence/, `${name}, Year ${year}`);
+      assert.match(sys, /otherwise \\"\\""/, `${name}, Year ${year}`);
+      assert.match(sys, /"next_step" is "" unless the area is rated next_step/, `${name}, Year ${year}`);
+    }
+  }
+});
+
+test("Years 5 and 6 are still asked for a next_step on every area", async () => {
+  for (const year of [5, 6]) {
+    const { draft, review } = await stagePrompts(year);
+    for (const [name, sys] of [["draft", draft], ["review", review]]) {
+      assert.match(sys, /"next_step": "one sentence: the most useful specific thing to do next in this area, pointing at your writing"/, `${name}, Year ${year}`);
+      assert.match(sys, /"next_step" is one concrete sentence a child of this year could act on today/, `${name}, Year ${year}`);
+      assert.doesNotMatch(sys, /only when status is next_step/, `${name}, Year ${year}`);
+      assert.doesNotMatch(sys, /is "" unless the area is rated next_step/, `${name}, Year ${year}`);
+    }
+  }
+});
+
+test("Years 1 to 4 accept an empty next_step on steady and strength areas", async () => {
+  const areas = Object.fromEntries(Object.keys(AREAS).map((k) => [k, area(k === "vocabulary" ? "next_step" : "steady", "", "")]));
+  areas.audience = area("strength", "'It was a sunny day.' sets the scene.", "");
+  areas.vocabulary = area("next_step", "", "Swap 'ran fast' for one strong verb like 'zoomed'.");
+  const r = await feedbackFor({ ...GOOD_PAYLOAD, areas }, { transcript: TEXT, yearLevel: 3, genre: "narrative" });
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.criteria.length, 10, "all-empty steady areas still keep their status for print and the picture");
+  assert.equal(r.payload.criteria.find((c) => c.key === "cohesion").nextStep, "");
+  assert.equal(r.payload.criteria.find((c) => c.key === "audience").strength, "'It was a sunny day.' sets the scene.");
+  assert.match(r.payload.criteria.find((c) => c.key === "vocabulary").nextStep, /zoomed/);
+});
+
+test("Years 1-4 keep a blank area's status instead of dropping it (several blanks must not fail the feedback)", async () => {
+  const areas = { ...AREAS, vocabulary: area("next_step", "", ""), cohesion: area("next_step", "", ""), ideas: area("next_step", "", ""), audience: area("next_step", "", "") };
+  const r = await feedbackFor({ ...GOOD_PAYLOAD, areas }, { transcript: TEXT, yearLevel: 3, genre: "narrative" });
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.criteria.find((c) => c.key === "vocabulary")?.status, "next_step");
+});
+
+test("Years 5 and 6 still drop an assessed area with no words", async () => {
+  const areas = { ...AREAS, cohesion: area("steady", "", "") };
+  const r = await feedbackFor({ ...GOOD_PAYLOAD, areas }, { transcript: TEXT, yearLevel: 5, genre: "narrative" });
+  assert.equal(r.status, 200);
+  assert.ok(!r.payload.criteria.some((c) => c.key === "cohesion"));
 });
 
 test("feedback defaults to gpt-5.6-terra when no model configured", async () => {

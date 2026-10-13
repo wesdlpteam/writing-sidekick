@@ -197,7 +197,7 @@ test('a bundled editing note is untangled, with no slow extra call', async () =>
   assert.equal(requests.length,3,'audit, draft and review only');
   assert.ok(!requests.some((body)=>stageOf(body)==='recheck'));
   assert.deepEqual(bare(r.payload.errorTotals),{spelling:0,punctuation:1,capital_letters:1});
-  assert.equal(r.payload.headline,draft.headline);
+  assert.equal('headline' in r.payload,false);
   assert.equal(JSON.stringify(r.payload).includes('mixed changes'),false);
   assert.equal(r.payload.editing,undefined);
 });

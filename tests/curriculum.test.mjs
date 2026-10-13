@@ -54,6 +54,7 @@ test("feedback rules cover the non-negotiables", () => {
 test("plain-words limits cover every child-facing field for Years 1-4, with the terms to avoid or explain", () => {
   for (const year of [1, 2, 3, 4]) {
     assert.match(readingLevel(year), /strength, next_step and assessment_note/, `Year ${year}`);
+    assert.doesNotMatch(readingLevel(year), /headline/i, `Year ${year}`);
     assert.match(readingLevel(year), /\bskill\b/, `Year ${year}`);
   }
   for (const year of [1, 2]) {
