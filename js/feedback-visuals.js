@@ -104,7 +104,8 @@ export function heroPowers(criteria = [], max = 3) {
 // What to do next, in plain words: power-up 1's skill title (with its number, so the first slide
 // can offer a button to it), or else the first next-step area's own words. Null if neither.
 export function nextFocus(criteria = [], powerUps = []) {
-  if (powerUps.length && powerUps[0].skill) return { text: powerUps[0].skill, powerUp: 1 };
+  // The title alone can be cryptic ("Finish the When thought"), so the job itself comes too.
+  if (powerUps.length && powerUps[0].skill) return { text: powerUps[0].skill, task: powerUps[0].nowYou || "", powerUp: 1 };
   const area = criteria.find((c) => c.status === "next_step" && c.nextStep);
   return area ? { text: area.nextStep, powerUp: 0 } : null;
 }

@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20261013-s5">
+  <link rel="stylesheet" href="css/app.css?v=20261013-s6">
 </head>
 <body>
   <main id="app">
@@ -116,6 +116,7 @@
         <section id="focus-card" class="focus-card" aria-labelledby="focus-title" hidden>
           <h3 id="focus-title" class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F3AF; </span>Your next focus</h3>
           <p id="focus-text" class="focus-text"></p>
+          <p id="focus-task" class="focus-task" hidden></p>
           <div id="listen-focus" class="listen-slot"></div>
           <button id="btn-see-power" class="secondary" type="button" hidden>See Power-up 1</button>
         </section>
@@ -293,7 +294,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20261013-s5");
+      await import("./js/app.js?v=20261013-s6");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

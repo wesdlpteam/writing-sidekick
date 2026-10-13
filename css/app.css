@@ -482,26 +482,31 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .fb-slide { display: none; }
 .fb-slide.active { display: block; }
 .fb-slide .fb-heading { margin-top: 10px; }
-.fb-steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 18px; }
+/* All four steps sit on one line: slimmer chips, and on narrow screens only the current step
+   keeps its name. */
+.fb-steps { display: flex; flex-wrap: nowrap; gap: 6px; margin: 4px 0 18px; }
 .fb-step {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px 8px 8px;
+  padding: 6px 12px 6px 6px;
+  min-width: 44px;
+  white-space: nowrap;
   border-radius: 999px;
   background: transparent;
   color: var(--sky-muted);
   border: 2px solid rgba(170, 182, 218, 0.45);
   font-family: var(--font-body);
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   min-height: 44px;
 }
 .fb-step-num {
   display: inline-grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  flex: none;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
   font-size: 0.85rem;
@@ -1306,7 +1311,8 @@ body.senior .year-btn.selected::after { content: ""; }
   box-shadow: var(--pop-shadow);
 }
 .focus-card[hidden] { display: none; }
-.focus-text { margin: 0 0 14px; font-size: 1.2rem; font-weight: 800; line-height: 1.5; }
+.focus-text { margin: 0 0 6px; font-size: 1.2rem; font-weight: 800; line-height: 1.5; }
+.focus-task { margin: 0 0 14px; font-size: 1.05rem; line-height: 1.5; }
 .focus-card .secondary[hidden] { display: none; }
 .skills-toggle { display: block; margin: 0 0 18px; }
 .skills-toggle[hidden] { display: none; }
@@ -1323,3 +1329,8 @@ body.senior .year-btn.selected::after { content: ""; }
 /* Years 1-2 editing: two roomy boxes, each with its how-to-hunt tip. */
 #practice-words.editing-junior { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .editing-tip { color: var(--ink); font-size: 1rem; line-height: 1.45; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .fb-step:not(.is-current) { padding: 6px; justify-content: center; }
+  .fb-step:not(.is-current) .fb-step-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}

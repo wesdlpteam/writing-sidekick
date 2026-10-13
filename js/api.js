@@ -9,9 +9,12 @@ const sendFail = () => new Error(typeof navigator !== "undefined" && navigator.o
 // On GitHub Pages the site is static, so the feedback function lives on Vercel.
 const API_BASE = location.hostname.endsWith("github.io") ? "https://writing-sidekick.vercel.app" : "";
 
-async function post(body) {
+// signal: lets the app call off a request it no longer needs (a head start the child overtook).
+async function post(body, { signal } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const callOff = () => controller.abort();
+  signal?.addEventListener("abort", callOff, { once: true });
   let response;
   try {
     response = await fetch(`${API_BASE}/api/feedback`, {
@@ -24,6 +27,7 @@ async function post(body) {
     throw sendFail();
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener("abort", callOff);
   }
   let data = {};
   try {
@@ -48,8 +52,10 @@ export function transcribePage({ image, yearLevel }) {
 }
 
 // Step 2: the child's checked transcript -> full feedback
-export function getFeedback({ transcript, yearLevel, genre }) {
-  return post({ transcript, yearLevel, genre });
+// headStart: sent while the child is still checking the typing, so the server may skip the review
+// if the app calls it off.
+export function getFeedback({ transcript, yearLevel, genre, signal, headStart = false }) {
+  return post(headStart ? { transcript, yearLevel, genre, headStart: true } : { transcript, yearLevel, genre }, { signal });
 }
 
 // Word lab challenge: the child's own synonym for one of their words -> { verdict, note }

@@ -90,7 +90,10 @@ test('no counts or scores in the strength summary or the print and picture lines
 });
 
 test('next focus: power-up 1 title, else the first next step, else nothing', () => {
-  assert.deepEqual(nextFocus([], [{ skill: 'Put your reader on the sand' }]), { text: 'Put your reader on the sand', powerUp: 1 });
+  assert.deepEqual(nextFocus([], [{ skill: 'Put your reader on the sand' }]), { text: 'Put your reader on the sand', task: '', powerUp: 1 });
+  // The job comes with the title, because a title alone can be cryptic.
+  assert.deepEqual(nextFocus([], [{ skill: 'Finish your half sentence', nowYou: 'Add what happened to your When line.' }]),
+    { text: 'Finish your half sentence', task: 'Add what happened to your When line.', powerUp: 1 });
   const criteria = [
     { key: 'ideas', status: 'steady', nextStep: 'not me' },
     { key: 'audience', status: 'next_step', nextStep: 'Start with the wave.' },

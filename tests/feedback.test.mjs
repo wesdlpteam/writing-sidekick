@@ -1478,3 +1478,26 @@ test("OPENAI_FLEX=off switches the flex lane off", async () => {
     assert.ok(bodies.every((b) => b.service_tier === undefined), `OPENAI_FLEX=${off}`);
   }
 });
+
+test("a head start the app has called off skips the costly review; a normal request never does", async () => {
+  let reviews = 0;
+  const fetchImpl = async (url, options) => {
+    if (String(url).endsWith("/moderations")) return { ok: true, status: 200, json: async () => ({ results: [{ flagged: false, category_scores: {} }] }) };
+    const system = systemText(JSON.parse(options.body));
+    if (system.includes("EDITING_AUDIT:")) return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ editing: { complete: false, errors: [] } }) } }] }) };
+    if (system.includes("QUALITY_REVIEW:")) {
+      reviews++;
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ approved: true, feedback: GOOD_PAYLOAD }) } }] }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(GOOD_PAYLOAD) } }] }) };
+  };
+  const body = { transcript: TEXT, yearLevel: 3, genre: "narrative" };
+  const gone = await handleFeedback(body, { fetchImpl, env: ENV, isGone: () => true });
+  assert.equal(gone.status, 499);
+  assert.equal(reviews, 0, "no review for a head start nobody is waiting on");
+  const kept = await handleFeedback(body, { fetchImpl, env: ENV, isGone: () => false });
+  assert.equal(kept.status, 200);
+  const normal = await handleFeedback(body, { fetchImpl, env: ENV });
+  assert.equal(normal.status, 200);
+  assert.equal(reviews, 2);
+});

@@ -1,4 +1,4 @@
-import { speak } from "./api.js?v=20260911-audit";
+import { speak } from "./api.js?v=20261013-s6";
 
 // Tap-to-listen for each feedback card, played through one shared <audio> element.
 // iPad Safari only lets sound start inside a tap, so the first tap plays a moment of silence

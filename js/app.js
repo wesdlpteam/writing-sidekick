@@ -1,12 +1,12 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261013-s5";
-import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261013-s4";
-import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261013-s5";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261013-s6";
+import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261013-s6";
+import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261013-s6";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
-import { transcribePage, getFeedback, getLevelUp, checkSynonym, detectOrientation } from "./api.js?v=20260911-audit";
-import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261013-s3";
+import { transcribePage, getFeedback, getLevelUp, checkSynonym, detectOrientation } from "./api.js?v=20261013-s6";
+import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261013-s6";
 
 const MAX_PAGES = 2;
 
@@ -119,7 +119,10 @@ $("btn-back-start").addEventListener("click", () => {
   if (state.round === 2) leaveRound2();
   else show("screen-start");
 });
-$("btn-back-camera").addEventListener("click", () => show("screen-camera"));
+$("btn-back-camera").addEventListener("click", () => {
+  dropHeadStart(); // the pages may change, so the head start is no use now
+  show("screen-camera");
+});
 
 // ---- pages: photo -> cleaned scan, up to two pages -------------------------
 
@@ -292,6 +295,7 @@ $("btn-read").addEventListener("click", async () => {
       : "The extra photo check was unavailable. Compare this typing carefully with your book before continuing.";
     show("screen-review");
     showReview();
+    startHeadStart();
   } catch (error) {
     showError(error.message);
   } finally {
@@ -324,6 +328,8 @@ function showReview() {
 $("transcript").addEventListener("input", () => {
   state.transcript = $("transcript").value;
   autosizeTranscript();
+  // Any change to the typing means the head start was made from the wrong words.
+  if (headStart && fullTranscript() !== headStart.transcript) dropHeadStart();
   // Once every [unclear] is replaced, the note asking for it has done its job.
   if (UNCLEAR_NOTE === $("transcript-check-note").textContent && !/\[unclear\]/i.test(state.transcript)) {
     $("transcript-check-note").hidden = true;
@@ -335,6 +341,29 @@ function fullTranscript() {
 }
 
 // ---- step 2: the writing -> feedback ---------------------------------------
+
+// Head start: the feedback starts the moment the typed copy appears, while the child checks it.
+// If they tap "Looks right" without changing anything, it is already on its way. Any change
+// calls it off and the feedback is made fresh from their corrected copy (at most one extra run
+// per child; the server skips its slow review when a head start is called off early).
+let headStart = null; // { transcript, controller, promise, started }
+
+function startHeadStart() {
+  dropHeadStart();
+  const transcript = fullTranscript();
+  // Round 2 compares versions instead, and [unclear] words must be fixed first anyway.
+  if (state.round === 2 || !transcript || /\[unclear\]/i.test(transcript)) return;
+  const controller = new AbortController();
+  const promise = getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre, signal: controller.signal, headStart: true });
+  promise.catch(() => {}); // awaited later, or not needed at all
+  headStart = { transcript, controller, promise, started: Date.now() };
+}
+
+function dropHeadStart() {
+  if (!headStart) return;
+  headStart.controller.abort();
+  headStart = null;
+}
 
 $("btn-confirm").addEventListener("click", () => submitWriting());
 
@@ -349,9 +378,16 @@ async function submitWriting() {
     return;
   }
   try {
+    const early = headStart?.transcript === transcript ? headStart : null;
+    headStart = null;
+    const fresh = () => getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
     setLoading(true, "Your sidekick is thinking about your writing… This can take a minute or two.", { withBar: true });
-    loadBar.stage(0, 1, 22000); // one long call, usually 35-50 seconds: about two thirds of the bar by 30
-    state.feedback = await getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
+    // One long call, usually 35-50 seconds: about two thirds of the bar by 30. A head start has
+    // already used some of that time, so its bar picks up where it would be by now.
+    const waited = early ? Date.now() - early.started : 0;
+    loadBar.stage(Math.min(0.85, 1 - Math.exp(-waited / 22000)), 1, 22000);
+    // A head start that failed gets one fresh try before the child sees any error.
+    state.feedback = early ? await early.promise.catch(fresh) : await fresh();
     await loadBar.finish();
     renderFeedback();
     show("screen-feedback");
@@ -805,6 +841,8 @@ function renderFocus() {
   const focus = nextFocus(state.feedback.criteria, state.feedback.powerUps || []);
   $("focus-card").hidden = !focus;
   $("focus-text").textContent = focus ? focus.text : "";
+  $("focus-task").textContent = focus?.task ? `Do this: ${focus.task}` : "";
+  $("focus-task").hidden = !focus?.task;
   $("btn-see-power").hidden = !focus || !focus.powerUp;
 }
 
@@ -887,7 +925,8 @@ function renderSteps(slides, index) {
   slides.forEach((s, i) => {
     const step = el("button", `fb-step${i === index ? " is-current" : i < index ? " is-done" : ""}`);
     step.type = "button";
-    step.append(el("span", "fb-step-num", String(i + 1)), s.label);
+    // On a phone only the current step shows its name; the others keep the number and a hidden name.
+    step.append(el("span", "fb-step-num", String(i + 1)), el("span", "fb-step-label", s.label));
     if (i === index) step.setAttribute("aria-current", "step");
     step.addEventListener("click", () => showSlide(i));
     nav.appendChild(step);
@@ -1243,6 +1282,7 @@ $("btn-print").addEventListener("click", () => {
 // Everything the app holds about this piece of writing, gone: photos, typing, feedback,
 // the prepared share picture, and the copies drawn on screen.
 function clearEverything() {
+  dropHeadStart(); // no feedback for this child may arrive after the iPad is cleared
   clearSpeechCache(); // stops any voice and forgets the downloaded audio
   state.pages = [];
   state.transcript = "";

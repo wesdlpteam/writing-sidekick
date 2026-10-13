@@ -116,7 +116,7 @@ const outputSpec = (powerUpCount, { challenge }) => `The child has already check
   "power_ups": [
     {
       "area": "the area key this power-up lifts",
-      "skill": "the job in four to six child-friendly words, e.g. 'Finish the big moment'",
+      "skill": "the job in four to six plain, child-friendly words that make sense on their own to a child who has not read the rest, e.g. 'Finish the big moment' or 'Finish your half sentence'; never use a single quoted word or a grammar label as a name (not 'Finish the When thought')",
       "why": "ONE short sentence: what your_line already does well, then what this strategy will add",
       "your_line": "one exact sentence or phrase copied from the child's writing where this skill belongs (if their sentence is long, copy only the part where the skill belongs, 25 words at most)",
       "move": "the key of the writing strategy the task asks the child to use on that line, or null if none of the listed strategies fits",
@@ -707,7 +707,7 @@ export function hasIndependentPassages(transcript, genre) {
   return new Set(subjects).size >= 2;
 }
 
-async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchImpl }) {
+async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchImpl, isGone }) {
   const started = Date.now();
   const kind = typeof genre === "string" ? genre : "";
   const areas = criteriaFor(kind);
@@ -805,11 +805,16 @@ FEEDBACK OBJECT SCHEMA (apply this to the nested feedback object, not the outer 
 Match model ambition to demonstrated attainment as well as year. For fluent writers, actively REWRITE bland models. For paragraph_focus, a precise deletion is the complete improvement; do not add decorative detail or complexity. For other strategies where the draft shows readiness, combine at least two of: precise verbs/nouns, developed supporting detail or consequence, controlled complex sentence structure, purposeful imagery or persuasive language. This is a quality target, not a word-count target. A conjunction inserted between two bare sentences, an adjective swap, or Therefore attached to an unchanged simple claim is too basic. Keep ONE strategy as the teaching focus while showing what excellent attainable writing sounds like. Before passages may be short; after models may use two or three sentences and paragraph breaks. Provide necessary context for transitions and conclusions in the before passage. Keep coaching instructions short; Use the demonstrated writing to calibrate model prose independently of coaching reading level. For foundational writers, keep one achievable improvement; for fluent younger writers, preserve their demonstrated sophistication.
 Check every strength is true of the words it quotes: rewrite any that credit the reader with seeing, hearing, feeling, smelling or tasting something the words do not describe. Check each power-up: its exact quote exists in the transcript; the named strategy is the change actually demonstrated; why/rule/model/task all match; the area rating remains honest, including strength when the task is a stretch; a new reason has a topic sentence and supporting detail; conclusions synthesize existing reasons. The before/after model must be on a DIFFERENT topic from the child's writing. Repair incorrect transition models, repeated targets when other lines are available, hollow conclusions, and low-ambition examples. Do not recommend adding features already present. Never supply facts, sources or numbers about the child's own topic. Several unrelated classroom exercises are not one unfinished essay.
 Check word_boost: four genuinely suitable synonyms in increasing sophistication; never list words that change the intended meaning. Omit unsuitable challenge words instead of inventing synonyms. The "after" sentence must be made up on a different topic, use one of the swap words correctly, and never rewrite or copy the child's sentence.
-Use child-facing strategy NAMES, never underscore keys such as sentence_expansion in visible text. The book terms "fragment" and "kernel sentence" are allowed only with their meaning in brackets straight after the first use (kernel sentence (a short sentence that makes sense on its own)), and never "kernel" alone. Check not_assessed areas have a limitation note and no praise, task or power-up. Keep skill titles to four to six words and now_you to one instruction under 15 words, without repeating the quote. Coaching reading level: ${readingLevel(yearLevel)}
+Use child-facing strategy NAMES, never underscore keys such as sentence_expansion in visible text. The book terms "fragment" and "kernel sentence" are allowed only with their meaning in brackets straight after the first use (kernel sentence (a short sentence that makes sense on its own)), and never "kernel" alone. Check not_assessed areas have a limitation note and no praise, task or power-up. Keep skill titles to four to six plain words that make sense on their own (no quoted single words or grammar labels as names) and now_you to one instruction under 15 words, without repeating the quote. Coaching reading level: ${readingLevel(yearLevel)}
 Student-visible editing comments MUST NOT identify error words, corrections or their locations, even in area next_step. Give only a general checking method there. Spelling, punctuation and capital errors are audited by a separate private call: do not list or count them here.
 ${scope}
 Ensure every repaired model still follows the SOURCE-BASED STRATEGY RULES: preserve the kernel in expansion and all supplied facts in combining.
 `], `${runOnFocus ? `${runOnFocus}\n` : ""}Return ONLY {learning_check:<brief evidence-based assessment>, approved:true, feedback:<complete improved draft>}. Return approved:false if you cannot produce valid teaching.`);
+  // A head start the app has already set aside (the child changed their typing) skips the costly review.
+  if (isGone?.()) {
+    console.warn(`[feedback] request abandoned before review after ${Date.now() - started}ms`);
+    return { status: 499, payload: { error: FEEDBACK_ERROR } };
+  }
   const reviewContent = await callModel({ fetchImpl, env, timeout: Math.min(REVIEW_MAX_MS, SERVER_BUDGET_MS - (Date.now() - started)), label: "review", flex: true,
     body: {
       model: reviewModel,
@@ -1016,7 +1021,7 @@ async function synonymCheck({ check, yearLevel, env, fetchImpl }) {
   return { status: 200, payload };
 }
 
-export async function handleFeedback(body, { fetchImpl, env }) {
+export async function handleFeedback(body, { fetchImpl, env, isGone }) {
   const yearLevel = Number(body?.yearLevel);
   if (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 6) {
     return { status: 400, payload: { error: "Please choose a year level from 1 to 6." } };
@@ -1089,14 +1094,22 @@ export async function handleFeedback(body, { fetchImpl, env }) {
   }
 
   if (images.length) return transcribePages({ images, env, fetchImpl });
-  return feedbackForTranscript({ transcript: minimiseContactDetails(transcript), yearLevel, genre: body?.genre, env, fetchImpl });
+  return feedbackForTranscript({ transcript: minimiseContactDetails(transcript), yearLevel, genre: body?.genre, env, fetchImpl, isGone });
 }
 
 export default async function handler(req, res) {
   if (handlePreamble(req, res)) return;
+  // The app cancels a head start when the child changes their typing; noticing that lets the
+  // server skip work nobody will read.
+  let gone = false;
+  res.on?.("close", () => {
+    if (!res.writableFinished) gone = true;
+  });
   const { status, payload } = await handleFeedback(req.body, {
     fetchImpl: fetch,
     env: process.env,
+    // Only a head start may be skipped; a request the child is waiting on always runs in full.
+    isGone: req.body?.headStart === true ? () => gone : undefined,
   });
   res.status(status).json(payload);
 }

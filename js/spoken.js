@@ -1,4 +1,4 @@
-import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261013-s5";
+import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261013-s6";
 
 // The words the Listen buttons read aloud (Years 1 to 3). Everything here is plain text built
 // from the same feedback the cards show, so the voice and the page always agree. No browser
@@ -64,7 +64,7 @@ export function strengthsSpoken(criteria) {
 
 export function focusSpoken(criteria, powerUps) {
   const focus = nextFocus(criteria, powerUps);
-  return focus ? fit(join("Your next focus", focus.text)) : "";
+  return focus ? fit(join("Your next focus", focus.text, focus.task && `Do this. ${focus.task}`)) : "";
 }
 
 // One power-up card, top to bottom as it shows: title, why, the line in the book, the strategy
