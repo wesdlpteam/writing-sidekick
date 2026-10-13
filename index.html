@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20261013-s4">
+  <link rel="stylesheet" href="css/app.css?v=20261013-s5">
 </head>
 <body>
   <main id="app">
@@ -49,6 +49,7 @@
 
     <section id="screen-camera" class="screen">
       <h1><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span><span id="camera-title">Photo time</span></h1>
+      <p id="round-note" class="lead round-note" hidden>Snap the page with your changes on it, and I will tell you what got better.</p>
       <div class="reminder">
         <p class="reminder-title">Before you snap:</p>
         <ul>
@@ -213,6 +214,11 @@
           <button id="btn-save-pic" class="secondary"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Save picture</button>
           <button id="btn-print" class="secondary"><span class="h-emoji" aria-hidden="true">&#x1F5A8;&#xFE0F; </span>Print</button>
         </div>
+        <div id="retake-offer" class="retake">
+          <p class="lead fb-lead retake-lead">Revise in your book first. Then snap the page again and I will tell you what got better.</p>
+          <button id="btn-retake" class="secondary big" type="button"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Show me my changes</button>
+        </div>
+        <p id="retake-done" class="retake-done" role="status" hidden>You have checked your changes. Great work.</p>
         <button id="btn-done" class="primary big btn-finish" type="button">I'm done</button>
         <p class="privacy-note">Your photo and typed writing went to an AI helper to be read. This iPad forgets them when you tap Finish, leave, or stop tapping for a while. That is 25 minutes on these feedback screens, and 10 minutes on the other screens. The app itself keeps nothing. <a href="privacy.html" target="_blank" rel="noopener">For adults: how your writing is handled</a></p>
       </section>
@@ -222,6 +228,26 @@
         <button id="btn-slide-next" class="primary big" type="button">Next: Power-ups &#8594;</button>
         <button id="btn-finish-feedback" class="ghost btn-finish" type="button">Finish and clear</button>
       </div>
+    </section>
+
+    <section id="screen-levelup" class="screen">
+      <h1><span class="h-emoji" aria-hidden="true">&#x26A1; </span>What got better</h1>
+      <div class="cheer-card">
+        <p id="cheer" class="cheer"></p>
+        <div id="listen-levelup" class="listen-slot"></div>
+      </div>
+      <div id="wins-box">
+        <h2 class="fb-heading levelup-heading">Your wins</h2>
+        <ul id="wins" class="wins"></ul>
+      </div>
+      <div id="next-box" hidden>
+        <h2 class="fb-heading levelup-heading">Your next step</h2>
+        <p id="next-tip" class="next-tip"></p>
+      </div>
+      <button id="btn-retake-again" class="secondary big" type="button" hidden><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Take the photo again</button>
+      <button id="btn-finish-levelup" class="primary big btn-finish" type="button">I'm done</button>
+      <div class="link-row levelup-back"><button id="btn-back-feedback" class="ghost" type="button">&#8592; Back to my feedback</button></div>
+      <p class="privacy-note">Your photos and typed writing went to an AI helper to be read. This iPad forgets them when you tap I'm done, leave, or stop tapping for a while. The app itself keeps nothing.</p>
     </section>
 
     <div id="loading" class="overlay" role="status" aria-live="polite" hidden>
@@ -267,7 +293,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20261013-s4");
+      await import("./js/app.js?v=20261013-s5");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

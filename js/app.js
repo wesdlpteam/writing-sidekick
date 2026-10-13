@@ -1,11 +1,11 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, missionRows, EDITING_TASK, ROUGH_NOTE } from "./feedback-visuals.js?v=20261013-s4";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261013-s5";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261013-s4";
-import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, missionSpoken } from "./spoken.js?v=20261013-s4";
+import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261013-s5";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
-import { transcribePage, getFeedback, checkSynonym, detectOrientation } from "./api.js?v=20260911-audit";
+import { transcribePage, getFeedback, getLevelUp, checkSynonym, detectOrientation } from "./api.js?v=20260911-audit";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261013-s3";
 
 const MAX_PAGES = 2;
@@ -16,6 +16,12 @@ const state = {
   pages: [], // cleaned-up page photos as data URLs, in order
   transcript: "", // the typed copy of the whole piece (pages joined), kept up to date as the child edits
   feedback: null,
+  // Round 2 ("Show me my changes"): while the child photographs their revised page, pages and
+  // transcript hold the NEW writing and the first version waits in original.
+  round: 1,
+  original: null, // { transcript, pages } from round 1
+  levelUp: null, // the "what got better" reply
+  compared: false, // the one AI comparison for this piece has been used
 };
 
 const $ = (id) => document.getElementById(id);
@@ -108,8 +114,11 @@ function markSelected(button, selected) {
 document.querySelectorAll(".year-btn, .chip").forEach((b) => markSelected(b, b.classList.contains("selected")));
 
 $("btn-start").addEventListener("click", () => show("screen-camera"));
-// Return to the year selection before submitting writing.
-$("btn-back-start").addEventListener("click", () => show("screen-start"));
+// Return to the year selection before submitting writing. In round 2 it goes back to the feedback.
+$("btn-back-start").addEventListener("click", () => {
+  if (state.round === 2) leaveRound2();
+  else show("screen-start");
+});
 $("btn-back-camera").addEventListener("click", () => show("screen-camera"));
 
 // ---- pages: photo -> cleaned scan, up to two pages -------------------------
@@ -335,6 +344,10 @@ async function submitWriting() {
     showError("The typing box is empty. If the photo was too hard to read, try taking it again, or type your writing in.");
     return;
   }
+  if (state.round === 2) {
+    await submitChanges(transcript);
+    return;
+  }
   try {
     setLoading(true, "Your sidekick is thinking about your writing… This can take a minute or two.", { withBar: true });
     loadBar.stage(0, 1, 22000); // one long call, usually 35-50 seconds: about two thirds of the bar by 30
@@ -342,6 +355,30 @@ async function submitWriting() {
     await loadBar.finish();
     renderFeedback();
     show("screen-feedback");
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+// Round 2: the first version and the revised one go to the sidekick, which names what got better.
+// It is one AI comparison per piece of writing; a "looks the same" reply is free and can be redone.
+async function submitChanges(transcript) {
+  if (!state.original || state.compared) return;
+  try {
+    setLoading(true, "Your sidekick is checking what got better…", { withBar: true });
+    loadBar.stage(0, 1, 9000); // one short call, usually 8-15 seconds
+    const reply = await getLevelUp({
+      yearLevel: state.yearLevel,
+      genre: state.genre,
+      levelUp: levelUpRequest(state.feedback, state.original.transcript, transcript),
+    });
+    await loadBar.finish();
+    state.levelUp = reply;
+    if (usedComparison(reply)) state.compared = true;
+    renderLevelUp(reply);
+    show("screen-levelup");
   } catch (error) {
     showError(error.message);
   } finally {
@@ -809,6 +846,7 @@ function renderListens() {
 function renderFeedback() {
   const { powerUps } = state.feedback;
   ticks.clear();
+  resetRound2(); // a new piece starts with a fresh round 2
   renderStrength();
   renderHeroPowers();
   renderFocus();
@@ -916,6 +954,7 @@ function playSlideClip(current) {
 function renderMission() {
   const list = $("mission-list");
   list.replaceChildren();
+  updateRetake();
   if (!state.feedback) return;
   for (const row of missionRows(state.feedback, state.yearLevel)) {
     const item = el("li", "mission-item");
@@ -940,6 +979,108 @@ function renderMission() {
     item.appendChild(label);
     list.appendChild(item);
   }
+}
+
+// ---- round 2: "Show me my changes" ------------------------------------------
+
+// Once the one comparison has been used, the button is replaced by a thank-you line.
+function updateRetake() {
+  $("retake-offer").hidden = state.compared;
+  $("retake-done").hidden = !state.compared;
+}
+
+// Camera and typing screens wear their round 2 wording, and go back to round 1 wording after.
+function setRoundUi() {
+  const second = state.round === 2;
+  $("camera-title").textContent = second ? "Photo time: round 2" : "Photo time";
+  $("round-note").hidden = !second;
+  $("btn-back-start").textContent = second ? "\u2190 Back to my feedback" : "\u2190 Back";
+  $("btn-confirm").textContent = second ? "Check my changes" : "Looks right, show my feedback \u2192";
+}
+
+function startRound2() {
+  if (state.compared || !state.feedback) return;
+  state.original = { transcript: state.transcript, pages: state.pages };
+  state.round = 2;
+  state.pages = [];
+  state.transcript = "";
+  state.levelUp = null;
+  $("transcript").value = "";
+  setRoundUi();
+  renderPages();
+  show("screen-camera");
+}
+
+// A "looks the same" reply costs nothing, so the child can photograph the page again.
+function retakePhoto() {
+  state.pages = [];
+  state.transcript = "";
+  state.levelUp = null;
+  $("transcript").value = "";
+  renderPages();
+  show("screen-camera");
+}
+
+// Back to round 1: the first pages and typing return, and the round 2 pages and typing are dropped.
+function leaveRound2() {
+  if (state.original) {
+    state.pages = state.original.pages;
+    state.transcript = state.original.transcript;
+  }
+  state.original = null;
+  state.round = 1;
+  $("transcript").value = state.transcript;
+  $("transcript-check-note").hidden = true;
+  $("transcript-check-note").textContent = "";
+  setRoundUi();
+  renderPages();
+  updateRetake();
+  show("screen-feedback");
+}
+
+// Forgets everything about round 2: first-version copy, result, and the used-up flag. Used when a
+// new piece starts and when the iPad clears.
+function resetRound2() {
+  state.round = 1;
+  state.original = null;
+  state.levelUp = null;
+  state.compared = false;
+  for (const id of ["cheer", "wins", "listen-levelup", "next-tip"]) $(id).replaceChildren();
+  $("next-box").hidden = true;
+  setRoundUi();
+  updateRetake();
+}
+
+$("btn-retake").addEventListener("click", startRound2);
+$("btn-retake-again").addEventListener("click", retakePhoto);
+$("btn-back-feedback").addEventListener("click", leaveRound2);
+
+// "What got better": the cheer, the wins (each quoting the new writing) and one next step. A
+// "looks the same" reply has no wins to list; it only offers the camera again.
+function renderLevelUp(reply) {
+  const unchanged = reply.unchanged === true;
+  $("cheer").replaceChildren(withQuotes(reply.cheer || "You went back and worked on your writing. That is what real writers do."));
+  mountListen($("listen-levelup"), "what got better", () => levelUpSpoken(state.levelUp));
+  const wins = $("wins");
+  wins.replaceChildren();
+  if (!unchanged) {
+    for (const w of reply.wins || []) {
+      const li = el("li", "win");
+      const evidence = el("p", "win-evidence");
+      evidence.append(el("span", "win-label", "In your new writing: "), el("q", "", w.evidence));
+      const title = el("strong", "win-what");
+      title.append(emoji("\u2705"), w.what);
+      li.append(title, evidence);
+      wins.appendChild(li);
+    }
+    if (!(reply.wins || []).length) wins.appendChild(el("li", "win win-empty", NO_WINS));
+  }
+  $("wins-box").hidden = unchanged;
+  const next = reply.next || "";
+  $("next-box").hidden = unchanged || !next;
+  $("next-tip").replaceChildren(withQuotes(next));
+  $("btn-retake-again").hidden = !unchanged;
+  resetIdle();
 }
 
 function focusPowerTitle() {
@@ -1106,6 +1247,7 @@ function clearEverything() {
   state.pages = [];
   state.transcript = "";
   state.feedback = null;
+  resetRound2(); // round 2's copy of the writing, its photos and its result go too
   ticks.clear();
   powerIndex = 0;
   shareCache = { key: "", blob: null };
@@ -1113,7 +1255,6 @@ function clearEverything() {
   $("transcript-check-note").hidden = true;
   $("transcript-check-note").textContent = "";
   $("include-photos").checked = false;
-  $("camera-title").textContent = "Photo time";
   for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "mission-list", "boost-swaps", "challenge-list", "print-pages", "print-strength", "print-powers", "print-powerups", "print-practice", "print-boost", "listen-strength", "listen-focus", "listen-pencil", "listen-boost", "listen-challenge", "listen-editing", "listen-mission"]) {
     $(id).innerHTML = "";
   }

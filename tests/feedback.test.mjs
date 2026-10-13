@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, findRunOns, defineBookTerms, shortenLine, linesOverlap, windowAround, madeUpAfter, powerUpProblemsEach } from "../api/feedback.js";
+import { levelUpRequest, usedComparison } from "../js/feedback-visuals.js";
 
 // A system prompt arrives as one string, or (newer models) as cacheable parts; this reads either.
 const systemText = (body) => [].concat(body.messages?.[0]?.content ?? "").map((p) => (typeof p === "string" ? p : p.text)).join("");
@@ -841,7 +842,7 @@ test("contact details are blanked before the writing reaches the feedback model"
 const LEVEL_UP = {
   before: TEXT,
   after: "The dog ran fast across the wet grass.\nIt was a sunny day.\nMy family came because it was fun.",
-  powerUps: [{ skill: "Expand your sentence", area: "Sentence structure", tryThis: "The dog ran fast across the oval.", nowYou: "Add where.", move: "Sentence expansion" }],
+  powerUps: [{ skill: "Expand your sentence", area: "Sentence structure", nowYou: "Add where.", move: "Sentence expansion" }],
   practiceWords: [
     { correct: "family", wrote: "famly" },
     { correct: "because", wrote: "becos" },
@@ -870,7 +871,7 @@ test("level up: the prompt carries both versions, the power-ups and the practice
   const user = capture.body.messages[1].content[0].text;
   assert.match(user, /ORIGINAL writing:\nThe dog ran fast\./);
   assert.match(user, /NEW writing:\nThe dog ran fast across the wet grass\./);
-  assert.match(user, /1\. Expand your sentence \(Sentence structure\)\. Try this: The dog ran fast across the oval\. Now you: Add where\. Strategy: Sentence expansion/);
+  assert.match(user, /1\. Expand your sentence \(Sentence structure\)\. Now you: Add where\. Strategy: Sentence expansion/);
   assert.match(user, /family \(they wrote famly\), because \(they wrote becos\)/);
   assert.deepEqual(r.payload.wins, [
     { what: "Power-up 1 used: Expand your sentence", evidence: "The dog ran fast across the wet grass." },
@@ -899,6 +900,54 @@ test("level up: unchanged writing is answered honestly without the model; bad re
   const bad = await handleFeedback({ yearLevel: 3, levelUp: LEVEL_UP }, { fetchImpl: mockFetch("sorry no"), env: ENV });
   assert.equal(bad.status, 502);
   assert.doesNotMatch(bad.payload.error, /json|parse|model|photo/i);
+});
+
+// ---- round 2 ("Show me my changes"): the app's request, book terms, the free "same" reply ----
+
+test("level up: the app's request (round 1 + round 2 + power-ups) reaches the model; no practice words, no tryThis", async () => {
+  const feedback = { powerUps: [
+    { skill: "Put your reader on the oval", areaLabel: "Ideas", nowYou: "Add where.", move: { key: "sentence_expansion", name: "Sentence expansion" }, yourLine: "The dog ran fast." },
+    { skill: "Join two ideas", areaLabel: "Sentence structure", nowYou: "Use because.", move: null },
+  ] };
+  const levelUp = levelUpRequest(feedback, TEXT, LEVEL_UP.after);
+  const capture = {};
+  const r = await handleFeedback({ yearLevel: 2, genre: "narrative", levelUp }, { fetchImpl: mockFetch(JSON.stringify(LEVEL_UP_REPLY), { capture }), env: ENV });
+  assert.equal(r.status, 200);
+  const user = capture.body.messages[1].content[0].text;
+  assert.match(user, /ORIGINAL writing:\nThe dog ran fast\./);
+  assert.match(user, /NEW writing:\nThe dog ran fast across the wet grass\./);
+  assert.match(user, /1\. Put your reader on the oval \(Ideas\)\. Now you: Add where\. Strategy: Sentence expansion\n2\. Join two ideas \(Sentence structure\)\. Now you: Use because\.\n/);
+  assert.match(user, /Spelling to practise: \(none\)/);
+  assert.doesNotMatch(user, /Try this/);
+  assert.equal(capture.body.service_tier, undefined, "a quick call stays on the normal lane, not flex");
+  assert.equal(r.payload.unchanged, undefined, "a real comparison is not marked unchanged");
+  assert.match(capture.body.messages[0].content, /Never claim an effect the words do not create/);
+  assert.match(capture.body.messages[0].content, /reader can see, hear, feel, smell or taste/);
+});
+
+test("level up: the cheer, what and next get the same book-term treatment as the main feedback", async () => {
+  const reply = {
+    cheer: "Your fragment is now a whole idea: 'across the wet grass'. Strong work on the kernel.",
+    wins: [{ what: "Fixed a fragment using sentence_expansion", evidence: "The dog ran fast across the wet grass." }],
+    next: "Next time, check each kernel sentence.",
+  };
+  const r = await handleFeedback({ yearLevel: 3, genre: "narrative", levelUp: LEVEL_UP }, { fetchImpl: mockFetch(JSON.stringify(reply)), env: ENV });
+  assert.equal(r.status, 200);
+  assert.match(r.payload.cheer, /fragment \(a half sentence that is only part of an idea\)/);
+  assert.match(r.payload.cheer, /the kernel sentence \(a short sentence that makes sense on its own\)\./, "a bare kernel becomes kernel sentence, with its meaning");
+  assert.doesNotMatch(r.payload.wins[0].what, /_/, "strategy keys become the names the child hears in class");
+  assert.match(r.payload.wins[0].what, /Sentence expansion|sentence expansion/i);
+  assert.match(r.payload.next, /kernel sentence \(a short sentence that makes sense on its own\)/);
+});
+
+test("level up: identical writing is answered free and marked unchanged; a real reply is not", async () => {
+  const capture = {};
+  const same = await handleFeedback({ yearLevel: 5, levelUp: { before: TEXT, after: `  ${TEXT.toUpperCase()}  `, powerUps: [], practiceWords: [] } }, { fetchImpl: mockFetch("{}", { capture }), env: ENV });
+  assert.equal(same.payload.unchanged, true);
+  assert.equal(usedComparison(same.payload), false, "does not use up the one comparison");
+  assert.equal(capture.chatCalls, undefined, "the model was never called");
+  const real = await handleFeedback({ yearLevel: 5, levelUp: LEVEL_UP }, { fetchImpl: mockFetch(JSON.stringify(LEVEL_UP_REPLY)), env: ENV });
+  assert.equal(usedComparison(real.payload), true);
 });
 
 test("upstream error -> 502 without leaking details", async () => {

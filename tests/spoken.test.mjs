@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { plain, sentence, fit, joinOr, listensForYear, MAX_SPOKEN, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, editingCountSpoken, missionSpoken } from '../js/spoken.js';
+import { plain, sentence, fit, joinOr, listensForYear, MAX_SPOKEN, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, editingCountSpoken, missionSpoken, levelUpSpoken, NO_WINS } from '../js/spoken.js';
 
 const power = {
   skill: 'Put your reader on the sand',
@@ -126,4 +126,20 @@ test('the mission list reads each job; only power-ups say Do this', () => {
 
 test('static page text is tidied into sentences', () => {
   assert.equal(staticSpoken('Pick up your pencil', 'To add words, write a ^ where they go in.'), 'Pick up your pencil. To add words, write a caret where they go in.');
+});
+
+test('what got better reads the cheer, each win with its new words, then the next step', () => {
+  const text = levelUpSpoken({
+    cheer: "'After lunch, the dog ran off' tells us when. Well done!",
+    wins: [{ what: 'Power-up 1 used: Sentence expansion', evidence: 'After lunch, the dog ran off down the track.' }, { what: 'New detail added', evidence: 'It was a sunny day!' }],
+    next: 'Try a where start on one more sentence.',
+  });
+  assert.equal(text, "What got better. 'After lunch, the dog ran off' tells us when. Well done! Power-up 1 used: Sentence expansion. In your new writing. After lunch, the dog ran off down the track. New detail added. In your new writing. It was a sunny day! Your next step. Try a where start on one more sentence.");
+});
+
+test('what got better with no wins asks for one change; a "looks the same" reply reads only its own message', () => {
+  assert.equal(levelUpSpoken({ cheer: 'Thanks for trying.', wins: [], next: '' }), `What got better. Thanks for trying. ${NO_WINS}`);
+  assert.equal(levelUpSpoken({ cheer: 'This looks the same as your first version.', wins: [], unchanged: true }), 'This looks the same as your first version.');
+  assert.equal(levelUpSpoken(null), '');
+  assert.ok(levelUpSpoken({ cheer: 'Great.', wins: Array(4).fill({ what: 'Win', evidence: 'word '.repeat(80) }) }).length <= MAX_SPOKEN);
 });

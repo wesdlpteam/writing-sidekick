@@ -157,6 +157,33 @@ function mockChime() {
   return Buffer.concat([header, data]);
 }
 
+// Round 2 mock: answers like the real server. Identical writing gets the free "looks the same"
+// reply; otherwise the new sentences are celebrated (invented, but always quoting the new text).
+const sameWords = (v) => String(v || "").replace(/\s+/g, " ").trim().toLowerCase();
+function mockLevelUp(levelUp = {}) {
+  if (sameWords(levelUp.before) === sameWords(levelUp.after)) {
+    return {
+      cheer: "This looks the same as your first version. Did your changes go into your book? Snap the page with your changes on it and I will take another look.",
+      wins: [],
+      spellingFixed: [],
+      next: "",
+      unchanged: true,
+    };
+  }
+  const old = sameWords(levelUp.before);
+  const fresh = String(levelUp.after || "").split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => x && !old.includes(sameWords(x)));
+  const power = (Array.isArray(levelUp.powerUps) ? levelUp.powerUps : [])[0];
+  const wins = [];
+  if (fresh[0]) wins.push({ what: power?.skill ? `Power-up 1 used: ${power.skill}` : "New detail added", evidence: fresh[0] });
+  if (fresh[1]) wins.push({ what: "Another new sentence", evidence: fresh[1] });
+  return {
+    cheer: fresh[0] ? `You changed your writing, and '${fresh[0].slice(0, 70)}' tells the reader more. Well done for going back to your book.` : "You went back to your book and changed your writing. That is what real writers do.",
+    wins,
+    spellingFixed: [],
+    next: "Try one more power-up on a different sentence next time.",
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
@@ -214,16 +241,7 @@ const server = http.createServer(async (req, res) => {
       }
       await new Promise((r) => setTimeout(r, 1200)); // simulate thinking time
       if (body.levelUp) {
-        // Practice mode: celebrate the first line of the new version as the change.
-        const after = typeof body.levelUp.after === "string" ? body.levelUp.after.trim() : "";
-        const firstLine = after.split("\n")[0] || "";
-        const payload = {
-          cheer: `You went back and changed your writing. '${firstLine.slice(0, 60)}' is a great start.`,
-          wins: firstLine ? [{ what: "Power-up 1 used: Expand your sentence", evidence: firstLine }] : [],
-          spellingFixed: ["family"],
-          next: "Next time, try a When or While start on one more sentence.",
-        };
-        res.writeHead(200).end(JSON.stringify(payload));
+        res.writeHead(200).end(JSON.stringify(mockLevelUp(body.levelUp)));
         return;
       }
       const hasPhotos = (Array.isArray(body.images) && body.images.length) || body.image;

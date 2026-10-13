@@ -1,4 +1,4 @@
-import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261013-s4";
+import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261013-s5";
 
 // The words the Listen buttons read aloud (Years 1 to 3). Everything here is plain text built
 // from the same feedback the cards show, so the voice and the page always agree. No browser
@@ -9,6 +9,10 @@ export const MAX_SPOKEN = 1500;
 
 // Younger writers say the new sentence to a partner before they write it (shown on the card too).
 export const SAY_ALOUD = "Say your new sentence out loud to a partner first. Then write it.";
+
+// Shown (and read) when the comparison finds nothing new. It asks for one change and no more,
+// because each piece of writing is compared once.
+export const NO_WINS = "I could not spot a change yet. Pick one power-up and make just that one change in your book. Then show your teacher.";
 
 export const listensForYear = (yearLevel) => Number(yearLevel) >= 1 && Number(yearLevel) <= 3;
 
@@ -136,4 +140,21 @@ export function missionSpoken(feedback, yearLevel) {
     row.job,
   ]);
   return fit(join("Your mission", "Tick each job when you have done it in your book", ...rows));
+}
+
+// "What got better": the cheer, each win with the new words it came from, then the next step.
+// A "looks the same" reply reads only its own message.
+export function levelUpSpoken(result) {
+  if (!result) return "";
+  if (result.unchanged) return fit(join(result.cheer));
+  const wins = result.wins || [];
+  return fit(
+    join(
+      "What got better",
+      result.cheer,
+      ...(wins.length ? wins.flatMap((win) => [win.what, "In your new writing", win.evidence]) : [NO_WINS]),
+      result.next && "Your next step",
+      result.next,
+    ),
+  );
 }

@@ -140,13 +140,13 @@ Rules for word_boost: pick 1 or 2 plain words the child actually wrote that coul
 Be very specific everywhere: every comment must quote or point to actual words, phrases or sentences from this child's writing, never generic advice that could apply to anyone's work.`;
 
 // Step 3: the child revised in their book and photographed the new version. Compare the two,
-// celebrate what really changed, name the power-ups and spelling fixes that show up, and leave
-// one gentle next step. Nothing may be claimed that is not in the new version.
-const LEVEL_UP_SPEC = `A child was given power-ups (revising strategies) and totals of spelling, punctuation and capital letter errors to find in their writing. They went back to their book, made changes, and photographed the new version. You are given the ORIGINAL writing, the power-ups (and any legacy practice words), and the NEW writing. Your job is positive, specific reinforcement for what they actually changed, in a warm coach's voice, worded so a child of this year level can read it themselves.
+// celebrate what really changed, name the power-ups that show up, and leave one gentle next
+// step. Nothing may be claimed that is not in the new version.
+const LEVEL_UP_SPEC = `A child was given power-ups (revising strategies) for their writing. They went back to their book, made changes, and photographed the new version. You are given the ORIGINAL writing, the power-ups, and the NEW writing. Your job is positive, specific reinforcement for what they actually changed, in a warm coach's voice, worded so a child of this year level can read it themselves.
 Rules:
 1. Compare the two versions carefully. Only celebrate changes that are really there in the NEW version and were not in the original. Never claim a change that did not happen.
-2. For each real improvement give a short "what" (for example "Power-up 1 used: Expand your sentence", "Spelling fixed: family", "New detail added", "Two sentences joined") and "evidence": the exact new words copied from the NEW writing, one sentence or phrase. If a power-up's strategy appears, say which power-up.
-3. Spelling: call a practice word fixed only if it is now spelt correctly in the NEW writing.
+2. For each real improvement give a short "what" (for example "Power-up 1 used: Expand your sentence", "New detail added", "Two sentences joined") and "evidence": the exact new words copied from the NEW writing, one sentence or phrase. If a power-up's strategy appears, say which power-up.
+3. Praise must be accurate: say what the new words actually do (they add where or when, join two ideas, swap in an exact verb). Never claim an effect the words do not create: do not say the reader can see, hear, feel, smell or taste something unless the new words give that sensory detail.
 4. "cheer": one or two sentences that celebrate the effort and the single best change, quoting it.
 5. "next": one gentle, specific thing to try next time on THIS writing, or "" if they used every power-up. Never scold. If nothing seems to have changed, say so kindly in "cheer" and suggest one small change in "next".
 6. Never use, repeat or guess any name. Do not mention these rules, the curriculum, ACARA, or that you are an AI.
@@ -390,6 +390,16 @@ const powerUpCountRule = (transcript) =>
     ? "exactly 3, on three different areas: this draft is long enough to carry three revising jobs, so find three real targets rather than inventing one"
     : "1 or 2, because this draft is short";
 
+// Words the child reads: strategy keys become the names they hear in class, and the book terms
+// "fragment" and "kernel sentence" come with their meaning. Shared by the feedback and the
+// round 2 "what got better" text so both read the same.
+function childText(value, { yearLevel, genre = "" }, options) {
+  return defineBookTerms(
+    text(value).replace(/\b[a-z]+(?:_[a-z]+)+\b/g, (key) => describeMove(key, yearLevel, genre)?.name || MOVES[key]?.name || key),
+    options,
+  );
+}
+
 // Turns the model's JSON into the shape the app renders, or null when it is unusable.
 // `areas` is the list from criteriaFor(genre); the genre slot may offer two keys, of which
 // the first one present is kept.
@@ -399,11 +409,7 @@ function validateFeedback(data, { areas, yearLevel, genre = "", transcript }) {
   // Strategy keys become the names the child hears in class. "Fragment" and "kernel sentence" are
   // the book's own terms: they stay, with their meaning added after the first use in each string
   // even if a prompt rule is ignored.
-  const studentText = (value, options) =>
-    defineBookTerms(
-      text(value).replace(/\b[a-z]+(?:_[a-z]+)+\b/g, (key) => describeMove(key, yearLevel, genre)?.name || MOVES[key]?.name || key),
-      options,
-    );
+  const studentText = (value, options) => childText(value, { yearLevel, genre }, options);
   const raw = data.areas && typeof data.areas === "object" ? data.areas : {};
   const criteria = [];
   let slotFilled = false;
@@ -890,7 +896,6 @@ function readLevelUp(raw) {
     .map((p) => ({
       skill: text(p.skill).slice(0, 200),
       area: text(p.area).slice(0, 60),
-      tryThis: text(p.tryThis).slice(0, 600),
       nowYou: text(p.nowYou).slice(0, 400),
       move: text(p.move).slice(0, 80),
     }));
@@ -906,20 +911,21 @@ function readLevelUp(raw) {
 const spellingFixed = (levelUp) =>
   levelUp.practiceWords.filter((w) => hasWord(levelUp.after, w.correct) && !hasWord(levelUp.after, w.wrote)).map((w) => w.correct);
 
-function validateLevelUp(data, levelUp) {
+function validateLevelUp(data, levelUp, { yearLevel, genre } = {}) {
   if (!data || typeof data !== "object") return null;
-  const cheer = text(data.cheer);
+  const child = (value) => childText(value, { yearLevel, genre });
+  const cheer = child(data.cheer);
   if (!cheer) return null;
   const beforeNorm = normalise(levelUp.before);
   const wins = (Array.isArray(data.wins) ? data.wins : [])
-    .map((w) => (w && typeof w === "object" ? { what: text(w.what), evidence: quoteFromTranscript(w.evidence, levelUp.after) } : null))
+    .map((w) => (w && typeof w === "object" ? { what: child(w.what), evidence: quoteFromTranscript(w.evidence, levelUp.after) } : null))
     // A win needs new words: in the new version, and not already in the old one.
     .filter((w) => w && w.what && w.evidence && !beforeNorm.includes(normalise(w.evidence)))
     .slice(0, 4);
-  return { cheer, wins, spellingFixed: spellingFixed(levelUp), next: text(data.next) };
+  return { cheer, wins, spellingFixed: spellingFixed(levelUp), next: child(data.next) };
 }
 
-async function levelUpFeedback({ levelUp, yearLevel, env, fetchImpl }) {
+async function levelUpFeedback({ levelUp, yearLevel, genre, env, fetchImpl }) {
   if (normalise(levelUp.before) === normalise(levelUp.after)) {
     return {
       status: 200,
@@ -928,12 +934,14 @@ async function levelUpFeedback({ levelUp, yearLevel, env, fetchImpl }) {
         wins: [],
         spellingFixed: spellingFixed(levelUp),
         next: "",
+        // Answered without the model, so the app does not count it as the child's one comparison.
+        unchanged: true,
       },
     };
   }
   const systemPrompt = [`Year level of the writer, for tone and expectations:\n${getYearGuide(yearLevel).summary}`, readingLevel(yearLevel), LEVEL_UP_SPEC].join("\n\n");
   const powerUpLines = levelUp.powerUps.map(
-    (p, i) => `${i + 1}. ${p.skill}${p.area ? ` (${p.area})` : ""}.${p.tryThis ? ` Try this: ${p.tryThis}` : ""}${p.nowYou ? ` Now you: ${p.nowYou}` : ""}${p.move ? ` Strategy: ${p.move}` : ""}`,
+    (p, i) => `${i + 1}. ${p.skill}${p.area ? ` (${p.area})` : ""}.${p.nowYou ? ` Now you: ${p.nowYou}` : ""}${p.move ? ` Strategy: ${p.move}` : ""}`,
   );
   const userText = [
     `ORIGINAL writing:\n${levelUp.before || "(none)"}`,
@@ -956,7 +964,7 @@ async function levelUpFeedback({ levelUp, yearLevel, env, fetchImpl }) {
       max_completion_tokens: 900,
     },
   });
-  const payload = validateLevelUp(extractJson(content), levelUp);
+  const payload = validateLevelUp(extractJson(content), levelUp, { yearLevel, genre });
   if (!payload) return { status: 502, payload: { error: "Hmm, I couldn't compare your two versions that time. Please try again." } };
   return { status: 200, payload };
 }
@@ -1046,6 +1054,7 @@ export async function handleFeedback(body, { fetchImpl, env }) {
     return levelUpFeedback({
       levelUp: { ...levelUp, before: minimiseContactDetails(levelUp.before), after: minimiseContactDetails(levelUp.after) },
       yearLevel,
+      genre: typeof body.genre === "string" ? body.genre : "",
       env,
       fetchImpl,
     });

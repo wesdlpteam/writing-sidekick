@@ -551,6 +551,47 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .mission-part { display: block; }
 .mission-line { font-style: italic; font-weight: 700; }
 #btn-done { margin-top: 24px; }
+/* Round 2: "Show me my changes" on Mission complete, and the "What got better" screen. */
+.retake { margin-top: 26px; }
+.retake[hidden], .retake-done[hidden] { display: none; }
+.retake-lead { margin: 0 0 10px; }
+.retake .secondary.big { width: 100%; }
+.retake-done { margin: 26px 0 0; font-size: 1.15rem; font-weight: 800; color: var(--gold); text-align: center; }
+.round-note { color: var(--gold); font-weight: 700; margin-bottom: 14px; }
+.round-note[hidden] { display: none; }
+.cheer-card {
+  background: var(--card);
+  color: var(--ink);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: 5px 5px 0 var(--gold-deep), 0 0 44px rgba(255, 194, 51, 0.35);
+  margin-top: 18px;
+}
+.cheer { margin: 0; font-family: var(--font-hand); font-size: 1.45rem; line-height: 1.5; }
+.cheer q, .next-tip q { font-weight: 800; }
+.levelup-heading { font-size: 1.5rem; }
+#wins-box[hidden], #next-box[hidden] { display: none; }
+.wins { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.win {
+  background: var(--green-soft);
+  color: var(--ink);
+  border: var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 4px 4px 0 var(--purple-mid);
+  line-height: 1.5;
+}
+.win-what { display: block; font-size: 1.1rem; }
+.win-evidence { margin: 4px 0 0; }
+.win-label { font-weight: 800; }
+.win-evidence q { font-style: italic; }
+.win-empty { background: var(--gold-soft); font-size: 1.1rem; }
+.next-tip { margin: 0; font-size: 1.1rem; line-height: 1.5; color: var(--sky-text); }
+#screen-levelup .btn-finish, #btn-retake-again { margin-top: 28px; width: 100%; }
+#btn-retake-again[hidden] { display: none; }
+.levelup-back { margin-top: 18px; justify-content: center; }
+.levelup-back .ghost { min-height: 44px; }
 .mission-save { margin-top: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
@@ -991,42 +1032,6 @@ body.senior .crit-label { font-size: 1.1rem; }
 }
 .pencil-card p { margin: 0; line-height: 1.5; font-size: 1.1rem; }
 .pencil-title { font-family: var(--font-display); font-size: 1.4rem; letter-spacing: 0.04em; color: var(--purple); margin-bottom: 6px !important; }
-.round-note { margin-top: 0; color: var(--gold); font-weight: 700; }
-.round-note[hidden] { display: none; }
-#btn-level-up { margin-top: 10px; }
-
-/* Level up: the cheer, the wins (each quoting the new writing), spelling fixed, one next tip. */
-.cheer-card {
-  background: var(--card);
-  color: var(--ink);
-  border: var(--border);
-  border-radius: var(--radius);
-  padding: 22px 24px;
-  box-shadow: 5px 5px 0 var(--gold-deep), 0 0 44px rgba(255, 194, 51, 0.35);
-  margin-top: 18px;
-}
-.cheer { margin: 0; font-family: var(--font-hand); font-size: 1.45rem; line-height: 1.5; }
-.card-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
-.card-actions:empty { display: none; }
-.wins { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.win {
-  background: var(--green-soft);
-  color: var(--ink);
-  border: var(--border);
-  border-radius: 16px;
-  padding: 14px 16px;
-  box-shadow: 4px 4px 0 var(--purple-mid);
-  line-height: 1.5;
-}
-.win strong { display: block; font-size: 1.1rem; }
-.win-evidence { display: block; margin-top: 4px; font-style: italic; }
-.win-evidence::before, .win-evidence::after { content: "'"; }
-.win-empty { background: var(--gold-soft); }
-.fixed-words { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
-.fixed-words li { background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 8px 14px; font-weight: 800; }
-.next-tip { margin: 18px 0 0; font-size: 1.1rem; line-height: 1.5; color: var(--sky-text); }
-.next-tip[hidden] { display: none; }
-#screen-levelup .btn-finish { margin-top: 28px; }
 
 /* Warning before a shared iPad clears itself. */
 .idle {

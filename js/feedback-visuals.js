@@ -182,3 +182,20 @@ export function missionRows(feedback, yearLevel) {
   rows.push({ key: "read", label: "Read it again", line: "", job: "Read it again like a reader would. Does it sound even better?" });
   return rows;
 }
+
+// ---- round 2: "Show me my changes" ---------------------------------------------------------
+
+// What goes to the server to compare the first version with the revised one: the two typed
+// copies and the power-ups the child was given (just what the comparison needs).
+export function levelUpRequest(feedback, before, after) {
+  return {
+    before,
+    after,
+    powerUps: (feedback?.powerUps || []).map((p) => ({ skill: p.skill, area: p.areaLabel, nowYou: p.nowYou, move: p.move?.name })),
+    practiceWords: [],
+  };
+}
+
+// One AI comparison per piece of writing. A "looks the same" reply is answered for free without
+// the model (the server marks it unchanged), so it does not use up the child's turn.
+export const usedComparison = (reply) => Boolean(reply) && reply.unchanged !== true;

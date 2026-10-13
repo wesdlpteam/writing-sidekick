@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writingStrength, writingStrengthLines, SKILL_GUIDE, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingLines, missionRows } from '../js/feedback-visuals.js';
+import { writingStrength, writingStrengthLines, SKILL_GUIDE, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingLines, missionRows, levelUpRequest, usedComparison } from '../js/feedback-visuals.js';
 import { CRITERIA } from '../api/_criteria.js';
 
 test('writing strength excludes editing and chooses the first power-up as the focus', () => {
@@ -137,4 +137,27 @@ test('mission rows: one per power-up, then word power if any, then edit for the 
   assert.match(missionRows(feedback, 5)[3].job, /spelling, punctuation and capital letters/);
   assert.deepEqual(missionRows({ powerUps: [] }, 3).map((r) => r.key), ['edit', 'read'], 'no power-ups and no word power');
   assert.deepEqual(missionRows().map((r) => r.key), ['edit', 'read']);
+});
+
+test('round 2 request: both versions plus the power-ups, mapped to the server field names', () => {
+  const feedback = { powerUps: [
+    { skill: 'Put your reader on the sand', areaLabel: 'Ideas', nowYou: 'Add when and where.', move: { key: 'sentence_expansion', name: 'Sentence expansion' }, yourLine: 'x', why: 'y', rule: 'z', tryThis: 'dead' },
+    { skill: 'Join two ideas', areaLabel: 'Sentence structure', nowYou: 'Use because.', move: null },
+  ] };
+  assert.deepEqual(levelUpRequest(feedback, 'First.', 'Second.'), {
+    before: 'First.',
+    after: 'Second.',
+    powerUps: [
+      { skill: 'Put your reader on the sand', area: 'Ideas', nowYou: 'Add when and where.', move: 'Sentence expansion' },
+      { skill: 'Join two ideas', area: 'Sentence structure', nowYou: 'Use because.', move: undefined },
+    ],
+    practiceWords: [],
+  });
+  assert.deepEqual(levelUpRequest(null, 'a', 'b').powerUps, []);
+});
+
+test('one comparison per piece: only a real reply uses it up, the free "looks the same" reply does not', () => {
+  assert.equal(usedComparison({ cheer: 'Nice', wins: [], next: '' }), true, 'a real comparison with no wins still cost a model call');
+  assert.equal(usedComparison({ cheer: 'Same', wins: [], unchanged: true }), false);
+  assert.equal(usedComparison(null), false);
 });
