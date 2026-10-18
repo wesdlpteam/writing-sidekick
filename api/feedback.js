@@ -254,6 +254,24 @@ export function moveFitsTask(moveKey, ...texts) {
   return true;
 }
 
+// A fragment is judged on the child's whole sentence. Seen in the wild: the model quoted the tail
+// of "...tossing coins were the right idea from <names>" and called "From <names>" a half
+// sentence. When the words just before the quote run on into it (a letter or comma, no full stop,
+// question mark or exclamation mark between), the quote is a clipped piece of a longer sentence.
+// Line breaks do not end a sentence: handwriting wraps mid-sentence. "false" when unsure.
+const FRAGMENT_TASK = /\b(fragments?|half sentences?|full sentence|complete (?:the |your )?thought|make it whole)\b/i;
+export function clippedFromSentence(quote, transcript) {
+  const all = normalise(transcript);
+  const wanted = normalise(quote).replace(/^["'\s]+|["'.!?…\s]+$/g, "");
+  const at = wanted ? all.indexOf(wanted) : -1;
+  if (at < 0) return false;
+  const before = all.slice(0, at).replace(/["'\s]+$/, "");
+  return /[\p{L}\p{N},]$/u.test(before);
+}
+export function isFragmentTask(moveKey, ...texts) {
+  return moveKey === "fragment_fix" || texts.some((t) => FRAGMENT_TASK.test(String(t || "")));
+}
+
 // A child with plenty to say often runs a whole paragraph together as one breathless sentence,
 // chained with and, so, but then and then. The model kept spending its power-ups stretching
 // areas it had already called a strength, so this check is deterministic: long sentence plus
@@ -447,6 +465,8 @@ function validateFeedback(data, { areas, yearLevel, genre = "", transcript }) {
     if (p.area === "spelling" || powerUps.some((q) => q.area && q.area === p.area)) continue;
     const area = knownKeys.has(p.area) ? p.area : "";
     if (criteria.find(c => c.key === area)?.status === "not_assessed") continue;
+    // A "half sentence" that is really the end of a longer sentence is wrong advice: drop it.
+    if (isFragmentTask(p.move, p.skill, p.now_you, p.rule) && clippedFromSentence(p.your_line, transcript)) continue;
     const fullLine = quoteFromTranscript(p.your_line, transcript);
     // A later power-up that points at the same words as an earlier one is dropped.
     if (fullLines.some((kept) => linesOverlap(kept, fullLine))) continue;

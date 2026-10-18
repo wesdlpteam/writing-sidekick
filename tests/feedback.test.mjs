@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, findRunOns, defineBookTerms, shortenLine, linesOverlap, windowAround, madeUpAfter, powerUpProblemsEach } from "../api/feedback.js";
+import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, clippedFromSentence, isFragmentTask, findRunOns, defineBookTerms, shortenLine, linesOverlap, windowAround, madeUpAfter, powerUpProblemsEach } from "../api/feedback.js";
 import { levelUpRequest, usedComparison } from "../js/feedback-visuals.js";
 
 // A system prompt arrives as one string, or (newer models) as cacheable parts; this reads either.
@@ -1573,4 +1573,16 @@ test("a head start the app has called off skips the costly review; a normal requ
   const normal = await handleFeedback(body, { fetchImpl, env: ENV });
   assert.equal(normal.status, 200);
   assert.equal(reviews, 2);
+});
+
+test('a "half sentence" clipped off the end of a longer sentence is not a fragment', () => {
+  const page = `"Help"! "Help"! There were crys for help I guess tossing coins\nwere the right idea from Ana and Leo "off to an adventure we go"! Shouted Leo. Ran down the hill.`;
+  assert.equal(clippedFromSentence('From Ana and Leo', page), true, 'tail of the sentence before it');
+  assert.equal(clippedFromSentence('were the right idea from Ana and Leo', page), true, 'a line break does not end a sentence');
+  assert.equal(clippedFromSentence('Ran down the hill.', page), false, 'a real fragment after a full stop');
+  assert.equal(clippedFromSentence('"Help"!', page), false, 'start of the writing');
+  assert.equal(clippedFromSentence('not on the page', page), false);
+  assert.equal(isFragmentTask('fragment_fix'), true);
+  assert.equal(isFragmentTask(null, 'Make the thought complete', 'Add an action to make this a full sentence.'), true);
+  assert.equal(isFragmentTask('sentence_expansion', 'Put your reader on the sand', 'Add when and where.'), false);
 });
