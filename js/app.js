@@ -1,7 +1,7 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261013-s6";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261019-tick";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
-import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261013-s6";
+import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261019-tick";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
@@ -16,7 +16,7 @@ const state = {
   pages: [], // cleaned-up page photos as data URLs, in order
   transcript: "", // the typed copy of the whole piece (pages joined), kept up to date as the child edits
   feedback: null,
-  // Round 2 ("Show me my changes"): while the child photographs their revised page, pages and
+  // Round 2 ("Snap my writing again"): while the child photographs their revised page, pages and
   // transcript hold the NEW writing and the first version waits in original.
   round: 1,
   original: null, // { transcript, pages } from round 1
@@ -648,6 +648,7 @@ function renderPowerUps(powerUps) {
       steps.appendChild(step("Do this", task));
     }
     card.appendChild(steps);
+    card.appendChild(jobCheck([`power-${index}`]));
     box.appendChild(card);
   });
 }
@@ -890,6 +891,7 @@ function renderFeedback() {
   renderFocus();
   renderPractice();
   renderBoost();
+  $("words-check").replaceChildren(jobCheck(["word", "edit"]));
   renderListens();
   rebuildShareImage();
   renderPowerUps(powerUps);
@@ -933,8 +935,9 @@ function renderSteps(slides, index) {
   });
 }
 
-// The bottom bar: Back steps back through the power-ups first; Next reads "I did it! Next
-// power-up" while more power-ups remain, then moves on to the next slide.
+// The bottom bar: Back steps back through the power-ups first; Next reads "Next power-up"
+// while more power-ups remain, then moves on to the next slide. The child ticks each job in
+// the Mission check box on the page itself.
 function updateNav() {
   const slides = activeSlides();
   const onPower = slides[slideIndex].key === "power";
@@ -943,8 +946,8 @@ function updateNav() {
   $("btn-slide-back").hidden = slideIndex === 0 && !(onPower && powerIndex > 0);
   $("btn-slide-next").hidden = !next && !morePowers;
   $("btn-slide-next").textContent = morePowers
-    ? "I did it! Next power-up →"
-    : next ? `${onPower && powerCount() ? "I did it! " : ""}Next: ${next.label} →` : "";
+    ? "Next power-up →"
+    : next ? `Next: ${next.label} →` : "";
 }
 
 function setPower(index) {
@@ -988,8 +991,45 @@ function playSlideClip(current) {
   });
 }
 
-// Mission complete: a tick list built from the feedback. Each row has a real checkbox the child
-// can tick; "I did it! Next power-up" ticks that power-up's row too.
+// One tick box for a mission job. Every box for the same job (on its own page and on Mission
+// complete) stays in step, so a tick made along the way shows up again at the end.
+function tickBox(key, content) {
+  const label = el("label", "mission-row");
+  const box = el("input");
+  box.type = "checkbox";
+  box.dataset.tick = key;
+  box.checked = ticks.has(key);
+  box.addEventListener("change", () => {
+    if (box.checked) ticks.add(key);
+    else ticks.delete(key);
+    document.querySelectorAll(`input[data-tick="${key}"]`).forEach((other) => { other.checked = box.checked; });
+  });
+  const text = el("span", "mission-text");
+  text.append(...content);
+  label.append(box, text);
+  return label;
+}
+
+// The small "Mission check" box on a page: one tick per job done on that page. Keys come from
+// missionRows(); a job this piece does not have (no word power) is left out.
+function jobCheck(keys) {
+  const rows = missionRows(state.feedback, state.yearLevel).filter((row) => keys.includes(row.key));
+  const card = el("div", "job-check");
+  if (!rows.length) return card;
+  const title = el("p", "job-check-title");
+  title.append(emoji("✅"), "Mission check");
+  const list = el("ul", "mission-list");
+  for (const row of rows) {
+    const item = el("li", "mission-item");
+    item.appendChild(tickBox(row.key, [el("span", "job-check-text", row.done)]));
+    list.appendChild(item);
+  }
+  card.append(title, list);
+  return card;
+}
+
+// Mission complete: every job again, short, with the ticks made along the way. Anything not yet
+// ticked can still be ticked here; "Read it again" is the job that belongs to this page.
 function renderMission() {
   const list = $("mission-list");
   list.replaceChildren();
@@ -997,30 +1037,14 @@ function renderMission() {
   if (!state.feedback) return;
   for (const row of missionRows(state.feedback, state.yearLevel)) {
     const item = el("li", "mission-item");
-    const label = el("label", "mission-row");
-    const box = el("input");
-    box.type = "checkbox";
-    box.dataset.key = row.key;
-    box.checked = ticks.has(row.key);
-    box.addEventListener("change", () => {
-      if (box.checked) ticks.add(row.key);
-      else ticks.delete(row.key);
-    });
-    const text = el("span", "mission-text");
-    text.appendChild(el("strong", "mission-label", row.label));
-    if (row.line) {
-      const line = el("span", "mission-part", "Find this line: ");
-      line.appendChild(el("q", "mission-line", row.line));
-      text.appendChild(line);
-    }
-    if (row.job) text.appendChild(el("span", "mission-part", row.key.startsWith("power-") ? `Do this: ${row.job}` : row.job));
-    label.append(box, text);
-    item.appendChild(label);
+    const content = [el("strong", "mission-label", row.label)];
+    if (row.job) content.push(el("span", "mission-part", row.job));
+    item.appendChild(tickBox(row.key, content));
     list.appendChild(item);
   }
 }
 
-// ---- round 2: "Show me my changes" ------------------------------------------
+// ---- round 2: "Snap my writing again" --------------------------------------
 
 // Once the one comparison has been used, the button is replaced by a thank-you line.
 function updateRetake() {
@@ -1138,7 +1162,6 @@ $("btn-slide-back").addEventListener("click", () => {
 });
 $("btn-slide-next").addEventListener("click", () => {
   const onPower = activeSlides()[slideIndex].key === "power";
-  if (onPower) ticks.add(`power-${powerIndex}`); // "I did it!" ticks the mission row, the last one too
   if (onPower && powerIndex < powerCount() - 1) {
     setPower(powerIndex + 1);
     focusPowerTitle();

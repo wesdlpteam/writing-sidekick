@@ -137,6 +137,7 @@ test('mission rows: one per power-up, then word power if any, then edit for the 
   assert.equal(rows[0].job, 'Add when and where to your line.');
   assert.equal(rows[1].job, 'Start with While or When', 'falls back to the skill title when there is no job');
   assert.match(rows[3].job, /capital letters and full stops/);
+  assert.deepEqual(rows.map((r) => r.done), ['I did power-up 1 in my book.', 'I did power-up 2 in my book.', 'I swapped in stronger words.', 'I checked my capital letters and full stops.', 'I read it again like a reader.']);
   assert.match(missionRows(feedback, 5)[3].job, /spelling, punctuation and capital letters/);
   assert.deepEqual(missionRows({ powerUps: [] }, 3).map((r) => r.key), ['edit', 'read'], 'no power-ups and no word power');
   assert.deepEqual(missionRows().map((r) => r.key), ['edit', 'read']);

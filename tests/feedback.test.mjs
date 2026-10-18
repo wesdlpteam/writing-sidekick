@@ -975,7 +975,7 @@ test("level up: unchanged writing is answered honestly without the model; bad re
   assert.doesNotMatch(bad.payload.error, /json|parse|model|photo/i);
 });
 
-// ---- round 2 ("Show me my changes"): the app's request, book terms, the free "same" reply ----
+// ---- round 2 ("Snap my writing again"): the app's request, book terms, the free "same" reply ----
 
 test("level up: the app's request (round 1 + round 2 + power-ups) reaches the model; no practice words, no tryThis", async () => {
   const feedback = { powerUps: [

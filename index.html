@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20261013-s7">
+  <link rel="stylesheet" href="css/app.css?v=20261019-tick">
 </head>
 <body>
   <main id="app">
@@ -198,6 +198,7 @@
           <p id="practice-tip" class="practice-tip" hidden></p>
           <p class="practice-note">These numbers are a rough guide and may not be exact.</p>
         </div>
+        <div id="words-check"></div>
       </section>
 
       <section class="fb-slide" data-slide="finish">
@@ -205,7 +206,7 @@
         <p class="lead fb-lead">Your sidekick has done its part. Now it is over to you, hero: take your power-ups back to your book and write your own destiny!</p>
         <div class="mission-card">
           <p class="mission-title"><span class="h-emoji" aria-hidden="true">&#x1F4A5; </span>Your mission</p>
-          <p class="mission-hint">Tick each job when you have done it in your book.</p>
+          <p class="mission-hint">Here are the jobs you ticked along the way. Tick any you have done since, then read it again.</p>
           <div id="listen-mission" class="listen-slot"></div>
           <ul id="mission-list" class="mission-list"></ul>
         </div>
@@ -217,7 +218,7 @@
         </div>
         <div id="retake-offer" class="retake">
           <p class="lead fb-lead retake-lead">Revise in your book first. Then snap the page again and I will tell you what got better.</p>
-          <button id="btn-retake" class="secondary big" type="button"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Show me my changes</button>
+          <button id="btn-retake" class="secondary big" type="button"><span class="h-emoji" aria-hidden="true">&#x1F4F8; </span>Snap my writing again</button>
         </div>
         <p id="retake-done" class="retake-done" role="status" hidden>You have checked your changes. Great work.</p>
         <button id="btn-done" class="primary big btn-finish" type="button">I'm done</button>
@@ -294,7 +295,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20261014-voice");
+      await import("./js/app.js?v=20261019-tick");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

@@ -1,4 +1,4 @@
-import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261013-s6";
+import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261019-tick";
 
 // The words the Listen buttons read aloud (Years 1 to 3). Everything here is plain text built
 // from the same feedback the cards show, so the voice and the page always agree. No browser
@@ -130,16 +130,13 @@ export function editingSpoken(errorTotals, yearLevel) {
   );
 }
 
-// The Mission complete list, row by row.
+// The Mission complete recap, row by row: each job, short, as it shows on the page.
 export function missionSpoken(feedback, yearLevel) {
   const rows = missionRows(feedback, yearLevel).flatMap((row) => [
     row.label,
-    row.line && "Find this line",
-    row.line,
-    row.job && row.key.startsWith("power-") ? "Do this" : "",
     row.job,
   ]);
-  return fit(join("Your mission", "Tick each job when you have done it in your book", ...rows));
+  return fit(join("Your mission", "Here are the jobs you ticked along the way. Tick any you have done since, then read it again", ...rows));
 }
 
 // "What got better": the cheer, each win with the new words it came from, then the next step.

@@ -124,7 +124,7 @@ const outputSpec = (powerUpCount, { challenge, allNextSteps }) => `The child has
       "why": "ONE short sentence: what your_line already does well, then what this strategy will add",
       "your_line": "one exact sentence or phrase copied from the child's writing where this skill belongs (if their sentence is long, copy only the part where the skill belongs, 25 words at most)",
       "move": "the key of the writing strategy the task asks the child to use on that line, or null if none of the listed strategies fits",
-      "rule": "one short line telling the child how to do that strategy on this kind of sentence, e.g. 'Finish the sentence with so and say what happened next.'",
+      "rule": "one short line telling the child how to do that strategy on this kind of sentence, e.g. 'Finish the sentence with so and say what happened next.' Name the exact words or question to add, so a child knows what to write; never a vague aim like 'so the thought stands alone', 'complete the thought' or 'make it make sense'. For a fragment, say what is missing in plain words, e.g. 'Start with who it is about, then say what they did.'",
       "example_before": "a NEW sentence you make up that is like the child's line (same kind of sentence, same weakness, similar length) but about something else on a different topic",
       "example_after": "that same made-up sentence with the strategy in rule done to it, at the child's year level",
       "now_you": "the job as one short instruction (under 15 words) to do on your_line, e.g. 'Add so to your line and say what happened next.' Do not repeat the line."

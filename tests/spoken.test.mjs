@@ -117,9 +117,9 @@ test('editing reads each count with its tip, then the advice', () => {
   assert.equal(editingCountSpoken(0), 'No errors found');
 });
 
-test('the mission list reads each job; only power-ups say Do this', () => {
+test('the mission recap reads each job, short', () => {
   const text = missionSpoken({ powerUps: [{ yourLine: 'I got dumped!', nowYou: 'Add when and where.' }], wordBoost: boost }, 2);
-  assert.ok(text.startsWith('Your mission. Tick each job when you have done it in your book. Power-up 1. Find this line. I got dumped! Do this. Add when and where. Word power. Swap in stronger words where they fit.'));
+  assert.ok(text.startsWith('Your mission. Here are the jobs you ticked along the way. Tick any you have done since, then read it again. Power-up 1. Add when and where. Word power. Swap in stronger words where they fit.'));
   assert.ok(text.includes('Edit. Check your capital letters and full stops.'));
   assert.ok(text.endsWith('Does it sound even better?'));
 });

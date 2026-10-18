@@ -163,28 +163,32 @@ export function editingLines(errorTotals, yearLevel, { long = false } = {}) {
   });
 }
 
-// The Mission complete tick list, built from the feedback: one row per power-up (its line and its
-// job), a Word power row if there is word power, an Edit row for the year, then "read it again".
-// `line` and `job` may be empty; the row then shows only what it has.
+// The mission jobs, built from the feedback: one row per power-up (its line and its job), a Word
+// power row if there is word power, an Edit row for the year, then "read it again". `line` and
+// `job` may be empty; the row then shows only what it has. `done` is the tick box wording the
+// child sees on the page where they do that job; Mission complete shows them all again.
 export function missionRows(feedback, yearLevel) {
   const rows = (feedback?.powerUps || []).map((p, index) => ({
     key: `power-${index}`,
     label: `Power-up ${index + 1}`,
     line: p.yourLine || "",
     job: p.nowYou || p.skill || "",
+    done: `I did power-up ${index + 1} in my book.`,
   }));
-  if (feedback?.wordBoost) rows.push({ key: "word", label: "Word power", line: "", job: "Swap in stronger words where they fit." });
+  if (feedback?.wordBoost) rows.push({ key: "word", label: "Word power", line: "", job: "Swap in stronger words where they fit.", done: "I swapped in stronger words." });
+  const junior = Number(yearLevel) <= 2;
   rows.push({
     key: "edit",
     label: "Edit",
     line: "",
-    job: Number(yearLevel) <= 2 ? "Check your capital letters and full stops." : "Check your spelling, punctuation and capital letters.",
+    job: junior ? "Check your capital letters and full stops." : "Check your spelling, punctuation and capital letters.",
+    done: junior ? "I checked my capital letters and full stops." : "I checked my spelling, punctuation and capital letters.",
   });
-  rows.push({ key: "read", label: "Read it again", line: "", job: "Read it again like a reader would. Does it sound even better?" });
+  rows.push({ key: "read", label: "Read it again", line: "", job: "Read it again like a reader would. Does it sound even better?", done: "I read it again like a reader." });
   return rows;
 }
 
-// ---- round 2: "Show me my changes" ---------------------------------------------------------
+// ---- round 2: "Snap my writing again" -----------------------------------------------------
 
 // What goes to the server to compare the first version with the revised one: the two typed
 // copies and the power-ups the child was given (just what the comparison needs).

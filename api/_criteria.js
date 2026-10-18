@@ -135,7 +135,7 @@ export const MOVES = {
   fragment_fix: {
     name: "Sentences and fragments",
     minYear: 1,
-    rule: "A fragment (a half sentence that is only part of an idea) leaves the reader waiting, like 'Ran down the hill.' It has no who or what. Add the missing part so it makes sense on its own.",
+    rule: "A fragment (a half sentence that is only part of an idea) leaves the reader waiting, like 'Ran down the hill.' It does not say who ran. Ask two questions: who is it about, and what did they do? Add the answer that is missing.",
     example: "The dog ran down the hill.",
   },
   run_on_fix: {

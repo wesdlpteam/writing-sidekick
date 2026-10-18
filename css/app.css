@@ -556,8 +556,21 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .mission-row input:checked + .mission-text .mission-label::after { content: " \2713"; }
 .mission-part { display: block; }
 .mission-line { font-style: italic; font-weight: 700; }
+/* The small Mission check box on each page: tick the job there, as soon as it is done. */
+.job-check:empty { display: none; }
+.job-check {
+  margin-top: 14px;
+  padding: 8px 14px 6px;
+  background: var(--gold-soft);
+  color: var(--ink);
+  border: 2px dashed var(--gold-deep);
+  border-radius: 14px;
+}
+#words-check .job-check { margin-top: 18px; border: var(--border); border-style: dashed; }
+.job-check-title { margin: 0; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--purple); }
+.job-check-text { display: block; font-weight: 700; }
 #btn-done { margin-top: 24px; }
-/* Round 2: "Show me my changes" on Mission complete, and the "What got better" screen. */
+/* Round 2: "Snap my writing again" on Mission complete, and the "What got better" screen. */
 .retake { margin-top: 26px; }
 .retake[hidden], .retake-done[hidden] { display: none; }
 .retake-lead { margin: 0 0 10px; }
@@ -599,6 +612,8 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .levelup-back { margin-top: 18px; justify-content: center; }
 .levelup-back .ghost { min-height: 44px; }
 .mission-save { margin-top: 0; }
+/* The loose lines low on Mission complete get a dark halo so the city lights behind stay quiet. */
+.mission-save, .export-photos, .retake-lead, .retake-done { text-shadow: 0 0 4px var(--night-deep), 0 0 10px var(--night-deep), 0 0 18px var(--night-deep); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* Tap-to-listen: quiet by design, a small outlined pill that only lights up while playing
@@ -1012,12 +1027,17 @@ body.senior .crit-label { font-size: 1.1rem; }
 .btn-row { display: flex; gap: 16px; margin-top: 32px; }
 .btn-row button { flex: 1; padding: 16px; font-size: 1.1rem; }
 
+/* Sits on its own dark panel: low on the page it can scroll over the lit city skyline. */
 .privacy-note {
   font-family: var(--font-hand);
   text-align: center;
-  color: var(--sky-muted);
+  color: var(--sky-text);
   font-size: 1.1rem;
   margin-top: 28px;
+  padding: 12px 16px;
+  background: rgba(12, 13, 38, 0.9);
+  border: 1px solid rgba(238, 242, 255, 0.18);
+  border-radius: 14px;
 }
 .privacy-note a, .privacy-link { color: var(--sky-text); text-decoration: underline dotted var(--gold) 2px; text-underline-offset: 3px; }
 .privacy-line { margin: 14px 0 6px; font-size: 1rem; color: var(--sky-muted); line-height: 1.5; }
