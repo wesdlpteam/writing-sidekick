@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, clippedFromSentence, isFragmentTask, findRunOns, defineBookTerms, shortenLine, linesOverlap, windowAround, madeUpAfter, powerUpProblemsEach } from "../api/feedback.js";
+import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, clippedFromSentence, quoteFromTranscript, isFragmentTask, findRunOns, defineBookTerms, shortenLine, linesOverlap, windowAround, madeUpAfter, powerUpProblemsEach } from "../api/feedback.js";
 import { levelUpRequest, usedComparison } from "../js/feedback-visuals.js";
 
 // A system prompt arrives as one string, or (newer models) as cacheable parts; this reads either.
@@ -1585,4 +1585,11 @@ test('a "half sentence" clipped off the end of a longer sentence is not a fragme
   assert.equal(isFragmentTask('fragment_fix'), true);
   assert.equal(isFragmentTask(null, 'Make the thought complete', 'Add an action to make this a full sentence.'), true);
   assert.equal(isFragmentTask('sentence_expansion', 'Put your reader on the sand', 'Add when and where.'), false);
+});
+
+test('a quoted line the model closed with its own full stop is still found', () => {
+  const page = 'Our first bridge collapsed under three coins, so we folded the paper into ridges. The second held twelve coins.';
+  assert.equal(quoteFromTranscript('Our first bridge collapsed under three coins.', page), 'Our first bridge collapsed under three coins');
+  assert.equal(quoteFromTranscript('The second held twelve coins.', page), 'The second held twelve coins.', 'an exact quote keeps its mark');
+  assert.equal(quoteFromTranscript('A bridge made of steel.', page), '');
 });
