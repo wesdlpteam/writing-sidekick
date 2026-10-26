@@ -1,4 +1,4 @@
-import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, spellingStatusText, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261026-spell";
+import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, spellingStatusText, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261026-spell2";
 
 // The words the Listen buttons read aloud (Years 1 to 3). Everything here is plain text built
 // from the same feedback the cards show, so the voice and the page always agree. No browser
@@ -147,9 +147,11 @@ export function spellingSpoken(status, count) {
 
 // A spelling hint, read aloud: the hint text only. The child's misspelt word and their tries are
 // swapped for "your word", so the voice never mispronounces them (or gives anything away).
+// Words of three letters or fewer are not swapped ("to" would garble the sentence). The page passes
+// no words at all for sound-alikes, whose hints are about meaning.
 export function spellingHintSpoken(hint, ...avoid) {
   let text = plain(hint);
-  for (const word of avoid.filter((w) => typeof w === "string" && w.trim())) {
+  for (const word of avoid.filter((w) => typeof w === "string" && w.trim().length > 3)) {
     const escaped = word.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     text = text.replace(new RegExp(`(^|[^\\p{L}])${escaped}(?![\\p{L}])`, "giu"), "$1your word");
   }

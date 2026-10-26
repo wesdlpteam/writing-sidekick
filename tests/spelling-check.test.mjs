@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleFeedback, hintLeaks } from '../api/feedback.js';
+import { handleFeedback, hintLeaks, spellingPlace } from '../api/feedback.js';
 
 const env = { OPENAI_API_KEY: 'test' };
 const reply = (value) => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(value) } }] }) });
@@ -107,4 +107,52 @@ test('hintLeaks', () => {
   assert.equal(hintLeaks('Look at the end', 'family', 'l'), false);
   assert.equal(hintLeaks('Which silent letter is it?', 'family', ''), true);
   assert.equal(hintLeaks('Good start. What else spells that sound?', 'family', 'ly'), false);
+});
+
+test('curly apostrophes are accepted and fold to straight', async () => {
+  const r = await check({ wrote: 'your', correct: 'you’re', attempt: 'you’re', sentence: 'Your late', kind: 'sound_alike', tryNumber: 1 }, noFetch);
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.verdict, 'right');
+  const s = await check({ wrote: 'dont', correct: 'don’t', attempt: 'don’t', sentence: '', kind: 'sounds', tryNumber: 1 }, noFetch);
+  assert.equal(s.payload.verdict, 'right');
+});
+
+test('sound-alike try 2 uses a meaning-only spec with no part to fix, and drops sound talk', async () => {
+  const bodies = [];
+  const input = { wrote: 'there', correct: 'their', attempt: 'thare', sentence: 'We packed there bags', kind: 'sound_alike', tryNumber: 2 };
+  const r = await check(input, async (_u, o) => { bodies.push(JSON.parse(o.body)); return reply({ hint: 'That middle sound can be spelt another way.' }); });
+  assert.match(bodies[0].messages[0].content, /MEANING only/);
+  assert.ok(!/Part to fix/.test(JSON.stringify(bodies[0].messages[1])));
+  assert.match(r.payload.hint, /^This word sounds right, but another word sounds the same/);
+  assert.match(r.payload.hint, /this sentence/);
+  const none = await check({ ...input, sentence: '' }, async () => reply({ hint: 'Sounds like letters' }));
+  assert.ok(!/this sentence/.test(none.payload.hint));
+  const ok = await check(input, async () => reply({ hint: 'One of these words shows who owns the bags. Which fits?' }));
+  assert.match(ok.payload.hint, /^One of these words/);
+});
+
+test('the place of the part to fix is worked out in code and sent to the model', async () => {
+  assert.equal(spellingPlace('rean', 'rain'), 'middle');
+  assert.equal(spellingPlace('cat', 'cap'), 'end');
+  assert.equal(spellingPlace('sat', 'cat'), 'start');
+  assert.equal(spellingPlace('xyz', 'cat'), 'the whole word');
+  const bodies = [];
+  await check({ wrote: 'rane', correct: 'rain', attempt: 'rean', sentence: '', kind: 'sounds', tryNumber: 2 }, async (_u, o) => { bodies.push(JSON.parse(o.body)); return reply({ hint: 'Good start.' }); });
+  assert.match(bodies[0].messages[1].content[0].text, /the part to fix is the middle of the word/);
+  assert.ok(!/letters that spell/.test(bodies[0].messages[0].content));
+});
+
+test('third wrong try returns an empty hint with no model call', async () => {
+  const r = await check({ ...base, attempt: 'famaly', tryNumber: 3 }, noFetch);
+  assert.equal(r.payload.verdict, 'try_again');
+  assert.equal(r.payload.hint, '');
+  assert.ok(Array.isArray(r.payload.highlight));
+});
+
+test('hintLeaks catches a one-letter giveaway', () => {
+  assert.equal(hintLeaks('Try adding the letter i there', 'train', 'i'), true);
+  assert.equal(hintLeaks('Is it "i" or something else?', 'train', 'i'), true);
+  assert.equal(hintLeaks('Is it ‘i’ here?', 'train', 'i'), true);
+  assert.equal(hintLeaks('Try another letter is possible', 'train', 'i'), false);
+  assert.equal(hintLeaks('Which other spelling could make that sound in the middle?', 'train', 'i'), false);
 });

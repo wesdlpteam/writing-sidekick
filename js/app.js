@@ -1,7 +1,7 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261026-spell";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261026-spell2";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
-import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, spellingHintSpoken, spellingRevealSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell";
+import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, spellingHintSpoken, spellingRevealSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell2";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
@@ -492,13 +492,14 @@ function renderSpelling(status, words) {
     input.placeholder = "Type a new spelling";
     const btn = el("button", "secondary challenge-check", "Check");
     btn.type = "button";
+    // Always in the page (empty until there is a result) so VoiceOver announces the change.
     const result = el("p", "challenge-result");
-    result.hidden = true;
     result.setAttribute("role", "status");
+    result.setAttribute("aria-live", "polite");
     const ctx = { wrote, correct, sentence, kind, tricky, input, btn, result, li, tries: 0 };
     btn.addEventListener("click", () => checkSpellingWord(ctx));
     input.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") return;
+      if (event.key !== "Enter" || event.isComposing) return;
       event.preventDefault();
       btn.click();
     });
@@ -551,7 +552,7 @@ async function checkSpellingWord(ctx) {
     return;
   }
   li.classList.remove("is-yes", "is-close", "is-no");
-  result.hidden = true;
+  result.replaceChildren();
   btn.disabled = true;
   btn.textContent = "Checking…";
   const tryNumber = ctx.tries + 1;
@@ -562,6 +563,7 @@ async function checkSpellingWord(ctx) {
       li.classList.add("is-yes");
       result.replaceChildren(el("strong", "", "Yes! "), `${attempt} is spelt just right.`);
       input.readOnly = true;
+      input.blur();
       btn.hidden = true;
     } else if (tryNumber >= 3) {
       // Third wrong try: now the right spelling is shown, with the tricky part marked.
@@ -570,6 +572,7 @@ async function checkSpellingWord(ctx) {
       result.replaceChildren(el("strong", "", "The word is "), answer, ". Say each sound as you write it in your book.");
       addResultListen(result, "the spelling", () => spellingRevealSpoken(correct));
       input.readOnly = true;
+      input.blur();
       btn.hidden = true;
     } else {
       li.classList.add("is-no");
@@ -577,9 +580,8 @@ async function checkSpellingWord(ctx) {
       tried.appendChild(markedWord(attempt, reply.highlight));
       const hint = reply.hint || "Look at the marked part and try another spelling.";
       result.replaceChildren(el("strong", "", "Not yet. "), hint, document.createElement("br"), "You tried ", tried);
-      addResultListen(result, "the spelling hint", () => spellingHintSpoken(hint, wrote, attempt));
+      addResultListen(result, "the spelling hint", () => (kind === "sound_alike" ? spellingHintSpoken(hint) : spellingHintSpoken(hint, wrote, attempt)));
     }
-    result.hidden = false;
   } catch (error) {
     showError(error.message);
   } finally {

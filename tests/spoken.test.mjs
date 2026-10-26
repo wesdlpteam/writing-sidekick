@@ -132,7 +132,7 @@ test('spelling read-aloud gives instructions only, never a word', () => {
 test('the mission recap reads each job, short', () => {
   const text = missionSpoken({ powerUps: [{ yourLine: 'I got dumped!', nowYou: 'Add when and where.' }], wordBoost: boost }, 2);
   assert.ok(text.startsWith('Your mission. Here are the jobs you ticked along the way. Tick any you have done since, then read it again. Power-up 1. Add when and where. Word power. Swap in stronger words where they fit.'));
-  assert.ok(text.includes('Edit. Check your spelling words, capital letters, full stops and commas in lists.'));
+  assert.ok(text.includes('Edit. Check your spelling words, capital letters, sentence endings and commas in lists.'));
   assert.ok(text.endsWith('Does it sound even better?'));
 });
 
@@ -167,4 +167,8 @@ test('the reveal line names the word once, after the third try, and never spells
   const text = spellingRevealSpoken('their');
   assert.equal(text, 'The word is their. Say each sound as you write it in your book.');
   assert.ok(!/t[ -]h[ -]e[ -]i[ -]r/i.test(text));
+});
+
+test('spellingHintSpoken leaves short words alone', () => {
+  assert.equal(spellingHintSpoken('Which word fits: to the shop?', 'to', 'too'), 'Which word fits: to the shop?');
 });

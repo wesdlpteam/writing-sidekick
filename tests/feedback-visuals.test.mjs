@@ -158,11 +158,11 @@ test('mission rows: one per power-up, then word power if any, then edit for the 
   assert.equal(rows[0].line, 'The waves were huge...');
   assert.equal(rows[0].job, 'Add when and where to your line.');
   assert.equal(rows[1].job, 'Start with While or When', 'falls back to the skill title when there is no job');
-  assert.equal(rows[3].job, 'Check your spelling words, capital letters, full stops and commas in lists.');
-  assert.equal(missionRows(feedback, 1)[3].job, 'Check your spelling words, capital letters and full stops.');
-  assert.equal(missionRows(feedback, 3)[3].job, 'Check your spelling words, capital letters, full stops, commas in lists and apostrophes.');
-  assert.deepEqual(rows.map((r) => r.done), ['I did power-up 1 in my book.', 'I did power-up 2 in my book.', 'I swapped in stronger words.', 'I checked my spelling words, capital letters, full stops and commas in lists.', 'I read it again like a reader.']);
-  assert.equal(missionRows(feedback, 5)[3].job, 'Check your spelling words, capital letters, full stops, commas in lists, apostrophes and speech marks.');
+  assert.equal(rows[3].job, 'Check your spelling words, capital letters, sentence endings and commas in lists.');
+  assert.equal(missionRows(feedback, 1)[3].job, 'Check your spelling words, capital letters and sentence endings.');
+  assert.equal(missionRows(feedback, 3)[3].job, 'Check your spelling words, capital letters, sentence endings, commas in lists and apostrophes.');
+  assert.deepEqual(rows.map((r) => r.done), ['I did power-up 1 in my book.', 'I did power-up 2 in my book.', 'I swapped in stronger words.', 'I checked my spelling words, capital letters, sentence endings and commas in lists.', 'I read it again like a reader.']);
+  assert.equal(missionRows(feedback, 5)[3].job, 'Check your spelling words, capital letters, sentence endings, commas in lists, apostrophes and speech marks.');
   assert.deepEqual(missionRows({ powerUps: [] }, 3).map((r) => r.key), ['edit', 'read'], 'no power-ups and no word power');
   assert.deepEqual(missionRows().map((r) => r.key), ['edit', 'read']);
 });

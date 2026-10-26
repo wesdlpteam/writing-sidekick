@@ -72,7 +72,8 @@ export function pickSpellingWords(evidence, transcript, { yearLevel, totalSpelli
       const key = w.word.toLowerCase();
       const seen = found.get(key);
       if (seen) { seen.count++; seen.start = Math.min(seen.start, start); return; }
-      found.set(key, { wrote: w.word, correct: c, count: 1, start });
+      // Straight apostrophes in the right spelling, so the typed-word check accepts it.
+      found.set(key, { wrote: w.word, correct: apostrophes(c), count: 1, start });
     });
   }
   const cap = Number(yearLevel) <= 2 ? 3 : 5;
@@ -84,7 +85,7 @@ export function pickSpellingWords(evidence, transcript, { yearLevel, totalSpelli
       correct,
       sentence: sentenceFor(transcript, wrote),
       kind: isSoundAlike(wrote, correct) ? "sound_alike" : "sounds",
-      tricky: differingPart(wrote, correct).target,
+      tricky: differingPart(apostrophes(wrote), correct).target,
     }));
   return { status: words.length ? "words" : "none_to_practise", words };
 }

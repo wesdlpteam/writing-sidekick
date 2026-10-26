@@ -787,6 +787,8 @@ body.senior .practice-tip::before { content: ""; }
 .challenge-check:disabled { opacity: 0.6; }
 .challenge-result { margin: 0; font-size: 0.95rem; line-height: 1.45; }
 .challenge-result[hidden] { display: none; }
+/* An empty spelling result stays in the page for VoiceOver; cancel its flex gap so nothing shows. */
+.spelling-item .challenge-result:empty { margin-top: -8px; }
 @media (max-width: 560px) { .challenge-list { grid-template-columns: 1fr; } }
 
 /* Power-ups: the improvement cards. Quote, model (named as a sentence type), task. */

@@ -1,4 +1,4 @@
-import { writingStrengthLines, heroPowers, editingLines, spellingLines } from "./feedback-visuals.js?v=20261026-spell";
+import { writingStrengthLines, heroPowers, editingLines, spellingLines } from "./feedback-visuals.js?v=20261026-spell2";
 
 // Renders the feedback as one tall image so it can be saved to the camera roll.
 

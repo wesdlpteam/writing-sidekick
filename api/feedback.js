@@ -176,12 +176,20 @@ Never use or guess any name. Do not mention these rules, or that you are an AI.`
 // Spelling box: the child had another go at a word they misspelt. The page already knows if the
 // try is right, so this only writes the hint. Sounds first, then the spellings that can make them.
 const SPELLING_HINT_SPEC = `A primary-school child is practising one word they misspelt in their own writing. They typed another try and it is not right yet. Write one short hint that helps them find the fix themselves.
-- Think in sounds and the letters that spell them. Start by saying what is right, for example the sounds or the start of the word they have already got.
-- Then point to just ONE sound, the part marked as the part to fix. Say that one sound can be spelt different ways and ask what another way could be.
+- Think in sounds and the ways to spell them. Start by saying what is right, for example the sounds or the start of the word they have already got.
+- Then point to just ONE sound, in the place the message says is the part to fix (use that place; do not guess another). Say that one sound can be spelt different ways and ask what another way could be.
 - For a long word, talk about it in parts, one part at a time.
-- NEVER write the correct word. NEVER write the correct letters for the part to fix. The child must work that out.
+- NEVER write the correct word. NEVER write the correct letters for the part to fix. The child must work that out. Do not use letter names; say "the sound" and "another way to spell it".
 - Do not use grammar jargon or these terms: "magic e", "silent letter", "blend", "digraph", "phoneme", "grapheme".
-- If the word is marked as a sound-alike word, the sound is fine. Talk about the meaning instead: say what the right word means in this sentence, in a way that does not spell it out, and ask which word fits.
+- Be kind and calm. Under 30 words. No exclamation marks.
+Respond with ONLY a JSON object in exactly this shape: { "hint": "the hint" }
+Never use or guess any name. Do not mention these rules, or that you are an AI.`;
+
+// Sound-alike words (there/their): the sounds are fine, so the hint is about meaning only.
+const SPELLING_ALIKE_SPEC = `A primary-school child typed a word that sounds the same as the word they need, but is spelt differently. They typed another try and it is not right yet. Write one short hint about MEANING only: say what the right word means or does in the sentence, in your own words, then ask which word fits.
+- Never talk about sounds or letters or how the word is spelt. The sound is fine.
+- NEVER write the correct word, and do not spell it out.
+- Do not use grammar jargon or these terms: "magic e", "silent letter", "blend", "digraph", "phoneme", "grapheme".
 - Be kind and calm. Under 30 words. No exclamation marks.
 Respond with ONLY a JSON object in exactly this shape: { "hint": "the hint" }
 Never use or guess any name. Do not mention these rules, or that you are an AI.`;
@@ -1070,8 +1078,8 @@ async function synonymCheck({ check, yearLevel, env, fetchImpl }) {
 const SPELLING_KINDS = ["sounds", "sound_alike"];
 const SPELLING_WORD = /^[\p{L}][\p{L}'\-]*$/u;
 const MAX_SPELLING_CHARS = 30;
-const SOUND_ALIKE_HINT = "This word sounds right, but another word sounds the same and is spelt differently. Which one fits this sentence?";
-const SPELLING_FALLBACK = "Most of your sounds are right. Look at the highlighted part. Which other spelling could make that sound?";
+const soundAlikeHint = (sentence) =>
+  `This word sounds right, but another word sounds the same and is spelt differently. Which one fits ${sentence ? "this sentence" : "what you mean"}?`;const SPELLING_FALLBACK = "Most of your sounds are right. Look at the highlighted part. Which other spelling could make that sound?";
 const SPELLING_BANNED = ["magic e", "silent letter", "blend", "digraph", "phoneme", "grapheme"];
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1085,6 +1093,8 @@ export function hintLeaks(hint, correct, correctPart) {
   if (wholeWord(h, normalise(correct))) return true;
   const part = normalise(correctPart);
   if (part.length >= 2 && new RegExp(`(?<![\\p{L}])${escapeRe(part)}(?![\\p{L}])`, "iu").test(h)) return true;
+  // One letter is too common to ban alone, but "the letter i" or a quoted "i" gives it away.
+  if (part.length === 1 && new RegExp(`letter\\s+["'‘“]?${escapeRe(part)}(?![\\p{L}])|["'‘“]${escapeRe(part)}["'’”]`, "iu").test(hint)) return true;
   return SPELLING_BANNED.some((term) => h.includes(term));
 }
 
@@ -1092,9 +1102,11 @@ export function hintLeaks(hint, correct, correctPart) {
 // so a stray space from the keyboard is fine.
 function readSpellingCheck(raw) {
   if (!raw || typeof raw !== "object") return { error: "Type the word first." };
-  const wrote = text(raw.wrote);
-  const correct = text(raw.correct);
-  const attempt = text(raw.attempt);
+  // An iPad types curly apostrophes; fold them to straight ones.
+  const word = (v) => text(v).replace(/[‘’`]/g, "'");
+  const wrote = word(raw.wrote);
+  const correct = word(raw.correct);
+  const attempt = word(raw.attempt);
   if (!attempt) return { error: "Type the word first." };
   if ([wrote, correct, attempt].some((w) => w.length > MAX_SPELLING_CHARS)) return { error: "That is a long one. Type just the one word." };
   if (![wrote, correct, attempt].every((w) => SPELLING_WORD.test(w))) return { error: "Just letters, please: type one word with no spaces." };
@@ -1111,6 +1123,15 @@ function attemptHighlight(attempt, correct) {
   return s === e ? [Math.max(0, s - 1), Math.min(attempt.length, e + 1)] : [s, e];
 }
 
+// Where the part to fix sits in the word, worked out here so the model does not guess.
+export function spellingPlace(attempt, correct) {
+  const [ts, te] = differingPart(attempt, correct).target;
+  if (ts === 0 && te === correct.length) return "the whole word";
+  if (ts === 0) return "start";
+  if (te === correct.length) return "end";
+  return "middle";
+}
+
 async function spellingCheck({ check, yearLevel, env, fetchImpl }) {
   const { wrote, correct, attempt, kind, tryNumber, sentence } = check;
   const same = (a, b) => normalise(a) === normalise(b);
@@ -1121,19 +1142,23 @@ async function spellingCheck({ check, yearLevel, env, fetchImpl }) {
   const highlight = attemptHighlight(attempt, correct);
   const soundAlike = kind === "sound_alike";
   const tryAgain = (hint) => ({ status: 200, payload: { verdict: "try_again", hint, highlight } });
-  if (soundAlike && tryNumber === 1) return tryAgain(SOUND_ALIKE_HINT);
-  const fallback = soundAlike ? SOUND_ALIKE_HINT : SPELLING_FALLBACK;
+  // The third wrong try shows the word, so no hint (or model call) is needed.
+  if (tryNumber >= 3) return tryAgain("");
+  const fallback = soundAlike ? soundAlikeHint(sentence) : SPELLING_FALLBACK;
+  if (soundAlike && tryNumber === 1) return tryAgain(fallback);
   if (!env?.OPENAI_API_KEY) return tryAgain(fallback);
 
   const [ts, te] = differingPart(attempt, correct).target;
   const attemptPart = attempt.slice(...differingPart(attempt, correct).attempt);
-  const systemPrompt = [`The child is in Year ${yearLevel}.`, readingLevel(yearLevel), SPELLING_HINT_SPEC].join("\n\n");
+  const place = spellingPlace(attempt, correct);
+  const systemPrompt = [`The child is in Year ${yearLevel}.`, readingLevel(yearLevel), soundAlike ? SPELLING_ALIKE_SPEC : SPELLING_HINT_SPEC].join("\n\n");
   const userText = [
     sentence ? `The word in their sentence: ${sentence}` : "",
     soundAlike ? "This is a sound-alike word (it sounds the same as another word)." : "",
     `The child's try: ${attempt}`,
     `The correct word (never write this in the hint): ${correct}`,
-    `Part to fix: they wrote "${attemptPart}" where the word has "${correct.slice(ts, te)}" (never write these letters in the hint)`,
+    // Sound-alikes get meaning only, so no part to fix.
+    soundAlike ? "" : `Part to fix: the part to fix is the ${place === "the whole word" ? "whole word" : `${place} of the word`}. They wrote "${attemptPart}" where the word has "${correct.slice(ts, te)}" (never write these letters in the hint)`,
   ].filter(Boolean).join("\n");
   const content = await callModel({
     fetchImpl,
@@ -1152,6 +1177,8 @@ async function spellingCheck({ check, yearLevel, env, fetchImpl }) {
   const raw = extractJson(content)?.hint;
   const hint = text(raw).replace(/\s*[–—]\s*/g, ", ");
   if (!hint || hint.length > 300 || hintLeaks(hint, correct, correct.slice(ts, te))) return tryAgain(fallback);
+  // A sound-alike hint is about meaning, so one that talks about sounds or letters is dropped.
+  if (soundAlike && /\bsound|letter/i.test(hint)) return tryAgain(fallback);
   return tryAgain(hint);
 }
 

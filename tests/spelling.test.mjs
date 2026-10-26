@@ -89,3 +89,8 @@ test('status: unavailable, clear, none_to_practise, words', () => {
   assert.equal(pick([ev(t, 'it', 'It')], t, 4, 1).status, 'none_to_practise');
   assert.equal(pick(e, t, 4, 1).status, 'words');
 });
+
+test('curly apostrophes in the right spelling are folded to straight', () => {
+  const r = pickSpellingWords([{ quote: 'dosn’t', correction: 'doesn’t', start: 2 }], 'It dosn’t work.', { yearLevel: 3, totalSpelling: 1 });
+  assert.equal(r.words[0].correct, "doesn't");
+});
