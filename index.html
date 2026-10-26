@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20261019-tick">
+  <link rel="stylesheet" href="css/app.css?v=20261026-spell">
 </head>
 <body>
   <main id="app">
@@ -193,6 +193,11 @@
             <h3 class="practice-title"><span class="h-emoji" aria-hidden="true">&#x1F4DD; </span>Editing</h3>
             <div id="listen-editing" class="listen-slot"></div>
           </div>
+          <div id="spelling-block" class="spelling-block" hidden>
+            <p class="challenge-title">Spelling</p>
+            <p id="spelling-lead" class="challenge-lead"></p>
+            <ul id="spelling-list" class="spelling-list"></ul>
+          </div>
           <p class="visual-caption">Errors to find in your writing</p>
           <ul id="practice-words"></ul>
           <p id="practice-tip" class="practice-tip" hidden></p>
@@ -295,7 +300,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20261019-tick");
+      await import("./js/app.js?v=20261026-spell");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

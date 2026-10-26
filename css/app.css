@@ -1355,3 +1355,16 @@ body.senior .year-btn.selected::after { content: ""; }
   .fb-step:not(.is-current) { padding: 6px; justify-content: center; }
   .fb-step:not(.is-current) .fb-step-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
+
+/* Editing card: spelling words (same boxes as the synonym challenge) and the punctuation rows. */
+.spelling-block { margin: 0 0 18px; padding-bottom: 16px; border-bottom: 2px dashed var(--ink); }
+.spelling-block[hidden] { display: none; }
+.spelling-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.spelling-list[hidden] { display: none; }
+.spelling-item { background: #fff; }
+.spelling-item .challenge-label strong { color: var(--ink); }
+.spell-mark { background: var(--gold); color: var(--ink); font-weight: 800; padding: 0 2px; border-radius: 4px; }
+.spell-answer { font-weight: 800; font-size: 1.1rem; }
+#practice-words.editing-junior li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (max-width: 560px) { .spelling-list { grid-template-columns: 1fr; } }
+.spelling-block .challenge-title { margin-top: 14px; }

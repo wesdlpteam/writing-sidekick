@@ -1,4 +1,4 @@
-import { writingStrengthLines, heroPowers, editingLines } from "./feedback-visuals.js?v=20261019-tick";
+import { writingStrengthLines, heroPowers, editingLines, spellingLines } from "./feedback-visuals.js?v=20261026-spell";
 
 // Renders the feedback as one tall image so it can be saved to the camera roll.
 
@@ -155,6 +155,7 @@ export async function buildFeedbackImage({ pages = [], feedback, yearLevel }) {
     ]);
   }
   addCard(YELLOW, "📝 Editing: errors to find", [
+    { label: "Spelling", text: spellingLines(feedback.spellingStatus, feedback.spellingWords).join("\n") },
     editingLines(feedback.errorTotals, yearLevel).join("\n"),
     "Go back to your writing. Find and fix the errors, then read it again to check.",
     "These numbers are a rough guide and may not be exact.",

@@ -1,11 +1,11 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261019-tick";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261026-spell";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
-import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261019-tick";
+import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
-import { transcribePage, getFeedback, getLevelUp, checkSynonym, detectOrientation } from "./api.js?v=20261014-voice";
+import { transcribePage, getFeedback, getLevelUp, checkSynonym, checkSpelling, detectOrientation } from "./api.js?v=20261014-voice";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261013-s6";
 
 const MAX_PAGES = 2;
@@ -459,6 +459,123 @@ function renderPractice() {
   }
   $("practice-tip").hidden = false;
   $("practice-tip").textContent = editingAdvice(confirmed, items.length);
+  renderSpelling(state.feedback.spellingStatus, state.feedback.spellingWords);
+}
+
+// The Spelling block: the child's own misspelt words, each with a box and a Check button.
+// Each word keeps its right spelling in a closure, never in the page, until the third wrong try.
+function renderSpelling(status, words) {
+  const box = $("spelling-block");
+  const list = $("spelling-list");
+  list.innerHTML = "";
+  const items = status === "words" && Array.isArray(words) ? words.filter((w) => w?.wrote && w?.correct) : [];
+  const showList = items.length > 0;
+  box.hidden = false;
+  list.hidden = !showList;
+  $("spelling-lead").textContent = showList
+    ? "These words in your writing need a fix. Say each word slowly in parts, type a new spelling in the box, then press Check. Even one is a win."
+    : spellingStatusText(status === "words" ? "unavailable" : status);
+  items.forEach((item, index) => {
+    const { wrote, correct, sentence = "", kind, tricky } = item;
+    const li = el("li", "challenge-item spelling-item");
+    const label = el("label", "challenge-label");
+    label.htmlFor = `spelling-input-${index}`;
+    label.append("You wrote ", el("strong", "", wrote));
+    const input = el("input", "challenge-input");
+    input.id = `spelling-input-${index}`;
+    input.type = "text";
+    input.maxLength = 30;
+    input.autocomplete = "off";
+    input.autocapitalize = "none";
+    input.setAttribute("autocorrect", "off");
+    input.spellcheck = false;
+    input.placeholder = "Type a new spelling";
+    const btn = el("button", "secondary challenge-check", "Check");
+    btn.type = "button";
+    const result = el("p", "challenge-result");
+    result.hidden = true;
+    result.setAttribute("role", "status");
+    const ctx = { wrote, correct, sentence, kind, tricky, input, btn, result, li, tries: 0 };
+    btn.addEventListener("click", () => checkSpellingWord(ctx));
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      btn.click();
+    });
+    li.append(label);
+    if (sentence) {
+      const context = el("p", "challenge-context");
+      const quote = el("q", "");
+      quote.appendChild(sentenceWithWord(sentence, wrote));
+      context.append("In your writing: ", quote);
+      li.append(context);
+    }
+    li.append(input, btn, result);
+    list.appendChild(li);
+  });
+}
+
+// The part of a word to point at, as a fragment with a <mark>. An empty range means a missing
+// letter: mark the letter before it (or the first letter). Anything out of range marks nothing.
+function markedWord(text, range) {
+  const frag = document.createDocumentFragment();
+  let [start, end] = Array.isArray(range) ? range : [];
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > text.length || end < start || !text) {
+    frag.append(text);
+    return frag;
+  }
+  if (start === end) {
+    start = Math.max(0, start - 1);
+    end = Math.min(text.length, start + 1);
+  }
+  if (start > 0) frag.append(text.slice(0, start));
+  frag.append(el("mark", "spell-mark", text.slice(start, end)));
+  if (end < text.length) frag.append(text.slice(end));
+  return frag;
+}
+
+async function checkSpellingWord(ctx) {
+  const { wrote, correct, sentence, kind, tricky, input, btn, result, li } = ctx;
+  const attempt = input.value.trim();
+  if (!attempt) {
+    input.focus();
+    return;
+  }
+  li.classList.remove("is-yes", "is-close", "is-no");
+  result.hidden = true;
+  btn.disabled = true;
+  btn.textContent = "Checking…";
+  const tryNumber = ctx.tries + 1;
+  try {
+    const reply = await checkSpelling({ yearLevel: state.yearLevel, wrote, correct, attempt, sentence, kind, tryNumber });
+    ctx.tries = tryNumber;
+    if (reply.verdict === "right") {
+      li.classList.add("is-yes");
+      result.replaceChildren(el("strong", "", "Yes! "), `${attempt} is spelt just right.`);
+      input.readOnly = true;
+      btn.hidden = true;
+    } else if (tryNumber >= 3) {
+      // Third wrong try: now the right spelling is shown, with the tricky part marked.
+      const answer = el("span", "spell-answer");
+      answer.appendChild(markedWord(correct, tricky));
+      result.replaceChildren(el("strong", "", "The word is "), answer, ". Say each sound as you write it in your book.");
+      input.readOnly = true;
+      btn.hidden = true;
+    } else {
+      li.classList.add("is-no");
+      const tried = el("span", "spell-answer");
+      tried.appendChild(markedWord(attempt, reply.highlight));
+      const hint = reply.hint || "Look at the marked part and try another spelling.";
+      result.replaceChildren(el("strong", "", "Not yet. "), hint, document.createElement("br"), "You tried ", tried);
+    }
+    result.hidden = false;
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Check";
+    resetIdle();
+  }
 }
 
 // Word power: each plain word climbs a ladder of four synonyms, from a small step up to a
@@ -878,7 +995,8 @@ function renderListens() {
   const challenge = state.yearLevel >= 2 ? fb.wordBoost?.challenge || [] : [];
   mountListen($("listen-challenge"), "the synonym challenge", () => challengeSpoken(textOf(".challenge-lead"), challenge));
   if (!challenge.length) $("listen-challenge").replaceChildren();
-  mountListen($("listen-editing"), "the editing counts", () => editingSpoken(fb.errorTotals, state.yearLevel));
+  mountListen($("listen-editing"), "the editing counts", () =>
+    fit(`${spellingSpoken(fb.spellingStatus, (fb.spellingWords || []).length)} ${editingSpoken(fb.errorTotals, state.yearLevel)}`));
   mountListen($("listen-mission"), "your mission", () => missionSpoken(fb, state.yearLevel));
 }
 
@@ -1271,7 +1389,15 @@ $("btn-print").addEventListener("click", () => {
   task.textContent = editingTask;
   const note = document.createElement("p");
   note.textContent = roughNote;
-  practiceBox.append(h, ul, task, note);
+  const spellHead = document.createElement("h3");
+  spellHead.textContent = "Spelling";
+  const spellUl = document.createElement("ul");
+  for (const line of spellingLines(state.feedback.spellingStatus, state.feedback.spellingWords)) {
+    const li = document.createElement("li");
+    li.textContent = line;
+    spellUl.appendChild(li);
+  }
+  practiceBox.append(h, spellHead, spellUl, ul, task, note);
   const boostBox = $("print-boost");
   boostBox.innerHTML = "";
   const boost = state.feedback.wordBoost;
@@ -1318,7 +1444,7 @@ function clearEverything() {
   $("transcript-check-note").hidden = true;
   $("transcript-check-note").textContent = "";
   $("include-photos").checked = false;
-  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "mission-list", "boost-swaps", "challenge-list", "print-pages", "print-strength", "print-powers", "print-powerups", "print-practice", "print-boost", "listen-strength", "listen-focus", "listen-pencil", "listen-boost", "listen-challenge", "listen-editing", "listen-mission"]) {
+  for (const id of ["strength-bar", "powers-list", "power-ups", "practice-words", "spelling-list", "mission-list", "boost-swaps", "challenge-list", "print-pages", "print-strength", "print-powers", "print-powerups", "print-practice", "print-boost", "listen-strength", "listen-focus", "listen-pencil", "listen-boost", "listen-challenge", "listen-editing", "listen-mission"]) {
     $(id).innerHTML = "";
   }
   for (const id of ["strength-summary", "strength-key", "strength-focus", "skill-detail-title", "skill-detail-what", "skill-detail-how", "skill-detail-note", "print-transcript"]) $(id).textContent = "";
@@ -1332,6 +1458,8 @@ function clearEverything() {
   $("skills-card").hidden = true;
   $("powers-card").hidden = true;
   $("boost-challenge").hidden = true;
+  $("spelling-block").hidden = true;
+  $("spelling-lead").textContent = "";
   closeSkill();
   renderPages();
   // The next child picks their own year and kind of writing; a leftover choice would quietly

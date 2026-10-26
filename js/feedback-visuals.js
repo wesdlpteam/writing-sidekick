@@ -207,13 +207,20 @@ export function missionRows(feedback, yearLevel) {
     done: `I did power-up ${index + 1} in my book.`,
   }));
   if (feedback?.wordBoost) rows.push({ key: "word", label: "Word power", line: "", job: "Swap in stronger words where they fit.", done: "I swapped in stronger words." });
-  const junior = Number(yearLevel) <= 2;
+  // Names the jobs the year's Editing card really shows (Y3 and up also have spelling words).
+  const year = Number(yearLevel);
+  const jobs = ["capital letters", "full stops"];
+  if (year >= 2) jobs.push("commas in lists");
+  if (year >= 3) jobs.push("apostrophes");
+  if (year >= 4) jobs.push("speech marks");
+  if (year >= 3) jobs.unshift("spelling words");
+  const list = `${jobs.slice(0, -1).join(", ")} and ${jobs[jobs.length - 1]}`;
   rows.push({
     key: "edit",
     label: "Edit",
     line: "",
-    job: junior ? "Check your capital letters and full stops." : "Check your spelling, punctuation and capital letters.",
-    done: junior ? "I checked my capital letters and full stops." : "I checked my spelling, punctuation and capital letters.",
+    job: `Check your ${list}.`,
+    done: `I checked my ${list}.`,
   });
   rows.push({ key: "read", label: "Read it again", line: "", job: "Read it again like a reader would. Does it sound even better?", done: "I read it again like a reader." });
   return rows;

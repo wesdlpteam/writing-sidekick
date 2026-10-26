@@ -63,6 +63,11 @@ export function checkSynonym({ yearLevel, word, attempt, sentence }) {
   return post({ yearLevel, synonymCheck: { word, attempt, sentence } });
 }
 
+// Editing card: one new spelling of a misspelt word -> { verdict: right | same | try_again, hint, highlight? }
+export function checkSpelling({ yearLevel, wrote, correct, attempt, sentence, kind, tryNumber }) {
+  return post({ yearLevel, spellingCheck: { wrote, correct, attempt, sentence, kind, tryNumber } });
+}
+
 // Step 3: the child revised in their book and photographed the new version. Both versions,
 // the power-ups and practice words they were given -> { cheer, wins, spellingFixed, next }
 export function getLevelUp({ yearLevel, genre, levelUp }) {
