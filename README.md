@@ -40,7 +40,13 @@ of strategies.
 - The word lab: word power (four synonyms for each plain word, climbing from a small step up
   to a stretch word, with the child's sentence rewritten), a synonym challenge from Year 2 up
   (three more of the child's own words, a box and a Check button each; a tiny AI call says
-  whether the word they typed really is a synonym), and the editing counts to find and fix.
+  whether the word they typed really is a synonym), and the Editing card.
+- The Editing card: up to five of the child's own misspelt words (three in Years 1 and 2), each
+  with a box to type the fix and a hint that points at the part to change, never the answer. The
+  right spelling is shown only after three tries. Punctuation is counted by type for the year
+  (Australian Curriculum v9): Year 1 sentence endings; Year 2 adds list commas; Year 3 adds
+  apostrophes; Years 4 to 6 add speech punctuation. The spelling hints are written in the style of
+  Sounds-Write; the wording is our own and none of their materials are reproduced.
 - Mission complete: a tick list built from the feedback (one row per power-up with its line and
   job, then Word power, Edit and "Read it again like a reader"). Ticks live in memory only, and
   tapping "I did it! Next power-up" ticks that power-up's row. Save picture, Print and a big
