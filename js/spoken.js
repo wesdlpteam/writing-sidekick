@@ -145,6 +145,22 @@ export function spellingSpoken(status, count) {
   );
 }
 
+// A spelling hint, read aloud: the hint text only. The child's misspelt word and their tries are
+// swapped for "your word", so the voice never mispronounces them (or gives anything away).
+export function spellingHintSpoken(hint, ...avoid) {
+  let text = plain(hint);
+  for (const word of avoid.filter((w) => typeof w === "string" && w.trim())) {
+    const escaped = word.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    text = text.replace(new RegExp(`(^|[^\\p{L}])${escaped}(?![\\p{L}])`, "giu"), "$1your word");
+  }
+  return fit(join(text));
+}
+
+// After the third wrong try only: the right word, then the tip. It is said as a word, never letter by letter.
+export function spellingRevealSpoken(correct) {
+  return fit(join(`The word is ${plain(correct)}`, "Say each sound as you write it in your book"));
+}
+
 // The Mission complete recap, row by row: each job, short, as it shows on the page.
 export function missionSpoken(feedback, yearLevel) {
   const rows = missionRows(feedback, yearLevel).flatMap((row) => [

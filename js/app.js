@@ -1,7 +1,7 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
 import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261026-spell";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
-import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell";
+import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, spellingHintSpoken, spellingRevealSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
@@ -515,6 +515,15 @@ function renderSpelling(status, words) {
   });
 }
 
+// A small Listen on a spelling result (Years 1-3 only). `text` builds only the hint, or the
+// revealed word after the third wrong try, never the child's misspelt word.
+function addResultListen(result, what, text) {
+  if (!listensForYear(state.yearLevel)) return;
+  const btn = listenButton(text, { what });
+  btn.classList?.add("compact");
+  result.append(" ", btn);
+}
+
 // The part of a word to point at, as a fragment with a <mark>. An empty range means a missing
 // letter: mark the letter before it (or the first letter). Anything out of range marks nothing.
 function markedWord(text, range) {
@@ -559,6 +568,7 @@ async function checkSpellingWord(ctx) {
       const answer = el("span", "spell-answer");
       answer.appendChild(markedWord(correct, tricky));
       result.replaceChildren(el("strong", "", "The word is "), answer, ". Say each sound as you write it in your book.");
+      addResultListen(result, "the spelling", () => spellingRevealSpoken(correct));
       input.readOnly = true;
       btn.hidden = true;
     } else {
@@ -567,6 +577,7 @@ async function checkSpellingWord(ctx) {
       tried.appendChild(markedWord(attempt, reply.highlight));
       const hint = reply.hint || "Look at the marked part and try another spelling.";
       result.replaceChildren(el("strong", "", "Not yet. "), hint, document.createElement("br"), "You tried ", tried);
+      addResultListen(result, "the spelling hint", () => spellingHintSpoken(hint, wrote, attempt));
     }
     result.hidden = false;
   } catch (error) {

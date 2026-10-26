@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { plain, sentence, fit, joinOr, listensForYear, MAX_SPOKEN, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, editingCountSpoken, spellingSpoken, missionSpoken, levelUpSpoken, NO_WINS } from '../js/spoken.js';
+import { plain, sentence, fit, joinOr, listensForYear, MAX_SPOKEN, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, editingCountSpoken, spellingSpoken, spellingHintSpoken, spellingRevealSpoken, missionSpoken, levelUpSpoken, NO_WINS } from '../js/spoken.js';
 
 const power = {
   skill: 'Put your reader on the sand',
@@ -132,7 +132,7 @@ test('spelling read-aloud gives instructions only, never a word', () => {
 test('the mission recap reads each job, short', () => {
   const text = missionSpoken({ powerUps: [{ yourLine: 'I got dumped!', nowYou: 'Add when and where.' }], wordBoost: boost }, 2);
   assert.ok(text.startsWith('Your mission. Here are the jobs you ticked along the way. Tick any you have done since, then read it again. Power-up 1. Add when and where. Word power. Swap in stronger words where they fit.'));
-  assert.ok(text.includes('Edit. Check your capital letters, full stops and commas in lists.'));
+  assert.ok(text.includes('Edit. Check your spelling words, capital letters, full stops and commas in lists.'));
   assert.ok(text.endsWith('Does it sound even better?'));
 });
 
@@ -154,4 +154,17 @@ test('what got better with no wins asks for one change; a "looks the same" reply
   assert.equal(levelUpSpoken({ cheer: 'This looks the same as your first version.', wins: [], unchanged: true }), 'This looks the same as your first version.');
   assert.equal(levelUpSpoken(null), '');
   assert.ok(levelUpSpoken({ cheer: 'Great.', wins: Array(4).fill({ what: 'Win', evidence: 'word '.repeat(80) }) }).length <= MAX_SPOKEN);
+});
+
+test('a spelling hint is read as the hint only, with the misspelt word and tries swapped out', () => {
+  const text = spellingHintSpoken('Most of your sounds in famly are right. Try thare again.', 'famly', 'thare');
+  assert.equal(text, 'Most of your sounds in your word are right. Try your word again.');
+  assert.ok(!/famly|thare/i.test(text));
+  assert.equal(spellingHintSpoken('', 'famly'), '');
+});
+
+test('the reveal line names the word once, after the third try, and never spells it', () => {
+  const text = spellingRevealSpoken('their');
+  assert.equal(text, 'The word is their. Say each sound as you write it in your book.');
+  assert.ok(!/t[ -]h[ -]e[ -]i[ -]r/i.test(text));
 });
