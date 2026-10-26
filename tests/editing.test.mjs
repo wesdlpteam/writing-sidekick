@@ -141,7 +141,10 @@ test('reviewed evidence determines totals; corrections stay private', async () =
   const r=await handleFeedback({yearLevel:4,transcript:'My famly likes cats.'},{env,fetchImpl:async(_url,options)=>{const stage=stageOf(JSON.parse(options.body));calls++;return reply(stage==='draft'?draft:stage==='audit'?{editing:{complete:true,errors:[entry('famly','family')]}}:{approved:true,feedback:null});}});
   assert.equal(r.status,200);
   assert.deepEqual(bare(r.payload.errorTotals),{spelling:1,punctuation:0,capital_letters:0});
-  assert.equal(JSON.stringify(r.payload).includes('family'),false);
+  // The spelling words are the one place the correct spelling travels (the page hides it until the reveal).
+  const { spellingWords, ...rest } = r.payload;
+  assert.equal(spellingWords[0].correct,'family');
+  assert.equal(JSON.stringify(rest).includes('family'),false);
   assert.equal(r.payload.editing,undefined);
 });
 

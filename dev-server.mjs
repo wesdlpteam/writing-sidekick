@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleFeedback } from "./api/feedback.js";
+import { differingPart } from "./api/_spelling.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.argv.find((a) => a.startsWith("--port="))?.slice(7)) || 4173;
@@ -78,7 +79,12 @@ const MOCK_PAYLOAD = {
       nowYou: "Start your line with While or When.",
     },
   ],
-  errorTotals: { spelling: 1, punctuation: 0, capital_letters: 0, full_stops: 1 },
+  errorTotals: { spelling: 1, punctuation: 0, capital_letters: 0, full_stops: 1, list_commas: 0, apostrophes: 0, speech: 0 },
+  spellingStatus: "words",
+  spellingWords: [
+    { wrote: "famly", correct: "family", sentence: "On the weekend I went to the beach with my famly.", kind: "sounds", tricky: [3, 4] },
+    { wrote: "there", correct: "their", sentence: "We packed there bags and walked to the sand.", kind: "sound_alike", tricky: [3, 5] },
+  ],
   wordBoost: {
     swaps: [
       { from: "huge", to: ["big", "enormous", "gigantic", "colossal"] },
@@ -108,6 +114,20 @@ function mockSynonym({ word, attempt }) {
   if ((MOCK_SYNONYMS[w] || []).includes(a)) return { verdict: "yes", note: `'${a}' means the same as '${w}' here. Nice one!` };
   if (a.length > 3 && (MOCK_SYNONYMS[w] || []).some((s) => s.startsWith(a.slice(0, 3)))) return { verdict: "close", note: `'${a}' is close. Check the spelling, or try another word.` };
   return { verdict: "no", note: `'${a}' means something different from '${w}'. Have another go.` };
+}
+
+// Practice mode: right when the attempt matches, else a fixed hint with the differing part lit up.
+function mockSpelling({ wrote, correct, attempt } = {}) {
+  const a = String(attempt || "").trim();
+  const c = String(correct || "").trim();
+  if (!/^[A-Za-z'-]+$/.test(a)) return { status: 400, payload: { error: "Just letters, please: type one word with no spaces." } };
+  if (a.toLowerCase() === c.toLowerCase()) return { verdict: "right", hint: "" };
+  const [s, e] = differingPart(a, c).attempt;
+  const highlight = s === e ? [Math.max(0, s - 1), Math.min(a.length, e + 1)] : [s, e];
+  if (a.toLowerCase() === String(wrote || "").trim().toLowerCase()) {
+    return { verdict: "same", hint: "That's the same spelling as before. Try a different spelling for the highlighted part.", highlight };
+  }
+  return { verdict: "try_again", hint: "Most of your sounds are right. Look at the highlighted part. Which other spelling could make that sound?", highlight };
 }
 
 function collectBody(req) {
@@ -180,6 +200,12 @@ const server = http.createServer(async (req, res) => {
       if (body.synonymCheck) {
         await new Promise((r) => setTimeout(r, 500));
         const result = mockSynonym(body.synonymCheck);
+        res.writeHead(result.status || 200).end(JSON.stringify(result.payload || result));
+        return;
+      }
+      if (body.spellingCheck) {
+        await new Promise((r) => setTimeout(r, 400));
+        const result = mockSpelling(body.spellingCheck);
         res.writeHead(result.status || 200).end(JSON.stringify(result.payload || result));
         return;
       }

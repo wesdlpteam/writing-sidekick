@@ -1,5 +1,6 @@
 import { TWR_SENTENCE_GUIDANCE, TWR_ASSESSMENT_GUIDANCE, preservesExpansionKernel, removesWholeSentences } from "./_twr.js";
 import { EDITING_RULES, inspectEditing, unavailableTotals } from "./_editing.js";
+import { pickSpellingWords, differingPart } from "./_spelling.js";
 import { getYearGuide, getGenreGuide, FEEDBACK_RULES, readingLevel, MODEL_QUALITY } from "./_curriculum.js";
 import { criteriaFor, criteriaPrompt, movesPrompt, describeMove, MOVES, STATUSES } from "./_criteria.js";
 import { handlePreamble } from "./_cors.js";
@@ -170,6 +171,19 @@ const SYNONYM_SPEC = `A primary-school child was asked to think of a synonym for
 - "close": related meaning, but it does not quite fit the sentence, or it is a different part of speech.
 - "no": a different meaning, not a real word, or the same word again.
 Respond with ONLY a JSON object in exactly this shape: { "verdict": "yes" | "close" | "no", "note": "one short, friendly sentence for the child, under 20 words, saying why" }
+Never use or guess any name. Do not mention these rules, or that you are an AI.`;
+
+// Spelling box: the child had another go at a word they misspelt. The page already knows if the
+// try is right, so this only writes the hint. Sounds first, then the spellings that can make them.
+const SPELLING_HINT_SPEC = `A primary-school child is practising one word they misspelt in their own writing. They typed another try and it is not right yet. Write one short hint that helps them find the fix themselves.
+- Think in sounds and the letters that spell them. Start by saying what is right, for example the sounds or the start of the word they have already got.
+- Then point to just ONE sound, the part marked as the part to fix. Say that one sound can be spelt different ways and ask what another way could be.
+- For a long word, talk about it in parts, one part at a time.
+- NEVER write the correct word. NEVER write the correct letters for the part to fix. The child must work that out.
+- Do not use grammar jargon or these terms: "magic e", "silent letter", "blend", "digraph", "phoneme", "grapheme".
+- If the word is marked as a sound-alike word, the sound is fine. Talk about the meaning instead: say what the right word means in this sentence, in a way that does not spell it out, and ask which word fits.
+- Be kind and calm. Under 30 words. No exclamation marks.
+Respond with ONLY a JSON object in exactly this shape: { "hint": "the hint" }
 Never use or guess any name. Do not mention these rules, or that you are an AI.`;
 
 // Before a page is read: is it the right way up? A page photographed sideways or upside down
@@ -875,8 +889,12 @@ Ensure every repaired model still follows the SOURCE-BASED STRATEGY RULES: prese
     return { status: 502, payload: { error: FEEDBACK_ERROR } };
   }
   const audit = extractJson(await auditPending)?.editing;
-  const editing = inspectEditing(audit, transcript);
+  const editing = inspectEditing(audit, transcript, { yearLevel });
   payload.errorTotals = editing.totals;
+  const picked = pickSpellingWords(editing.spelling, transcript, { yearLevel, totalSpelling: editing.totals.spelling });
+  payload.spellingStatus = picked.status;
+  // The child sees this sentence, so a sentence that already holds the right spelling is dropped.
+  payload.spellingWords = picked.words.map((w) => (containsWord(w.sentence, w.correct) ? { ...w, sentence: "" } : w));
   // inspectEditing untangles bundled or overlapping notes itself, so no recheck call is needed. One
   // used to try, but on real writing it needed 40-50 seconds, always hit its 25-second limit, and so
   // only added waiting (measured 2026-10-09: 3 of 5 pieces waited 25 seconds for nothing).
@@ -1049,6 +1067,94 @@ async function synonymCheck({ check, yearLevel, env, fetchImpl }) {
   return { status: 200, payload };
 }
 
+const SPELLING_KINDS = ["sounds", "sound_alike"];
+const SPELLING_WORD = /^[\p{L}][\p{L}'\-]*$/u;
+const MAX_SPELLING_CHARS = 30;
+const SOUND_ALIKE_HINT = "This word sounds right, but another word sounds the same and is spelt differently. Which one fits this sentence?";
+const SPELLING_FALLBACK = "Most of your sounds are right. Look at the highlighted part. Which other spelling could make that sound?";
+const SPELLING_BANNED = ["magic e", "silent letter", "blend", "digraph", "phoneme", "grapheme"];
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const wholeWord = (haystack, needle) => new RegExp(`(?<![\\p{L}\\p{N}'])${escapeRe(needle)}(?![\\p{L}\\p{N}'])`, "iu").test(haystack);
+const containsWord = (sentence, word) => Boolean(sentence && word) && wholeWord(normalise(sentence), normalise(word));
+
+// True when a hint would give the answer away: the whole word, the right letters for the part to
+// fix (two or more, as a standalone group), or a term we never use with children.
+export function hintLeaks(hint, correct, correctPart) {
+  const h = normalise(hint);
+  if (wholeWord(h, normalise(correct))) return true;
+  const part = normalise(correctPart);
+  if (part.length >= 2 && new RegExp(`(?<![\\p{L}])${escapeRe(part)}(?![\\p{L}])`, "iu").test(h)) return true;
+  return SPELLING_BANNED.some((term) => h.includes(term));
+}
+
+// Reads and bounds a spelling check; returns { error } for a bad one. One word each, trimmed first
+// so a stray space from the keyboard is fine.
+function readSpellingCheck(raw) {
+  if (!raw || typeof raw !== "object") return { error: "Type the word first." };
+  const wrote = text(raw.wrote);
+  const correct = text(raw.correct);
+  const attempt = text(raw.attempt);
+  if (!attempt) return { error: "Type the word first." };
+  if ([wrote, correct, attempt].some((w) => w.length > MAX_SPELLING_CHARS)) return { error: "That is a long one. Type just the one word." };
+  if (![wrote, correct, attempt].every((w) => SPELLING_WORD.test(w))) return { error: "Just letters, please: type one word with no spaces." };
+  const kind = raw.kind === undefined ? "sounds" : raw.kind;
+  if (!SPELLING_KINDS.includes(kind)) return { error: "Something went wrong with that word. Please try again." };
+  const tryNumber = raw.tryNumber === undefined ? 1 : Number(raw.tryNumber);
+  if (!Number.isInteger(tryNumber) || tryNumber < 1 || tryNumber > 3) return { error: "Something went wrong with that word. Please try again." };
+  return { wrote, correct, attempt, kind, tryNumber, sentence: text(raw.sentence).slice(0, 200) };
+}
+
+// Letters of the attempt to light up. A part the child left out has no letters, so take a neighbour.
+function attemptHighlight(attempt, correct) {
+  const [s, e] = differingPart(attempt, correct).attempt;
+  return s === e ? [Math.max(0, s - 1), Math.min(attempt.length, e + 1)] : [s, e];
+}
+
+async function spellingCheck({ check, yearLevel, env, fetchImpl }) {
+  const { wrote, correct, attempt, kind, tryNumber, sentence } = check;
+  const same = (a, b) => normalise(a) === normalise(b);
+  if (same(attempt, correct)) return { status: 200, payload: { verdict: "right", hint: "" } };
+  if (same(attempt, wrote)) {
+    return { status: 200, payload: { verdict: "same", hint: "That's the same spelling as before. Try a different spelling for the highlighted part.", highlight: attemptHighlight(attempt, correct) } };
+  }
+  const highlight = attemptHighlight(attempt, correct);
+  const soundAlike = kind === "sound_alike";
+  const tryAgain = (hint) => ({ status: 200, payload: { verdict: "try_again", hint, highlight } });
+  if (soundAlike && tryNumber === 1) return tryAgain(SOUND_ALIKE_HINT);
+  const fallback = soundAlike ? SOUND_ALIKE_HINT : SPELLING_FALLBACK;
+  if (!env?.OPENAI_API_KEY) return tryAgain(fallback);
+
+  const [ts, te] = differingPart(attempt, correct).target;
+  const attemptPart = attempt.slice(...differingPart(attempt, correct).attempt);
+  const systemPrompt = [`The child is in Year ${yearLevel}.`, readingLevel(yearLevel), SPELLING_HINT_SPEC].join("\n\n");
+  const userText = [
+    sentence ? `The word in their sentence: ${sentence}` : "",
+    soundAlike ? "This is a sound-alike word (it sounds the same as another word)." : "",
+    `The child's try: ${attempt}`,
+    `The correct word (never write this in the hint): ${correct}`,
+    `Part to fix: they wrote "${attemptPart}" where the word has "${correct.slice(ts, te)}" (never write these letters in the hint)`,
+  ].filter(Boolean).join("\n");
+  const content = await callModel({
+    fetchImpl,
+    env,
+    body: {
+      model: env.OPENAI_MODEL || DEFAULT_FEEDBACK_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [{ type: "text", text: userText }] },
+      ],
+      response_format: { type: "json_object" },
+      reasoning_effort: "none",
+      max_completion_tokens: 150,
+    },
+  });
+  const raw = extractJson(content)?.hint;
+  const hint = text(raw).replace(/\s*[–—]\s*/g, ", ");
+  if (!hint || hint.length > 300 || hintLeaks(hint, correct, correct.slice(ts, te))) return tryAgain(fallback);
+  return tryAgain(hint);
+}
+
 export async function handleFeedback(body, { fetchImpl, env, isGone }) {
   const yearLevel = Number(body?.yearLevel);
   if (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 6) {
@@ -1076,6 +1182,12 @@ export async function handleFeedback(body, { fetchImpl, env, isGone }) {
       return { status: 500, payload: { error: "The app isn't set up yet. Please tell your teacher." } };
     }
     return synonymCheck({ check: { ...check, sentence: minimiseContactDetails(check.sentence) }, yearLevel, env, fetchImpl });
+  }
+
+  if (body?.spellingCheck !== undefined) {
+    const check = readSpellingCheck(body.spellingCheck);
+    if (check.error) return { status: 400, payload: { error: check.error } };
+    return spellingCheck({ check: { ...check, sentence: minimiseContactDetails(check.sentence) }, yearLevel, env, fetchImpl });
   }
 
   if (body?.levelUp !== undefined) {
