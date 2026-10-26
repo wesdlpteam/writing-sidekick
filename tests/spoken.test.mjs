@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { plain, sentence, fit, joinOr, listensForYear, MAX_SPOKEN, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, editingCountSpoken, missionSpoken, levelUpSpoken, NO_WINS } from '../js/spoken.js';
+import { plain, sentence, fit, joinOr, listensForYear, MAX_SPOKEN, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, editingCountSpoken, spellingSpoken, missionSpoken, levelUpSpoken, NO_WINS } from '../js/spoken.js';
 
 const power = {
   skill: 'Put your reader on the sand',
@@ -105,16 +105,28 @@ test('the synonym challenge reads its instructions and the words', () => {
 });
 
 test('editing reads each count with its tip, then the advice', () => {
-  const junior = editingSpoken({ capital_letters: 0, full_stops: 1 }, 2);
+  const junior = editingSpoken({ capital_letters: 0, full_stops: 1, list_commas: 0 }, 2);
   assert.ok(junior.includes('Capitals. No errors found. Check the first word of every sentence'));
-  assert.ok(junior.includes('Full stops. 1 error to find. Read it out loud.'));
+  assert.ok(junior.includes('Sentence endings. 1 error to find. Read it out loud.'));
   assert.ok(junior.includes('Go back to your writing.'));
   assert.ok(junior.endsWith('may not be exact.'));
-  const year3 = editingSpoken({ spelling: 4, punctuation: null, capital_letters: 2 }, 3);
-  assert.ok(year3.includes('Spelling. 4 errors to find.'));
-  assert.ok(year3.includes('Punctuation. Not available.'));
+  const year3 = editingSpoken({ capital_letters: 2, full_stops: null, list_commas: 0, apostrophes: 1 }, 3);
+  assert.ok(year3.includes('Capitals. 2 errors to find.'));
+  assert.ok(year3.includes('Sentence endings. Not available.'));
+  assert.ok(year3.includes('Commas in lists. No errors found.'));
+  assert.ok(year3.includes('Apostrophes. 1 error to find.'));
+  assert.ok(!year3.includes('Speech marks'), 'Year 3 has not met speech marks');
   assert.equal(editingCountSpoken(null), 'Not available');
   assert.equal(editingCountSpoken(0), 'No errors found');
+});
+
+test('spelling read-aloud gives instructions only, never a word', () => {
+  const text = spellingSpoken('words', 2);
+  assert.ok(text.startsWith('Spelling. Look at 2 words to fix.'));
+  assert.ok(!/becos|because/.test(text));
+  assert.equal(spellingSpoken('unavailable', 0), "Spelling. We couldn't check spelling this time. Read it with your teacher.");
+  assert.equal(spellingSpoken('clear', 0), 'Spelling. Great job! We found no spelling words to fix.');
+  assert.ok(spellingSpoken('words', 1).includes('1 word to fix'));
 });
 
 test('the mission recap reads each job, short', () => {

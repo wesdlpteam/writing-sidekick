@@ -110,24 +110,38 @@ export function nextFocus(criteria = [], powerUps = []) {
   return area ? { text: area.nextStep, powerUp: 0 } : null;
 }
 
-// The editing counts shown to the child. Years 1-2 hunt only capitals and full stops, each with a
-// short how-to-hunt tip; Years 3-6 keep spelling, punctuation and capitals. A count that is
-// missing or not a whole number is never guessed (it shows "?" and "Not available").
+// The editing counts shown to the child: capitals, then one row per punctuation type the year
+// has met (Y1 sentence endings, Y2 + commas in lists, Y3 + apostrophes, Y4-6 + speech marks),
+// each with a short how-to-hunt tip. Spelling is not a count: it is a list of words (below).
+// A count that is missing or not a whole number is never guessed (it shows "?" and "Not available").
 const EDITING_CAPITALS = {
   key: "capital_letters", short: "Capitals", plain: "Capital letters", errorLabel: "Capital letter errors", symbol: "Aa",
   tip: "Check the first word of every sentence, names, and the word I.",
 };
 const EDITING_FULL_STOPS = {
-  key: "full_stops", short: "Full stops", plain: "Full stops", errorLabel: "Full stop errors", symbol: ".",
-  tip: "Read it out loud. Where your voice stops and a new idea starts, check for a full stop.",
+  key: "full_stops", short: "Sentence endings", plain: "Sentence endings", errorLabel: "Sentence ending errors", symbol: ".",
+  tip: "Read it out loud. Where your voice stops and a new idea starts, check for a full stop, question mark or exclamation mark.",
 };
-const EDITING_SPELLING = { key: "spelling", short: "Spelling", plain: "Spelling", errorLabel: "Spelling errors", symbol: "abc" };
-const EDITING_PUNCTUATION = { key: "punctuation", short: "Punctuation", plain: "Punctuation", errorLabel: "Punctuation errors", symbol: "?!" };
+const EDITING_LIST_COMMAS = {
+  key: "list_commas", short: "Commas in lists", plain: "Commas in lists", errorLabel: "Comma in list errors", symbol: ",",
+  tip: "Find any list of things, like red, green and blue. Check there is a comma between the things.",
+};
+const EDITING_APOSTROPHES = {
+  key: "apostrophes", short: "Apostrophes", plain: "Apostrophes", errorLabel: "Apostrophe errors", symbol: "'",
+  tip: "Look for short words like don't and for things that belong to someone, like Mia's dog. Check each one has its apostrophe.",
+};
+const EDITING_SPEECH = {
+  key: "speech", short: "Speech marks", plain: "Speech marks", errorLabel: "Speech mark errors", symbol: "“”",
+  tip: "Find the words someone says. Check they have speech marks around them, and a comma before the speaker, like \"Hello,\" said Mia.",
+};
 
 export function editingItems(yearLevel) {
-  return Number(yearLevel) <= 2
-    ? [EDITING_CAPITALS, EDITING_FULL_STOPS]
-    : [{ ...EDITING_CAPITALS, tip: "" }, EDITING_SPELLING, EDITING_PUNCTUATION]; // older years: counts only, no tips
+  const year = Number(yearLevel);
+  const items = [EDITING_CAPITALS, EDITING_FULL_STOPS];
+  if (year >= 2) items.push(EDITING_LIST_COMMAS);
+  if (year >= 3) items.push(EDITING_APOSTROPHES);
+  if (year >= 4) items.push(EDITING_SPEECH);
+  return items;
 }
 
 export function editingCount(errorTotals, key) {
@@ -151,16 +165,33 @@ export function editingAdvice(confirmed, total) {
     : "We couldn't confirm the error counts this time. Read your writing with your teacher and check it together.";
 }
 
-// Print and saved picture lines. Years 3-6 keep their old order (spelling, punctuation, capitals).
-// `long` picks the print wording ("Spelling errors") over the picture's ("Spelling").
+// Print and saved picture lines, in the same order as the card. `long` picks the print wording
+// ("Capital letter errors") over the picture's ("Capital letters").
 export function editingLines(errorTotals, yearLevel, { long = false } = {}) {
-  const items = Number(yearLevel) <= 2
-    ? [EDITING_CAPITALS, EDITING_FULL_STOPS]
-    : [EDITING_SPELLING, EDITING_PUNCTUATION, EDITING_CAPITALS];
-  return items.map((item) => {
+  return editingItems(yearLevel).map((item) => {
     const count = editingCount(errorTotals, item.key);
     return `${long ? item.errorLabel : item.plain}: ${count === null ? "Not available" : count}`;
   });
+}
+
+// Spelling words for print and the saved picture. Only what the child wrote, never the right
+// spelling: the blank line is where they write it in their book.
+export const SPELLING_UNAVAILABLE = "We couldn't check spelling this time. Read it with your teacher.";
+export const SPELLING_NONE_TO_PRACTISE = "No spelling words to practise this time.";
+export const SPELLING_CLEAR = "Great job! We found no spelling words to fix.";
+
+// The sentence for a spelling status that has no word list ("" while there are words to show).
+export function spellingStatusText(status) {
+  if (status === "words") return "";
+  if (status === "clear") return SPELLING_CLEAR;
+  if (status === "none_to_practise") return SPELLING_NONE_TO_PRACTISE;
+  return SPELLING_UNAVAILABLE;
+}
+
+export function spellingLines(spellingStatus, spellingWords = []) {
+  const words = (Array.isArray(spellingWords) ? spellingWords : []).map((item) => item?.wrote).filter(Boolean);
+  if (spellingStatus === "words" && words.length) return words.map((wrote) => `${wrote}  ____________`);
+  return [spellingStatus === "words" ? SPELLING_UNAVAILABLE : spellingStatusText(spellingStatus)];
 }
 
 // The mission jobs, built from the feedback: one row per power-up (its line and its job), a Word

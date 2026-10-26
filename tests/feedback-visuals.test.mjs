@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writingStrength, writingStrengthLines, SKILL_GUIDE, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingLines, missionRows, levelUpRequest, usedComparison } from '../js/feedback-visuals.js';
+import { writingStrength, writingStrengthLines, SKILL_GUIDE, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingLines, spellingLines, spellingStatusText, missionRows, levelUpRequest, usedComparison } from '../js/feedback-visuals.js';
 import { CRITERIA } from '../api/_criteria.js';
 
 test('writing strength excludes editing and chooses the first power-up as the focus', () => {
@@ -103,24 +103,46 @@ test('next focus: power-up 1 title, else the first next step, else nothing', () 
   assert.equal(nextFocus(), null);
 });
 
-test('editing: Years 1-2 hunt capitals and full stops with tips; Years 3-6 keep spelling, punctuation, capitals', () => {
-  assert.deepEqual(editingItems(1).map((i) => i.key), ['capital_letters', 'full_stops']);
-  assert.deepEqual(editingItems(2).map((i) => i.key), ['capital_letters', 'full_stops']);
-  assert.ok(editingItems(2).every((i) => /\w/.test(i.tip)), 'each junior item has a tip');
+test('editing: capitals then the punctuation types the year has met, each with a tip', () => {
+  const keys = (y) => editingItems(y).map((i) => i.key);
+  assert.deepEqual(keys(1), ['capital_letters', 'full_stops']);
+  assert.deepEqual(keys(2), ['capital_letters', 'full_stops', 'list_commas']);
+  assert.deepEqual(keys(3), ['capital_letters', 'full_stops', 'list_commas', 'apostrophes']);
+  for (const year of [4, 5, 6]) assert.deepEqual(keys(year), ['capital_letters', 'full_stops', 'list_commas', 'apostrophes', 'speech']);
+  for (const year of [1, 2, 3, 4, 5, 6]) {
+    assert.ok(editingItems(year).every((i) => /\w/.test(i.tip)), 'every row has a tip');
+    assert.ok(editingItems(year).every((i) => !/[–—]/.test(i.tip)), 'no dashes in tips');
+  }
+  assert.deepEqual(editingItems(6).slice(1).map((i) => i.short), ['Sentence endings', 'Commas in lists', 'Apostrophes', 'Speech marks']);
   assert.match(editingItems(2)[0].tip, /first word of every sentence, names, and the word I/);
   assert.match(editingItems(2)[1].tip, /out loud/);
-  for (const year of [3, 4, 5, 6]) {
-    assert.deepEqual(editingItems(year).map((i) => i.key), ['capital_letters', 'spelling', 'punctuation']);
-    assert.ok(editingItems(year).every((i) => !i.tip), 'no tips for older years');
-  }
   assert.equal(editingCount({ full_stops: 2 }, 'full_stops'), 2);
   assert.equal(editingCount({}, 'full_stops'), null, 'a missing count is never guessed');
   assert.equal(editingCount({ full_stops: null }, 'full_stops'), null);
   assert.equal(editingCount({ spelling: -1 }, 'spelling'), null);
-  assert.deepEqual(editingLines({ capital_letters: 0, full_stops: 3 }, 1), ['Capital letters: 0', 'Full stops: 3']);
-  assert.deepEqual(editingLines({ capital_letters: 0 }, 2, { long: true }), ['Capital letter errors: 0', 'Full stop errors: Not available']);
-  assert.deepEqual(editingLines({ spelling: 1, punctuation: 2, capital_letters: 3 }, 4), ['Spelling: 1', 'Punctuation: 2', 'Capital letters: 3']);
-  assert.deepEqual(editingLines({}, 5, { long: true }), ['Spelling errors: Not available', 'Punctuation errors: Not available', 'Capital letter errors: Not available']);
+  assert.deepEqual(editingLines({ capital_letters: 0, full_stops: 3 }, 1), ['Capital letters: 0', 'Sentence endings: 3']);
+  assert.deepEqual(editingLines({ capital_letters: 0 }, 2, { long: true }), ['Capital letter errors: 0', 'Sentence ending errors: Not available', 'Comma in list errors: Not available']);
+  assert.deepEqual(editingLines({ capital_letters: 3, full_stops: 1, list_commas: 0, apostrophes: 2, speech: 4, spelling: 9 }, 4), ['Capital letters: 3', 'Sentence endings: 1', 'Commas in lists: 0', 'Apostrophes: 2', 'Speech marks: 4']);
+  assert.equal(editingLines({}, 5, { long: true }).length, 5);
+});
+
+test('spelling lines show what the child wrote with a blank, never the right spelling', () => {
+  const lines = spellingLines('words', [{ wrote: 'becos', correct: 'because' }, { wrote: 'thort', correct: 'thought' }]);
+  assert.deepEqual(lines, ['becos  ____________', 'thort  ____________']);
+  assert.ok(!lines.join(' ').includes('because'));
+  assert.deepEqual(spellingLines('unavailable', []), ["We couldn't check spelling this time. Read it with your teacher."]);
+  assert.deepEqual(spellingLines('none_to_practise', []), ['No spelling words to practise this time.']);
+  assert.deepEqual(spellingLines('clear', []), [spellingStatusText('clear')]);
+  assert.deepEqual(spellingLines('words', []), ["We couldn't check spelling this time. Read it with your teacher."], 'words status with no words is not a clear');
+  assert.deepEqual(spellingLines(undefined), ["We couldn't check spelling this time. Read it with your teacher."]);
+});
+
+test('spelling status sentences', () => {
+  assert.equal(spellingStatusText('unavailable'), "We couldn't check spelling this time. Read it with your teacher.");
+  assert.equal(spellingStatusText('none_to_practise'), 'No spelling words to practise this time.');
+  assert.equal(spellingStatusText('clear'), 'Great job! We found no spelling words to fix.');
+  assert.equal(spellingStatusText('words'), '');
+  assert.ok(!/[–—]/.test(spellingStatusText('clear')));
 });
 
 test('mission rows: one per power-up, then word power if any, then edit for the year, then read it again', () => {

@@ -1,4 +1,4 @@
-import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261019-tick";
+import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, spellingStatusText, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261019-tick";
 
 // The words the Listen buttons read aloud (Years 1 to 3). Everything here is plain text built
 // from the same feedback the cards show, so the voice and the page always agree. No browser
@@ -126,6 +126,21 @@ export function editingSpoken(errorTotals, yearLevel) {
       ...items.flatMap((item, i) => [item.short, editingCountSpoken(counts[i]), item.tip]),
       editingAdvice(confirmed, items.length),
       ROUGH_NOTE,
+    ),
+  );
+}
+
+// The spelling block: instructions only. Never any word, the child's or the right one (the
+// voice would mispronounce it or give the answer away).
+export function spellingSpoken(status, count) {
+  if (status !== "words") return fit(join("Spelling", spellingStatusText(status)));
+  const n = Number.isSafeInteger(count) && count > 0 ? count : 0;
+  const some = n === 1 ? "1 word" : n > 1 ? `${n} words` : "some words";
+  return fit(
+    join(
+      "Spelling",
+      `Look at ${some} to fix`,
+      "Say each word slowly in parts. Type a new spelling in the box, then press Check",
     ),
   );
 }
