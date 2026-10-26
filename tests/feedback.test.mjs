@@ -1449,6 +1449,40 @@ function stageFetch(bodies, { busy = 0 } = {}) {
   };
 }
 
+test("a review that runs out of room is asked once more with lighter thinking", async () => {
+  const bodies = [];
+  const answer = stageFetch(bodies);
+  let reviews = 0;
+  const fetchImpl = async (url, options) => {
+    const body = JSON.parse(options.body);
+    if (isReview(body) && ++reviews === 1) {
+      bodies.push(body);
+      return { ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: "length", message: { content: "" } }] }) };
+    }
+    return answer(url, options);
+  };
+  const r = await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl, env: { OPENAI_API_KEY: "sk-test" } });
+  assert.equal(r.status, 200);
+  assert.deepEqual(bodies.filter(isReview).map((b) => b.reasoning_effort), ["medium", "low"]);
+  assert.ok(bodies.filter(isReview).every((b) => b.max_completion_tokens <= 6000));
+});
+
+test("a review that deliberately declines is not asked again", async () => {
+  const bodies = [];
+  const answer = stageFetch(bodies);
+  const fetchImpl = async (url, options) => {
+    const body = JSON.parse(options.body);
+    if (isReview(body)) {
+      bodies.push(body);
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ approved: false }) } }] }) };
+    }
+    return answer(url, options);
+  };
+  const r = await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl, env: { OPENAI_API_KEY: "sk-test" } });
+  assert.equal(r.status, 502);
+  assert.equal(bodies.filter(isReview).length, 1);
+});
+
 const NEW_MODEL_ENV = { OPENAI_API_KEY: "sk-test" };
 const CALM_LONG_TEXT = Array(25).fill("The dog ran fast in the park.").join(" ");
 

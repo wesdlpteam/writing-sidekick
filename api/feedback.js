@@ -22,6 +22,10 @@ const UPSTREAM_TIMEOUT_MS = 60_000;
 const SERVER_BUDGET_MS = 170_000;
 const REVIEW_MAX_MS = 100_000;
 const AUDIT_MAX_MS = 90_000;
+// About twice the largest normal review, so a review stuck thinking in circles stops early enough
+// to be asked again (see the runaway guard in the review step).
+const REVIEW_MAX_TOKENS = 6000;
+const REVIEW_RETRY_MIN_MS = 40_000;
 // Chosen 2026-10-01 by a side-by-side run of every current model on the invented test writing:
 // gpt-5.6-terra gave feedback on all of it in about half the time and half the cost of gpt-5.4;
 // gpt-6-sol read the handwriting without "fixing" the child's mistakes. Newer models think by
@@ -867,18 +871,28 @@ Ensure every repaired model still follows the SOURCE-BASED STRATEGY RULES: prese
     console.warn(`[feedback] request abandoned before review after ${Date.now() - started}ms`);
     return { status: 499, payload: { error: FEEDBACK_ERROR } };
   }
-  const reviewContent = await callModel({ fetchImpl, env, timeout: Math.min(REVIEW_MAX_MS, SERVER_BUDGET_MS - (Date.now() - started)), label: "review", flex: true,
+  const askReview = (effort) => callModel({ fetchImpl, env, timeout: Math.min(REVIEW_MAX_MS, SERVER_BUDGET_MS - (Date.now() - started)), label: "review", flex: true,
     body: {
       model: reviewModel,
       ...reviewPrompt.options,
-      reasoning_effort: "medium",
+      reasoning_effort: effort,
       messages: [
         { role: "system", content: reviewPrompt.system },
         { role: "user", content: JSON.stringify({ yearLevel, genre: kind, transcript, draft }) },
-      ], response_format: { type: "json_object" }, max_completion_tokens: 12000,
+      ], response_format: { type: "json_object" }, max_completion_tokens: REVIEW_MAX_TOKENS,
     },
   });
-  const review = extractJson(reviewContent);
+  let reviewContent = await askReview("medium");
+  let review = extractJson(reviewContent);
+  // Runaway guard. Now and then the review thinks in circles until the token cap cuts it off,
+  // leaving no usable answer (gpt-6.1-terra, 2026-10-27: 1 in 27; normal reviews use 1.5k-3.6k
+  // tokens). If time allows, ask once more with lighter thinking. A deliberate approved:false is
+  // the model's own verdict, so it is not retried.
+  if (review == null && SERVER_BUDGET_MS - (Date.now() - started) >= REVIEW_RETRY_MIN_MS) {
+    console.warn(`[feedback] review unusable after ${Date.now() - started}ms; retrying with lighter thinking`);
+    reviewContent = await askReview("low");
+    review = extractJson(reviewContent);
+  }
   if (review?.approved !== true) {
     const why = reviewContent == null ? "no review" : review == null ? "review not json" : `review approved=${JSON.stringify(review.approved)}`;
     console.warn(`[feedback] ${why} after ${Date.now() - started}ms`);
