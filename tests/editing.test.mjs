@@ -313,6 +313,12 @@ test('below Year 4 a capital after a speech mark is not counted', () => {
   assert.equal(editingTotals(audit, 'she said "yes"', { yearLevel: 4 }).capital_letters, 1);
 });
 
+test('a speech mark in the transcript alone is enough to skip the capital below Year 4', () => {
+  const audit = { complete: true, errors: [entry('yes', 'Yes', 'capital_letters')] };
+  assert.equal(editingTotals(audit, 'she said "yes"', { yearLevel: 2 }).capital_letters, 0);
+  assert.equal(editingTotals(audit, 'she said "yes"', { yearLevel: 4 }).capital_letters, 1);
+});
+
 test('spelling evidence is returned with offsets', () => {
   assert.deepEqual(inspectEditing({complete:true, errors:[entry('famly','family')]}, 'My famly is big').spelling, [{ quote: 'famly', correction: 'family', start: 3 }]);
 });

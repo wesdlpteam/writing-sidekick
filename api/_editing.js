@@ -184,7 +184,7 @@ export function inspectEditing(audit, transcript, { yearLevel } = {}) {
     if (added) spellingEvidence.push({ quote: entry.quote, correction: entry.correction, start });
     for (const offset of change.capital) {
       // Below Year 4 the first word inside speech marks is not asked of the child.
-      if (yearLevel < 4 && change.speechCapital.has(offset)) continue;
+      if (yearLevel < 4 && (change.speechCapital.has(offset) || isDoubleQuote(transcript[start + offset - 1]))) continue;
       found.capital_letters.add(wordAt(start + offset));
     }
     // A place is keyed by the transcript letter it follows, so it is the same however it was quoted.
