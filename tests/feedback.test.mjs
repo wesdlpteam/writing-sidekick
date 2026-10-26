@@ -790,14 +790,14 @@ test("Years 5 and 6 still drop an assessed area with no words", async () => {
   assert.ok(!r.payload.criteria.some((c) => c.key === "cohesion"));
 });
 
-test("feedback defaults to gpt-5.6-terra when no model configured", async () => {
+test("feedback defaults to gpt-6.1-terra when no model configured", async () => {
   const capture = {};
   const r = await handleFeedback(
     { transcript: TEXT, yearLevel: 3 },
     { fetchImpl: mockFetch(JSON.stringify(GOOD_PAYLOAD), { capture }), env: { OPENAI_API_KEY: "sk-test" } },
   );
   assert.equal(r.status, 200);
-  assert.equal(capture.body.model, "gpt-5.6-terra");
+  assert.equal(capture.body.model, "gpt-6.1-terra");
 });
 
 test("parses fenced json from model", async () => {

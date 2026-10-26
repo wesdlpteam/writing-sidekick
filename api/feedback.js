@@ -26,7 +26,9 @@ const AUDIT_MAX_MS = 90_000;
 // gpt-5.6-terra gave feedback on all of it in about half the time and half the cost of gpt-5.4;
 // gpt-6-sol read the handwriting without "fixing" the child's mistakes. Newer models think by
 // default, so the quick calls below ask for reasoning_effort "none" (what gpt-5.4 did silently).
-const DEFAULT_FEEDBACK_MODEL = "gpt-5.6-terra";
+// 2026-10-27: gpt-6.1-terra replaced gpt-5.6-terra (27 invented pieces: 26/27 vs 17/27 delivered,
+// median 20s vs 95s, about half the cost, same teaching quality on a read-through).
+const DEFAULT_FEEDBACK_MODEL = "gpt-6.1-terra";
 const DEFAULT_TRANSCRIBE_MODEL = "gpt-6-sol";
 const PHOTO_ERROR = "Hmm, I had trouble reading that photo. Try taking it again with the page flat and in good light.";
 const BUSY_ERROR = "The reading helper is busy right now. Wait a moment, then tap Read my writing again.";
