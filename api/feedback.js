@@ -32,8 +32,11 @@ const REVIEW_RETRY_MIN_MS = 40_000;
 // default, so the quick calls below ask for reasoning_effort "none" (what gpt-5.4 did silently).
 // 2026-10-27: gpt-6.1-terra replaced gpt-5.6-terra (27 invented pieces: 26/27 vs 17/27 delivered,
 // median 20s vs 95s, about half the cost, same teaching quality on a read-through).
+// Reading moved to gpt-6.1-terra too: on 9 real scanned pages x 3 runs it got 4-5 of 20
+// hand-checked hard words wrong vs 10-11 for gpt-6-sol, mostly by keeping misspellings as written,
+// ~8s vs ~12s a page, half the price.
 const DEFAULT_FEEDBACK_MODEL = "gpt-6.1-terra";
-const DEFAULT_TRANSCRIBE_MODEL = "gpt-6-sol";
+const DEFAULT_TRANSCRIBE_MODEL = "gpt-6.1-terra";
 const PHOTO_ERROR = "Hmm, I had trouble reading that photo. Try taking it again with the page flat and in good light.";
 const BUSY_ERROR = "The reading helper is busy right now. Wait a moment, then tap Read my writing again.";
 const FEEDBACK_ERROR = "Hmm, I couldn't put your feedback together that time. Please try again.";

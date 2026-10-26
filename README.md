@@ -134,10 +134,11 @@ the feedback is a canned example, but every screen works.
 2. Paste your OpenAI API key into it, on the line that mentions the key.
 3. The `.env` file stays on this computer; it is ignored by version control and never shared.
 
-Feedback defaults to `gpt-6.1-terra` and the reading step to `gpt-6-sol`. The reading model was
-picked on 2026-10-01 by testing every current model on the invented samples. The feedback model
-was switched on 2026-10-27 after a side-by-side run on 27 invented pieces: `gpt-6.1-terra` delivered
-26 (`gpt-5.6-terra` 17), in a median 20 seconds instead of 95, for about half the cost. `OPENAI_MODEL` changes the feedback model and `OPENAI_TRANSCRIBE_MODEL` the reading
+Feedback and the reading step both default to `gpt-6.1-terra` (switched on 2026-10-27). For
+feedback, a side-by-side run on 27 invented pieces had it deliver 26 (`gpt-5.6-terra` 17), in a
+median 20 seconds instead of 95, for about half the cost. For reading, on 9 real scanned pages read
+three times each, it got 4 or 5 of 20 hand-checked hard words wrong where `gpt-6-sol` got 10 or 11,
+mostly because it kept children's misspellings as written. It was also faster and half the price. `OPENAI_MODEL` changes the feedback model and `OPENAI_TRANSCRIBE_MODEL` the reading
 step. The independent teaching/editing reviewer follows the feedback default; `OPENAI_REVIEW_MODEL`
 overrides it. Any model you pick must accept `reasoning_effort: "none"` (gpt-6.1-sol and
 gpt-6-astra do not). The Listen buttons no longer use OpenAI: they use the iPad's own voice.

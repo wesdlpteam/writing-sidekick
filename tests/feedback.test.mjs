@@ -195,7 +195,7 @@ test("photos go to a transcription-only call and return just the transcript", as
   assert.equal(userParts.filter((p) => p.type === "image_url").length, 2, "every page is sent, in order");
   assert.ok(userParts.every((p) => p.type !== "image_url" || p.image_url.detail === "original"), "original detail keeps small marks");
   assert.equal(capture.body.verbosity, "high");
-  assert.equal(capture.body.model, "gpt-6-sol", "transcription uses the stronger model by default");
+  assert.equal(capture.body.model, "gpt-6.1-terra", "transcription uses the most faithful reader by default");
 });
 
 test("crossed-out words the model marks with ~~ are dropped from the transcript", async () => {
@@ -284,7 +284,7 @@ test("orientation check: a small low-detail call returns the clockwise turn; odd
   const parts = capture.body.messages[1].content;
   assert.equal(parts.find((p) => p.type === "image_url").image_url.detail, "low", "a cheap look is enough to see which way the lines run");
   assert.match(capture.body.messages[0].content, /clockwise rotation in degrees, one of 0, 90, 180 or 270/);
-  assert.equal(capture.body.model, "gpt-6-sol");
+  assert.equal(capture.body.model, "gpt-6.1-terra");
   assert.equal(capture.body.reasoning_effort, "none", "a quick look needs no thinking time");
   assert.doesNotMatch(capture.body.messages[0].content, /transcri/i, "this call is not asked to read the page");
 
