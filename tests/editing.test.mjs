@@ -5,7 +5,9 @@ import { handleFeedback, powerUpProblems, hasIndependentPassages } from '../api/
 
 const entry = (quote, correction, category = 'spelling', occurrence = 1) => ({quote, correction, category, occurrence});
 // The three older counts, without full_stops (which has its own tests below).
-const bare = ({ full_stops, ...rest }) => rest;
+const bare = ({ full_stops, list_commas, apostrophes, speech, ...rest }) => rest;
+// The four older counts; the typed punctuation counts have their own tests below.
+const four = ({ list_commas, apostrophes, speech, ...rest }) => rest;
 const count = (transcript, errors, complete = true) => bare(editingTotals({complete, errors}, transcript));
 
 test('counts evidenced occurrences, not model totals or a five-error limit', () => {
@@ -258,7 +260,7 @@ test('a stretch keeps genuine strength ratings and private attainment evidence s
 
 // full_stops: the part of punctuation that involves an end mark (. ! ?), the one count Years 1 and 2 see.
 test('full stops count only the places where an end mark is added, removed or changed', () => {
-  const totals = (transcript, errors) => editingTotals({complete:true, errors}, transcript);
+  const totals = (transcript, errors) => four(editingTotals({complete:true, errors}, transcript));
   assert.deepEqual(totals('we ran home', [entry('home','home.','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:1}, 'a full stop added');
   assert.deepEqual(totals('Yes sir', [entry('Yes sir','Yes, sir','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:0}, 'only a comma: punctuation, not a full stop');
   assert.deepEqual(totals('what is that', [entry('that','that?','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:1}, 'a question mark is an end mark');
@@ -272,7 +274,7 @@ test('full stops count only the places where an end mark is added, removed or ch
 });
 
 test('full stops are unknown whenever punctuation is unknown', () => {
-  const totals = (transcript, errors) => editingTotals({complete:true, errors}, transcript);
+  const totals = (transcript, errors) => four(editingTotals({complete:true, errors}, transcript));
   assert.deepEqual(totals('famly dont', [entry('famly','family'),entry('missing','missing.','punctuation')]), {spelling:1,punctuation:null,capital_letters:0,full_stops:null});
   assert.equal(unavailableTotals().full_stops, null);
   assert.equal(editingTotals(null, 'correct').full_stops, null);
@@ -280,10 +282,37 @@ test('full stops are unknown whenever punctuation is unknown', () => {
 });
 
 test('the feedback payload carries full_stops beside the other counts', async () => {
-  const run = async (transcript, errors) => (await handleFeedback({yearLevel:2,transcript},{env,fetchImpl:async(_url,options)=>{
+  const run = async (transcript, errors) => four((await handleFeedback({yearLevel:2,transcript},{env,fetchImpl:async(_url,options)=>{
     const stage=stageOf(JSON.parse(options.body));
     return reply(stage==='draft'?draft:stage==='audit'?{editing:{complete:true,errors}}:{approved:true,feedback:draft});
-  }})).payload.errorTotals;
+  }})).payload.errorTotals);
   assert.deepEqual(await run('My famly likes cats', [entry('cats','cats.','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:1});
   assert.deepEqual(await run('My famly likes cats, dogs', [entry('cats, dogs','cats dogs','punctuation')]), {spelling:0,punctuation:1,capital_letters:0,full_stops:0});
+});
+
+// Each punctuation place has one type: full_stops, speech, apostrophes, then commas (list or speech).
+test('punctuation places are typed', () => {
+  const typed = (transcript, errors) => { const { full_stops, list_commas, apostrophes, speech } = editingTotals({complete:true, errors}, transcript); return { full_stops, list_commas, apostrophes, speech }; };
+  const zero = { full_stops: 0, list_commas: 0, apostrophes: 0, speech: 0 };
+  assert.deepEqual(typed('we ran home', [entry('home','home.','punctuation')]), { ...zero, full_stops: 1 });
+  assert.deepEqual(typed('dont stop', [entry('dont',"don't",'punctuation')]), { ...zero, apostrophes: 1 });
+  assert.deepEqual(typed('eggs milk bread', [entry('eggs milk bread','eggs, milk, bread','punctuation')]), { ...zero, list_commas: 2 });
+  assert.deepEqual(typed('Yes said Max', [entry('Yes said','"Yes," said','punctuation')]), { ...zero, speech: 2 }, 'the comma and closing mark after Yes are one place');
+  assert.deepEqual(typed('lets go', [entry('lets','Let\'s','capital_letters'),entry('lets',"let's",'punctuation')]), { ...zero, apostrophes: 1 });
+});
+
+test('types are unknown whenever punctuation is unknown', () => {
+  const t = editingTotals({complete:true, errors:[entry('famly','family'),entry('missing','missing.','punctuation')]}, 'famly dont');
+  assert.deepEqual([t.list_commas, t.apostrophes, t.speech], [null, null, null]);
+  assert.deepEqual([unavailableTotals().list_commas, unavailableTotals().apostrophes, unavailableTotals().speech], [null, null, null]);
+});
+
+test('below Year 4 a capital after a speech mark is not counted', () => {
+  const audit = { complete: true, errors: [entry('"yes"', '"Yes"', 'capital_letters')] };
+  assert.equal(editingTotals(audit, 'she said "yes"', { yearLevel: 2 }).capital_letters, 0);
+  assert.equal(editingTotals(audit, 'she said "yes"', { yearLevel: 4 }).capital_letters, 1);
+});
+
+test('spelling evidence is returned with offsets', () => {
+  assert.deepEqual(inspectEditing({complete:true, errors:[entry('famly','family')]}, 'My famly is big').spelling, [{ quote: 'famly', correction: 'family', start: 3 }]);
 });

@@ -1033,13 +1033,13 @@ test("upstream error -> 502 without leaking details", async () => {
 
 test("unverified model totals are ignored even when they look valid", async () => {
   const r = await feedbackFor({ ...GOOD_PAYLOAD, error_totals: { spelling: 12, punctuation: 3, capital_letters: 0 } });
-  assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null, full_stops: null });
+  assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null, full_stops: null, list_commas: null, apostrophes: null, speech: null });
 });
 
 test("missing or invalid totals are unavailable, never reported as zero errors", async () => {
   for (const error_totals of [undefined, { spelling: -1, punctuation: 2.5, capital_letters: "3" }]) {
     const r = await feedbackFor({ ...GOOD_PAYLOAD, error_totals });
-    assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null, full_stops: null });
+    assert.deepEqual(r.payload.errorTotals, { spelling: null, punctuation: null, capital_letters: null, full_stops: null, list_commas: null, apostrophes: null, speech: null });
   }
 });
 
@@ -1067,7 +1067,7 @@ test("editing audit runs as its own call beside the review, not inside it", asyn
   };
   const r = await handleFeedback({ transcript: TEXT, yearLevel: 3, genre: "narrative" }, { fetchImpl, env: ENV });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.payload.errorTotals, { spelling: 2, punctuation: 0, capital_letters: 0, full_stops: 0 });
+  assert.deepEqual(r.payload.errorTotals, { spelling: 2, punctuation: 0, capital_letters: 0, full_stops: 0, list_commas: 0, apostrophes: 0, speech: 0 });
   const draft = calls.find((c) => c.stage === "draft");
   const review = calls.find((c) => c.stage === "review");
   const auditCall = calls.find((c) => c.stage === "audit");

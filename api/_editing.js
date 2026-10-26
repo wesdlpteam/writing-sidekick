@@ -1,6 +1,7 @@
 // Evidence stays server-side. Totals are counted here, never supplied by the model.
 // full_stops is the part of punctuation that involves an end mark (. ! ?): the one count Years 1 and 2 see.
-export const unavailableTotals = () => ({ spelling: null, punctuation: null, capital_letters: null, full_stops: null });
+// list_commas, apostrophes and speech are the other typed parts of punctuation, for the older years.
+export const unavailableTotals = () => ({ spelling: null, punctuation: null, capital_letters: null, full_stops: null, list_commas: null, apostrophes: null, speech: null });
 
 export const EDITING_RULES = `Audit the WHOLE transcript independently. Return editing: {complete:true, errors:[{category:"spelling"|"punctuation"|"capital_letters"|"spacing", quote:"exact smallest affected word or phrase", occurrence:1, correction:"corrected version of quote"}]}.
 occurrence is the 1-based whole-word or whole-phrase occurrence of that exact quote in the transcript; do not count a word embedded inside a longer word. For missing punctuation quote the adjacent word(s) and include the mark in correction. One entry per error occurrence; repeated misspellings require separate entries. Each correction changes ONLY its named category. If one word needs a capital and an apostrophe, return two entries sharing the original quote: dont -> Dont for capital_letters and dont -> don't for punctuation. Do not bundle several kinds of fix into one correction. Keep the quote's original spelling and case when fixing punctuation. Never estimate a total. Return complete:false if you cannot finish the audit.
@@ -70,7 +71,7 @@ export function changesIn(quote, correction) {
   const pairs = lcsPairs(qPos.map((i) => q[i].toLowerCase()), cPos.map((i) => c[i].toLowerCase()));
   const qMatched = new Map(pairs);
   const cToQ = new Map(pairs.map(([a, b]) => [b, a]));
-  const spelling = new Set(), capital = new Set(), punctuation = new Set(), endMarks = new Set();
+  const spelling = new Set(), capital = new Set(), punctuation = new Set(), endMarks = new Set(), types = new Map(), speechCapital = new Set();
   qPos.forEach((pos, k) => { if (!qMatched.has(k)) spelling.add(pos); });
   // An added letter belongs to the word it lands in: anchor it on a kept letter of that same word.
   const cWord = (k) => c.slice(0, cPos[k]).split(" ").length;
@@ -81,7 +82,12 @@ export function changesIn(quote, correction) {
     const anchor = same || before || pairs[0];
     spelling.add(anchor ? qPos[anchor[0]] : (qPos[0] ?? 0));
   });
-  for (const [a, b] of pairs) if (q[qPos[a]] !== c[cPos[b]]) capital.add(qPos[a]);
+  for (const [a, b] of pairs) {
+    if (q[qPos[a]] === c[cPos[b]]) continue;
+    capital.add(qPos[a]);
+    // The first word inside speech marks, in the transcript or in the fix.
+    if (isDoubleQuote(q[qPos[a] - 1]) || isDoubleQuote(c[cPos[b] - 1])) speechCapital.add(qPos[a]);
+  }
   const gapOfQ = (k) => (k < 0 ? -1 : qPos[k]);
   const gapOfC = (k) => { while (k >= 0 && !cToQ.has(k)) k--; return k < 0 ? -1 : qPos[cToQ.get(k)]; };
   const marks = (s, pos, gapOf) => {
@@ -108,16 +114,24 @@ export function changesIn(quote, correction) {
       punctuation.add(key);
       // An end-mark place: the full stops, question marks and exclamation marks there differ.
       if (was.replace(/[^.!?]/g, "") !== now.replace(/[^.!?]/g, "")) endMarks.add(key);
+      // One type per place, first match wins.
+      const differs = (re) => was.replace(re, "") !== now.replace(re, "");
+      const speechy = /["“”]/.test(q + c);
+      if (endMarks.has(key)) types.set(key, "full_stops");
+      else if (differs(/[^"“”]/g)) types.set(key, "speech");
+      else if (differs(/[^']/g)) types.set(key, "apostrophes");
+      else if (differs(/[^,]/g)) types.set(key, speechy ? "speech" : "list_commas");
     }
   }
-  return { spelling, capital, punctuation, endMarks };
+  return { spelling, capital, punctuation, endMarks, types, speechCapital };
 }
 
-export function inspectEditing(audit, transcript) {
-  if (/\[unclear\]/i.test(transcript)) return { totals: unavailableTotals(), issues: ["unresolved reading"], retryable: false };
-  if (audit?.complete !== true || !Array.isArray(audit.errors)) return { totals: unavailableTotals(), issues: ["incomplete audit"], retryable: true };
+export function inspectEditing(audit, transcript, { yearLevel } = {}) {
+  if (/\[unclear\]/i.test(transcript)) return { totals: unavailableTotals(), issues: ["unresolved reading"], retryable: false, spelling: [] };
+  if (audit?.complete !== true || !Array.isArray(audit.errors)) return { totals: unavailableTotals(), issues: ["incomplete audit"], retryable: true, spelling: [] };
   const found = { spelling: new Set(), punctuation: new Set(), capital_letters: new Set() };
-  const fullStops = new Set();
+  const typed = { full_stops: new Set(), list_commas: new Set(), apostrophes: new Set(), speech: new Set() };
+  const spellingEvidence = [];
   const unverified = { spelling: 0, punctuation: 0, capital_letters: 0 };
   const invalid = new Set();
   const issues = [];
@@ -159,19 +173,26 @@ export function inspectEditing(audit, transcript) {
     }
     const respelt = new Set([...change.spelling].map((offset) => wordAt(start + offset)));
     if (respelt.size >= 3) { invalid.add("spelling"); issues.push(`${at}: rewrites several words`); continue; }
+    let added = false;
     for (const offset of change.spelling) {
       const word = wordAt(start + offset);
       const text = transcript.slice(word).match(/^[\p{L}\p{N}'’]+/u)?.[0] || "";
       if (accepted.has(apostrophes(text).toLowerCase())) { invalid.add("spelling"); issues.push(`${at}: accepted word marked as misspelt`); continue; }
+      if (!found.spelling.has(word)) added = true;
       found.spelling.add(word);
     }
-    for (const offset of change.capital) found.capital_letters.add(wordAt(start + offset));
+    if (added) spellingEvidence.push({ quote: entry.quote, correction: entry.correction, start });
+    for (const offset of change.capital) {
+      // Below Year 4 the first word inside speech marks is not asked of the child.
+      if (yearLevel < 4 && change.speechCapital.has(offset)) continue;
+      found.capital_letters.add(wordAt(start + offset));
+    }
     // A place is keyed by the transcript letter it follows, so it is the same however it was quoted.
     for (const place of change.punctuation) {
       const [gap, side] = place.split("|");
       const spot = `${Number(gap) < 0 ? letterBefore(start - 1) : start + Number(gap)}|${side}`;
       found.punctuation.add(spot);
-      if (change.endMarks.has(place)) fullStops.add(spot);
+      if (change.types.has(place)) typed[change.types.get(place)].add(spot);
     }
   }
   const totals = {};
@@ -179,8 +200,8 @@ export function inspectEditing(audit, transcript) {
     totals[key] = invalid.has(key) || (found[key].size === 0 && unverified[key] > 0) ? null : found[key].size;
   }
   // Full stops are a part of punctuation, so they are unknown whenever punctuation is.
-  totals.full_stops = totals.punctuation === null ? null : fullStops.size;
-  return { totals, issues, retryable: false };
+  for (const key of Object.keys(typed)) totals[key] = totals.punctuation === null ? null : typed[key].size;
+  return { totals, issues, retryable: false, spelling: spellingEvidence };
 }
 
-export const editingTotals = (audit, transcript) => inspectEditing(audit, transcript).totals;
+export const editingTotals = (audit, transcript, opts) => inspectEditing(audit, transcript, opts).totals;
