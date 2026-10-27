@@ -236,6 +236,9 @@ test("reading also judges the level from the typed words, against this year and 
   assert.ok(user.includes("the old fisherman"), "judged from the transcript");
   assert.ok(!user.includes("image_url"), "no photo: handwriting neatness plays no part");
   assert.equal(capture.body.messages[0].content.includes("LEVEL_JUDGE"), false, "reading prompt untouched");
+  // Nathan 2026-10-27: judge boldly, so strong writers really are stretched.
+  assert.doesNotMatch(sys, /choose the lower/i);
+  assert.match(sys, /highest year whose expectations the writing mostly meets/);
 });
 
 // "Not judged" is null, not the real year, so a short last page cannot drag the piece's average down.
