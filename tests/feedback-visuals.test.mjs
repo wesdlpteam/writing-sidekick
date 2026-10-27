@@ -191,7 +191,8 @@ test('one comparison per piece: only a real reply uses it up, the free "looks th
 });
 
 test('pitchYearFor: pages averaged and rounded, then clamped like the server', () => {
-  assert.equal(pitchYearFor([3, 2], 1), 3, '2.5 rounds up');
+  assert.equal(pitchYearFor([3, 2], 1), 2, 'two years up only when every page was judged two up (Nathan 2026-10-27)');
+  assert.equal(pitchYearFor([3, 3], 1), 3);
   assert.equal(pitchYearFor([1, 1], 1), 1);
   assert.equal(pitchYearFor([], 2), 2, 'no judgement keeps the real year');
   assert.equal(pitchYearFor([undefined, 4], 2), 4, 'a page without one is skipped');

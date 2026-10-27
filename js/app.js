@@ -1,5 +1,5 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison, pitchYearFor } from "./feedback-visuals.js?v=20261027-stretch";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison, pitchYearFor } from "./feedback-visuals.js?v=20261027-twoup";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
 import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, spellingHintSpoken, spellingRevealSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell2";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";

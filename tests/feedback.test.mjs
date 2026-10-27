@@ -239,6 +239,7 @@ test("reading also judges the level from the typed words, against this year and 
   // Nathan 2026-10-27: judge boldly, so strong writers really are stretched.
   assert.doesNotMatch(sys, /choose the lower/i);
   assert.match(sys, /highest year whose expectations the writing mostly meets/);
+  assert.match(sys, /Year 3 only if the writing clearly meets most of Year 3's expectations/, "two up needs a clear two-up judgement");
 });
 
 // "Not judged" is null, not the real year, so a short last page cannot drag the piece's average down.

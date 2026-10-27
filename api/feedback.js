@@ -108,13 +108,18 @@ async function judgeLevel({ transcript, yearLevel, env, fetchImpl }) {
   if (yearLevel >= 6 || transcript.split(/\s+/).filter(Boolean).length < LEVEL_MIN_WORDS) return null;
   const years = [yearLevel, yearLevel + 1, yearLevel + 2].filter((y) => y <= 6);
   const guides = years.map((y) => `Year ${y}:\n${getYearGuide(y).summary}`).join("\n\n");
+  // Bold for one year up, but two up only on a clear two-up judgement (Nathan 2026-10-27).
+  const top = yearLevel + 2;
+  const twoUp = top <= 6
+    ? `\nChoose Year ${top} only if the writing clearly meets most of Year ${top}'s expectations. If it is beyond Year ${yearLevel} but not clearly at Year ${top}, choose Year ${yearLevel + 1}.`
+    : "";
   try {
     const content = await callModel({ fetchImpl, env, timeout: 25_000, flex: true, label: "level",
       body: {
         model: env.OPENAI_TRANSCRIBE_MODEL || DEFAULT_TRANSCRIBE_MODEL,
         reasoning_effort: "low",
         messages: [
-          { role: "system", content: `${LEVEL_SPEC}\n\n${guides}` },
+          { role: "system", content: `${LEVEL_SPEC}${twoUp}\n\n${guides}` },
           { role: "user", content: [{ type: "text", text: `The child is in Year ${yearLevel}. Their writing: ${JSON.stringify(transcript)}` }] },
         ],
         response_format: { type: "json_object" },
