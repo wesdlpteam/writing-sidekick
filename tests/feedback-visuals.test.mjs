@@ -195,6 +195,8 @@ test('pitchYearFor: pages averaged and rounded, then clamped like the server', (
   assert.equal(pitchYearFor([1, 1], 1), 1);
   assert.equal(pitchYearFor([], 2), 2, 'no judgement keeps the real year');
   assert.equal(pitchYearFor([undefined, 4], 2), 4, 'a page without one is skipped');
+  assert.equal(pitchYearFor([3, null], 1), 3, 'a short page that was not judged does not drag the piece down');
+  assert.equal(pitchYearFor([null, ''], 2), 2);
   assert.equal(pitchYearFor([6], 6), 6);
   assert.equal(pitchYearFor([5], 1), 3, 'at most two years up');
   assert.equal(pitchYearFor([1], 3), 3, 'never down');

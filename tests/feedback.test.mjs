@@ -198,7 +198,7 @@ test("photos go to a transcription-only call and return just the transcript", as
     { fetchImpl: mockFetch(JSON.stringify({ transcript: "I dont like peas.\nThey are green." }), { capture }), env: ENV },
   );
   assert.equal(r.status, 200);
-  assert.deepEqual(r.payload, { transcript: "I dont like peas.\nThey are green.", verification: "checked", pitchYear: 3 });
+  assert.deepEqual(r.payload, { transcript: "I dont like peas.\nThey are green.", verification: "checked", pitchYear: null });
   assert.equal(capture.levelBody, undefined, "a piece this short is not judged");
   const userParts = capture.body.messages[1].content;
   assert.equal(userParts.filter((p) => p.type === "image_url").length, 2, "every page is sent, in order");
@@ -238,11 +238,12 @@ test("reading also judges the level from the typed words, against this year and 
   assert.equal(capture.body.messages[0].content.includes("LEVEL_JUDGE"), false, "reading prompt untouched");
 });
 
-test("a failed or empty level judgement falls back to the real year, and reading still works", async () => {
+// "Not judged" is null, not the real year, so a short last page cannot drag the piece's average down.
+test("a failed or empty level judgement comes back as not judged (null), and reading still works", async () => {
   for (const level of ["{}", "not json", new Error("down")]) {
     const r = await handleFeedback({ image: IMG, yearLevel: 2 }, { fetchImpl: mockFetch(JSON.stringify({ transcript: FLUENT }), { level }), env: ENV });
     assert.equal(r.status, 200);
-    assert.equal(r.payload.pitchYear, 2);
+    assert.equal(r.payload.pitchYear, null);
     assert.match(r.payload.transcript, /fisherman/);
   }
 });
@@ -250,8 +251,24 @@ test("a failed or empty level judgement falls back to the real year, and reading
 test("Year 6 is never judged (nothing above it)", async () => {
   const capture = {};
   const r = await handleFeedback({ image: IMG, yearLevel: 6 }, { fetchImpl: mockFetch(JSON.stringify({ transcript: FLUENT }), { capture, level: '{"year":6}' }), env: ENV });
-  assert.equal(r.payload.pitchYear, 6);
+  assert.equal(r.payload.pitchYear, null);
   assert.equal(capture.levelBody, undefined);
+});
+
+test("a slow level judgement never holds up reading once the photo check is back", async () => {
+  const base = mockFetch(JSON.stringify({ transcript: FLUENT }));
+  const fetchImpl = async (url, options) => {
+    if (systemText(JSON.parse(options.body)).startsWith("LEVEL_JUDGE:")) {
+      await new Promise((resolve) => setTimeout(resolve, 4000)); // stuck in a slow queue
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: '{"year":3}' } }] }) };
+    }
+    return base(url, options);
+  };
+  const started = Date.now();
+  const r = await handleFeedback({ image: IMG, yearLevel: 1 }, { fetchImpl, env: ENV });
+  assert.ok(Date.now() - started < 3000, `reading waited ${Date.now() - started}ms`);
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.pitchYear, null);
 });
 
 test("crossed-out words the model marks with ~~ are dropped from the transcript", async () => {
