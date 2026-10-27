@@ -1035,8 +1035,8 @@ function renderFeedback() {
 // The server's one-line headline is not shown: Nathan found it doubled up on the rest.
 const SLIDES = [
   { key: "strength", label: "What you did well" },
-  { key: "power", label: "Power-ups" },
-  { key: "words", label: "Word lab" },
+  { key: "power", label: "Where you can improve" },
+  { key: "words", label: "Vocabulary" },
   { key: "finish", label: "Mission complete" },
 ];
 let slideIndex = 0;
