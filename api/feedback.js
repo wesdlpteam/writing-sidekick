@@ -94,6 +94,13 @@ export function clampPitchYear(value, yearLevel) {
   return Math.max(yearLevel, Math.min(6, yearLevel + 2, year));
 }
 
+// Only when stretched: says the expectations above are deliberately above the child's age, so the
+// model judges and stretches there while the coaching stays readable at the real year.
+function pitchNote(yearLevel, pitchYear) {
+  if (pitchYear <= yearLevel) return "";
+  return `STRETCH: This Year ${yearLevel} writer already works at about Year ${pitchYear} standard, so the expectations and strategies above are Year ${pitchYear}'s. Judge and stretch the writing there, so the power-ups give them something new to reach for. Keep every word the child reads at their real Year ${yearLevel} reading level, and never mention years, levels or this note.`;
+}
+
 async function judgeLevel({ transcript, yearLevel, env, fetchImpl }) {
   if (yearLevel >= 6 || transcript.split(/\s+/).filter(Boolean).length < LEVEL_MIN_WORDS) return yearLevel;
   const years = [yearLevel, yearLevel + 1, yearLevel + 2].filter((y) => y <= 6);
@@ -497,13 +504,13 @@ function childText(value, { yearLevel, genre = "" }, options) {
 // Turns the model's JSON into the shape the app renders, or null when it is unusable.
 // `areas` is the list from criteriaFor(genre); the genre slot may offer two keys, of which
 // the first one present is kept.
-function validateFeedback(data, { areas, yearLevel, genre = "", transcript }) {
+function validateFeedback(data, { areas, yearLevel, pitchYear = yearLevel, genre = "", transcript }) {
   if (!data || typeof data !== "object") return null;
 
   // Strategy keys become the names the child hears in class. "Fragment" and "kernel sentence" are
   // the book's own terms: they stay, with their meaning added after the first use in each string
   // even if a prompt rule is ignored.
-  const studentText = (value, options) => childText(value, { yearLevel, genre }, options);
+  const studentText = (value, options) => childText(value, { yearLevel: pitchYear, genre }, options);
   const raw = data.areas && typeof data.areas === "object" ? data.areas : {};
   const criteria = [];
   let slotFilled = false;
@@ -551,7 +558,7 @@ function validateFeedback(data, { areas, yearLevel, genre = "", transcript }) {
       && !containsRun(transcript, after);
     const skill = studentText(p.skill, { define: false });
     const nowYou = studentText(p.now_you);
-    const move = moveFitsTask(p.move, skill, nowYou, p.rule) ? describeMove(p.move, yearLevel, genre) : null;
+    const move = moveFitsTask(p.move, skill, nowYou, p.rule) ? describeMove(p.move, pitchYear, genre) : null;
     fullLines.push(fullLine);
     powerUps.push({
       area,
@@ -808,7 +815,7 @@ export function hasIndependentPassages(transcript, genre) {
   return new Set(subjects).size >= 2;
 }
 
-async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchImpl, isGone }) {
+async function feedbackForTranscript({ transcript, yearLevel, pitchYear = yearLevel, genre, env, fetchImpl, isGone }) {
   const started = Date.now();
   const kind = typeof genre === "string" ? genre : "";
   const areas = criteriaFor(kind);
@@ -821,7 +828,8 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
     : "Assess only the writing supplied; do not assume an extract is a complete essay.";
   const systemPrompt = [
     FEEDBACK_RULES,
-    `Year level expectations to judge against:\n${getYearGuide(yearLevel).summary}`,
+    `Year level expectations to judge against:\n${getYearGuide(pitchYear).summary}`,
+    pitchNote(yearLevel, pitchYear),
     getGenreGuide(kind),
     criteriaPrompt(kind),
     FEEDBACK_PRINCIPLES,
@@ -829,7 +837,7 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
     TWR_SENTENCE_GUIDANCE,
     TWR_ASSESSMENT_GUIDANCE,
     scope,
-    movesPrompt(yearLevel, kind),
+    movesPrompt(pitchYear, kind),
     readingLevel(yearLevel),
   ]
     .filter(Boolean)
@@ -895,13 +903,13 @@ async function feedbackForTranscript({ transcript, yearLevel, genre, env, fetchI
 Before editing the draft, write a brief evidence-based learning_check object FIRST in your JSON response. Include demonstrated_skills (with exact short quotes) and targets (each with quote, following_context, existing_support, specific_gap, achievable_stretch, support_needed, scaffold_in_task). This is a concise teaching assessment, not reasoning steps, and is never shown to the child. Read the WHOLE transcript afresh: the draft may contain incorrect judgments and age stereotypes. If following_context already fulfils a proposed task, discard that target. For a fluent younger writer, do not approve beginner models. Choose a refinement to reasoning or precision instead. The final power-ups must address ONLY the specific gaps identified in this check. A target's existing_support must explicitly acknowledge supporting detail already present; never claim evidence is missing when it follows the quote. The support_needed and scaffold_in_task fields describe the help this writer needs for this target (a selected question, brief notes, starter, choices or independent application); put that help in the final task. It is acceptable to offer just one valuable refinement. Only if no craft area is assessable, return no power-ups.
 INPUT SCOPE: ${scope}
 
-YEAR EXPECTATIONS: ${getYearGuide(yearLevel).summary}
+YEAR EXPECTATIONS: ${getYearGuide(pitchYear).summary}${pitchYear > yearLevel ? `\n${pitchNote(yearLevel, pitchYear)}` : ""}
 GENRE: ${getGenreGuide(kind)}
 ASSESSMENT AREAS: ${criteriaPrompt(kind)}
 TEACHING QUALITY: ${MODEL_QUALITY}
 SOURCE-BASED STRATEGY RULES: ${TWR_SENTENCE_GUIDANCE}
 ASSESSMENT AND SUPPORT: ${TWR_ASSESSMENT_GUIDANCE}
-STRATEGIES: ${movesPrompt(yearLevel, kind)}
+STRATEGIES: ${movesPrompt(pitchYear, kind)}
 FEEDBACK OBJECT SCHEMA (apply this to the nested feedback object, not the outer review wrapper): ${outputSpec(powerUpCountRule(transcript), { challenge: yearLevel >= CHALLENGE_MIN_YEAR, allNextSteps: yearLevel >= SEES_ALL_NEXT_STEPS_FROM })}
 Match model ambition to demonstrated attainment as well as year. For fluent writers, actively REWRITE bland models. For paragraph_focus, a precise deletion is the complete improvement; do not add decorative detail or complexity. For other strategies where the draft shows readiness, combine at least two of: precise verbs/nouns, developed supporting detail or consequence, controlled complex sentence structure, purposeful imagery or persuasive language. This is a quality target, not a word-count target. A conjunction inserted between two bare sentences, an adjective swap, or Therefore attached to an unchanged simple claim is too basic. Keep ONE strategy as the teaching focus while showing what excellent attainable writing sounds like. Before passages may be short; after models may use two or three sentences and paragraph breaks. Provide necessary context for transitions and conclusions in the before passage. Keep coaching instructions short; Use the demonstrated writing to calibrate model prose independently of coaching reading level. For foundational writers, keep one achievable improvement; for fluent younger writers, preserve their demonstrated sophistication.
 Check every strength is true of the words it quotes: rewrite any that credit the reader with seeing, hearing, feeling, smelling or tasting something the words do not describe. Check each power-up: its exact quote exists in the transcript; the named strategy is the change actually demonstrated; why/rule/model/task all match; the area rating remains honest, including strength when the task is a stretch; a new reason has a topic sentence and supporting detail; conclusions synthesize existing reasons. The before/after model must be on a DIFFERENT topic from the child's writing. Repair incorrect transition models, repeated targets when other lines are available, hollow conclusions, and low-ambition examples. Do not recommend adding features already present. Never supply facts, sources or numbers about the child's own topic. Several unrelated classroom exercises are not one unfinished essay.
@@ -952,7 +960,7 @@ Ensure every repaired model still follows the SOURCE-BASED STRATEGY RULES: prese
     console.warn(`[feedback] power-up guard dropped ${flagged.filter((i) => i.length).length}: ${flagged.flat().join("; ")} after ${Date.now() - started}ms`);
     reviewed = { ...reviewed, power_ups: reviewed.power_ups.filter((_, i) => !flagged[i].length) };
   }
-  const payload = validateFeedback(reviewed, { areas, yearLevel, genre: kind, transcript });
+  const payload = validateFeedback(reviewed, { areas, yearLevel, pitchYear, genre: kind, transcript });
   if (!payload) {
     console.warn(`[feedback] reviewed feedback failed validation after ${Date.now() - started}ms`);
     return { status: 502, payload: { error: FEEDBACK_ERROR } };
@@ -1031,9 +1039,9 @@ function readLevelUp(raw) {
 const spellingFixed = (levelUp) =>
   levelUp.practiceWords.filter((w) => hasWord(levelUp.after, w.correct) && !hasWord(levelUp.after, w.wrote)).map((w) => w.correct);
 
-function validateLevelUp(data, levelUp, { yearLevel, genre } = {}) {
+function validateLevelUp(data, levelUp, { yearLevel, pitchYear = yearLevel, genre } = {}) {
   if (!data || typeof data !== "object") return null;
-  const child = (value) => childText(value, { yearLevel, genre });
+  const child = (value) => childText(value, { yearLevel: pitchYear, genre });
   const cheer = child(data.cheer);
   if (!cheer) return null;
   const beforeNorm = normalise(levelUp.before);
@@ -1045,7 +1053,7 @@ function validateLevelUp(data, levelUp, { yearLevel, genre } = {}) {
   return { cheer, wins, spellingFixed: spellingFixed(levelUp), next: child(data.next) };
 }
 
-async function levelUpFeedback({ levelUp, yearLevel, genre, env, fetchImpl }) {
+async function levelUpFeedback({ levelUp, yearLevel, pitchYear = yearLevel, genre, env, fetchImpl }) {
   if (normalise(levelUp.before) === normalise(levelUp.after)) {
     return {
       status: 200,
@@ -1059,7 +1067,7 @@ async function levelUpFeedback({ levelUp, yearLevel, genre, env, fetchImpl }) {
       },
     };
   }
-  const systemPrompt = [`Year level of the writer, for tone and expectations:\n${getYearGuide(yearLevel).summary}`, readingLevel(yearLevel), LEVEL_UP_SPEC].join("\n\n");
+  const systemPrompt = [`Year level of the writer, for tone and expectations:\n${getYearGuide(pitchYear).summary}`, pitchNote(yearLevel, pitchYear), readingLevel(yearLevel), LEVEL_UP_SPEC].filter(Boolean).join("\n\n");
   const powerUpLines = levelUp.powerUps.map(
     (p, i) => `${i + 1}. ${p.skill}${p.area ? ` (${p.area})` : ""}.${p.nowYou ? ` Now you: ${p.nowYou}` : ""}${p.move ? ` Strategy: ${p.move}` : ""}`,
   );
@@ -1084,7 +1092,7 @@ async function levelUpFeedback({ levelUp, yearLevel, genre, env, fetchImpl }) {
       max_completion_tokens: 900,
     },
   });
-  const payload = validateLevelUp(extractJson(content), levelUp, { yearLevel, genre });
+  const payload = validateLevelUp(extractJson(content), levelUp, { yearLevel, pitchYear, genre });
   if (!payload) return { status: 502, payload: { error: "Hmm, I couldn't compare your two versions that time. Please try again." } };
   return { status: 200, payload };
 }
@@ -1248,6 +1256,7 @@ export async function handleFeedback(body, { fetchImpl, env, isGone }) {
   if (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 6) {
     return { status: 400, payload: { error: "Please choose a year level from 1 to 6." } };
   }
+  const pitchYear = clampPitchYear(body?.pitchYear, yearLevel);
 
   if (body?.orientation !== undefined) {
     const image = typeof body.orientation?.image === "string" ? body.orientation.image : "";
@@ -1287,6 +1296,7 @@ export async function handleFeedback(body, { fetchImpl, env, isGone }) {
     return levelUpFeedback({
       levelUp: { ...levelUp, before: minimiseContactDetails(levelUp.before), after: minimiseContactDetails(levelUp.after) },
       yearLevel,
+      pitchYear,
       genre: typeof body.genre === "string" ? body.genre : "",
       env,
       fetchImpl,
@@ -1322,7 +1332,7 @@ export async function handleFeedback(body, { fetchImpl, env, isGone }) {
   }
 
   if (images.length) return transcribePages({ images, yearLevel, env, fetchImpl });
-  return feedbackForTranscript({ transcript: minimiseContactDetails(transcript), yearLevel, genre: body?.genre, env, fetchImpl, isGone });
+  return feedbackForTranscript({ transcript: minimiseContactDetails(transcript), yearLevel, pitchYear, genre: body?.genre, env, fetchImpl, isGone });
 }
 
 export default async function handler(req, res) {

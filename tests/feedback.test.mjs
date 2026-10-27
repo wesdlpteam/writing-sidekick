@@ -1183,6 +1183,51 @@ test("run-on repair leads the power-ups even when the model puts it last", async
   assert.equal(r.payload.criteria.find((c) => c.key === "vocabulary").powerUp, 2);
 });
 
+// ---- stretch: feedback pitched at pitchYear, wording at the real year -------
+
+test("a strong Year 1 writer is judged and stretched at Year 3, but coached in Year 1 words", async () => {
+  const c = {};
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 1, pitchYear: 3, genre: "narrative" }, c);
+  const sys = systemText(c.body);
+  assert.ok(sys.includes(getYearGuide(3).summary), "Year 3 expectations");
+  assert.ok(!sys.includes(getYearGuide(1).summary), "not Year 1 expectations");
+  assert.ok(sys.includes(movesPrompt(3, "narrative")), "Year 3 strategies");
+  assert.ok(sys.includes(readingLevel(1)), "Year 1 wording");
+  assert.match(sys, /"challenge" must be \[\] for this Year 1 writer/, "extras stay at the real year");
+});
+
+test("pitchYear is clamped, and without it the prompt is exactly today's", async () => {
+  const over = {}, none = {}, same = {};
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 5, pitchYear: 9, genre: "narrative" }, over);
+  assert.ok(systemText(over.body).includes(getYearGuide(6).summary));
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 2, genre: "narrative" }, none);
+  await feedbackFor(GOOD_PAYLOAD, { transcript: TEXT, yearLevel: 2, pitchYear: 2, genre: "narrative" }, same);
+  assert.equal(systemText(none.body), systemText(same.body));
+  assert.ok(systemText(none.body).includes(getYearGuide(2).summary));
+});
+
+test("a strategy above the real year keeps its name when the writing is pitched there", async () => {
+  const payload = structuredClone(GOOD_PAYLOAD);
+  payload.power_ups[0] = { ...payload.power_ups[0], skill: "Link with a transition word", move: "transition",
+    rule: "Start the next sentence with a transition word and a comma.",
+    example_before: "The cat slept. It woke up.", example_after: "The cat slept. Later, it woke up.",
+    now_you: "Insert a transition word at the start of your second sentence." };
+  const y2 = await feedbackFor(payload, { transcript: TEXT, yearLevel: 2, genre: "narrative" });
+  assert.equal(y2.payload.powerUps[0].move?.key, "transition", "control: Year 2 names it");
+  const y1 = await feedbackFor(payload, { transcript: TEXT, yearLevel: 1, genre: "narrative" });
+  assert.equal(y1.payload.powerUps[0].move, null, "control: plain Year 1 does not");
+  const stretched = await feedbackFor(payload, { transcript: TEXT, yearLevel: 1, pitchYear: 2, genre: "narrative" });
+  assert.equal(stretched.payload.powerUps[0].move?.key, "transition");
+});
+
+test("level up (round 2) judges against the pitch year and talks at the real year", async () => {
+  const capture = {};
+  await handleFeedback({ yearLevel: 1, pitchYear: 3, genre: "narrative", levelUp: LEVEL_UP }, { fetchImpl: mockFetch(JSON.stringify(LEVEL_UP_REPLY), { capture }), env: ENV });
+  const sys = systemText(capture.body);
+  assert.ok(sys.includes(getYearGuide(3).summary));
+  assert.ok(sys.includes(readingLevel(1)));
+});
+
 test("Years 1 and 2 now get up to three power-ups, like the older years", async () => {
   const payload = structuredClone(GOOD_PAYLOAD);
   payload.power_ups = [
