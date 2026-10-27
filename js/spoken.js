@@ -1,4 +1,4 @@
-import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, spellingStatusText, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261026-spell2";
+import { heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, spellingStatusText, ROUGH_NOTE, missionRows } from "./feedback-visuals.js?v=20261027-stretch";
 
 // The words the Listen buttons read aloud (Years 1 to 3). Everything here is plain text built
 // from the same feedback the cards show, so the voice and the page always agree. No browser
