@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writingStrength, writingStrengthLines, SKILL_GUIDE, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingLines, spellingLines, spellingStatusText, missionRows, levelUpRequest, usedComparison } from '../js/feedback-visuals.js';
+import { writingStrength, writingStrengthLines, SKILL_GUIDE, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingLines, spellingLines, spellingStatusText, missionRows, levelUpRequest, usedComparison, pitchYearFor } from '../js/feedback-visuals.js';
 import { CRITERIA } from '../api/_criteria.js';
 
 test('writing strength excludes editing and chooses the first power-up as the focus', () => {
@@ -188,4 +188,14 @@ test('one comparison per piece: only a real reply uses it up, the free "looks th
   assert.equal(usedComparison({ cheer: 'Nice', wins: [], next: '' }), true, 'a real comparison with no wins still cost a model call');
   assert.equal(usedComparison({ cheer: 'Same', wins: [], unchanged: true }), false);
   assert.equal(usedComparison(null), false);
+});
+
+test('pitchYearFor: pages averaged and rounded, then clamped like the server', () => {
+  assert.equal(pitchYearFor([3, 2], 1), 3, '2.5 rounds up');
+  assert.equal(pitchYearFor([1, 1], 1), 1);
+  assert.equal(pitchYearFor([], 2), 2, 'no judgement keeps the real year');
+  assert.equal(pitchYearFor([undefined, 4], 2), 4, 'a page without one is skipped');
+  assert.equal(pitchYearFor([6], 6), 6);
+  assert.equal(pitchYearFor([5], 1), 3, 'at most two years up');
+  assert.equal(pitchYearFor([1], 3), 3, 'never down');
 });

@@ -54,8 +54,8 @@ export function transcribePage({ image, yearLevel }) {
 // Step 2: the child's checked transcript -> full feedback
 // headStart: sent while the child is still checking the typing, so the server may skip the review
 // if the app calls it off.
-export function getFeedback({ transcript, yearLevel, genre, signal, headStart = false }) {
-  return post(headStart ? { transcript, yearLevel, genre, headStart: true } : { transcript, yearLevel, genre }, { signal });
+export function getFeedback({ transcript, yearLevel, pitchYear, genre, signal, headStart = false }) {
+  return post(headStart ? { transcript, yearLevel, pitchYear, genre, headStart: true } : { transcript, yearLevel, pitchYear, genre }, { signal });
 }
 
 // Word lab challenge: the child's own synonym for one of their words -> { verdict, note }
@@ -70,6 +70,6 @@ export function checkSpelling({ yearLevel, wrote, correct, attempt, sentence, ki
 
 // Step 3: the child revised in their book and photographed the new version. Both versions,
 // the power-ups and practice words they were given -> { cheer, wins, spellingFixed, next }
-export function getLevelUp({ yearLevel, genre, levelUp }) {
-  return post({ yearLevel, genre, levelUp });
+export function getLevelUp({ yearLevel, pitchYear, genre, levelUp }) {
+  return post({ yearLevel, pitchYear, genre, levelUp });
 }

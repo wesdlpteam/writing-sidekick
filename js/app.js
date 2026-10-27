@@ -1,17 +1,18 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison } from "./feedback-visuals.js?v=20261026-spell2";
+import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison, pitchYearFor } from "./feedback-visuals.js?v=20261027-stretch";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
 import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, spellingHintSpoken, spellingRevealSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell2";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
-import { transcribePage, getFeedback, getLevelUp, checkSynonym, checkSpelling, detectOrientation } from "./api.js?v=20261014-voice";
+import { transcribePage, getFeedback, getLevelUp, checkSynonym, checkSpelling, detectOrientation } from "./api.js?v=20261027-stretch";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261013-s6";
 
 const MAX_PAGES = 2;
 
 const state = {
   yearLevel: null,
+  pitchYear: null, // the year the round-1 writing works at (reading judges it); feedback is pitched there, never shown
   genre: "narrative",
   pages: [], // cleaned-up page photos as data URLs, in order
   transcript: "", // the typed copy of the whole piece (pages joined), kept up to date as the child edits
@@ -281,6 +282,8 @@ $("btn-read").addEventListener("click", async () => {
     state.pages = results.map((result) => result.image);
     renderPages();
     const pages = results.map((result) => result.page);
+    // Round 2 keeps round 1's level: the revised page is judged against the same bar.
+    if (state.round === 1) state.pitchYear = pitchYearFor(pages.map((page) => page.pitchYear), state.yearLevel);
     await loadBar.finish();
     state.transcript = pages
       .map((page) => reflowTranscript(page.transcript).trim())
@@ -354,7 +357,7 @@ function startHeadStart() {
   // Round 2 compares versions instead, and [unclear] words must be fixed first anyway.
   if (state.round === 2 || !transcript || /\[unclear\]/i.test(transcript)) return;
   const controller = new AbortController();
-  const promise = getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre, signal: controller.signal, headStart: true });
+  const promise = getFeedback({ transcript, yearLevel: state.yearLevel, pitchYear: state.pitchYear, genre: state.genre, signal: controller.signal, headStart: true });
   promise.catch(() => {}); // awaited later, or not needed at all
   headStart = { transcript, controller, promise, started: Date.now() };
 }
@@ -380,7 +383,7 @@ async function submitWriting() {
   try {
     const early = headStart?.transcript === transcript ? headStart : null;
     headStart = null;
-    const fresh = () => getFeedback({ transcript, yearLevel: state.yearLevel, genre: state.genre });
+    const fresh = () => getFeedback({ transcript, yearLevel: state.yearLevel, pitchYear: state.pitchYear, genre: state.genre });
     setLoading(true, "Your sidekick is thinking about your writing… This can take a minute or two.", { withBar: true });
     // One long call, usually 35-50 seconds: about two thirds of the bar by 30. A head start has
     // already used some of that time, so its bar picks up where it would be by now.
@@ -407,6 +410,7 @@ async function submitChanges(transcript) {
     loadBar.stage(0, 1, 9000); // one short call, usually 8-15 seconds
     const reply = await getLevelUp({
       yearLevel: state.yearLevel,
+      pitchYear: state.pitchYear,
       genre: state.genre,
       levelUp: levelUpRequest(state.feedback, state.original.transcript, transcript),
     });
@@ -1478,6 +1482,7 @@ function clearEverything() {
   // The next child picks their own year and kind of writing; a leftover choice would quietly
   // set the wrong year's expectations and reading level.
   state.yearLevel = null;
+  state.pitchYear = null;
   state.genre = "narrative";
   document.querySelectorAll(".year-btn").forEach((b) => markSelected(b, false));
   document.querySelectorAll(".chip").forEach((c) => markSelected(c, c.dataset.genre === "narrative"));

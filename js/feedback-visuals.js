@@ -226,6 +226,17 @@ export function missionRows(feedback, yearLevel) {
   return rows;
 }
 
+// ---- stretch: the year the writing works at ------------------------------------------------
+
+// Each page's reading comes back with the year its writing works at. The piece gets the rounded
+// average, held to the server's limits (never down, at most two up, never past Year 6). Never shown.
+export function pitchYearFor(levels, yearLevel) {
+  const years = levels.map(Number).filter(Number.isFinite);
+  if (!years.length) return yearLevel;
+  const year = Math.round(years.reduce((a, b) => a + b, 0) / years.length);
+  return Math.max(yearLevel, Math.min(6, yearLevel + 2, year));
+}
+
 // ---- round 2: "Snap my writing again" -----------------------------------------------------
 
 // What goes to the server to compare the first version with the revised one: the two typed
