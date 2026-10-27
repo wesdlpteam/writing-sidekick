@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, clippedFromSentence, quoteFromTranscript, isFragmentTask, findRunOns, defineBookTerms, shortenLine, linesOverlap, windowAround, madeUpAfter, powerUpProblemsEach } from "../api/feedback.js";
+import { handleFeedback, dropCrossedOut, sentenceWith, moveFitsTask, clippedFromSentence, quoteFromTranscript, isFragmentTask, findRunOns, defineBookTerms, shortenLine, linesOverlap, windowAround, madeUpAfter, powerUpProblemsEach, clampPitchYear } from "../api/feedback.js";
+import { getYearGuide, readingLevel } from "../api/_curriculum.js";
+import { movesPrompt } from "../api/_criteria.js";
 import { levelUpRequest, usedComparison } from "../js/feedback-visuals.js";
 
 // A system prompt arrives as one string, or (newer models) as cacheable parts; this reads either.
@@ -65,13 +67,19 @@ const TEXT = "The dog ran fast.\nIt was a sunny day.\nMy famly came becos it was
 
 // The feedback path talks to two endpoints: the moderation check first (clean unless
 // `moderation` scores are given), then the chat model. `capture` keeps the chat request.
-function mockFetch(modelContent, { capture, moderation } = {}) {
+// The level judgement (beside reading) answers `level`, kept apart so `capture.body` stays the reading call.
+function mockFetch(modelContent, { capture, moderation, level = '{"year":0}' } = {}) {
   return async (url, options) => {
     if (String(url).endsWith("/moderations")) {
       if (capture) capture.moderationBody = JSON.parse(options.body);
       return { ok: true, status: 200, json: async () => ({ results: [{ flagged: false, category_scores: moderation || {} }] }) };
     }
     const request = JSON.parse(options.body);
+    if (systemText(request).startsWith("LEVEL_JUDGE:")) {
+      if (capture) capture.levelBody = request;
+      if (level instanceof Error) throw level;
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: level } }] }) };
+    }
     if (systemText(request).includes("EDITING_AUDIT:") || systemText(request).includes("EDITING_RECHECK:")) {
       return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({editing:{complete:false,errors:[]}}) } }] }) };
     }
@@ -190,12 +198,60 @@ test("photos go to a transcription-only call and return just the transcript", as
     { fetchImpl: mockFetch(JSON.stringify({ transcript: "I dont like peas.\nThey are green." }), { capture }), env: ENV },
   );
   assert.equal(r.status, 200);
-  assert.deepEqual(r.payload, { transcript: "I dont like peas.\nThey are green.", verification: "checked" });
+  assert.deepEqual(r.payload, { transcript: "I dont like peas.\nThey are green.", verification: "checked", pitchYear: 3 });
+  assert.equal(capture.levelBody, undefined, "a piece this short is not judged");
   const userParts = capture.body.messages[1].content;
   assert.equal(userParts.filter((p) => p.type === "image_url").length, 2, "every page is sent, in order");
   assert.ok(userParts.every((p) => p.type !== "image_url" || p.image_url.detail === "original"), "original detail keeps small marks");
   assert.equal(capture.body.verbosity, "high");
   assert.equal(capture.body.model, "gpt-6.1-terra", "transcription uses the most faithful reader by default");
+});
+
+// ---- stretch: reading also judges the year the writing works at (AC v9) -----
+
+const FLUENT = "When the storm finally arrived, the old fisherman dragged his boat high onto the sand. " +
+  "Lightning cracked across the sky like a whip, and the waves roared as if they were hungry. " +
+  "He hurried inside, lit a lantern and waited, listening to the wind howl through the gaps.";
+
+test("clampPitchYear: never down, at most two up, never past Year 6, junk is the real year", () => {
+  assert.equal(clampPitchYear(3, 1), 3);
+  assert.equal(clampPitchYear(5, 1), 3);
+  assert.equal(clampPitchYear(1, 3), 3);
+  assert.equal(clampPitchYear(7, 6), 6);
+  assert.equal(clampPitchYear("2", 1), 2);
+  assert.equal(clampPitchYear(2.6, 1), 3);
+  assert.equal(clampPitchYear(null, 4), 4);
+  assert.equal(clampPitchYear("x", 2), 2);
+});
+
+test("reading also judges the level from the typed words, against this year and the two above", async () => {
+  const capture = {};
+  const r = await handleFeedback({ image: IMG, yearLevel: 1 }, { fetchImpl: mockFetch(JSON.stringify({ transcript: FLUENT }), { capture, level: '{"year":3}' }), env: ENV });
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.pitchYear, 3);
+  const sys = systemText(capture.levelBody);
+  for (const y of [1, 2, 3]) assert.ok(sys.includes(getYearGuide(y).summary), `Year ${y} guide included`);
+  assert.ok(!sys.includes(getYearGuide(4).summary), "nothing beyond two years up");
+  const user = JSON.stringify(capture.levelBody.messages[1].content);
+  assert.ok(user.includes("the old fisherman"), "judged from the transcript");
+  assert.ok(!user.includes("image_url"), "no photo: handwriting neatness plays no part");
+  assert.equal(capture.body.messages[0].content.includes("LEVEL_JUDGE"), false, "reading prompt untouched");
+});
+
+test("a failed or empty level judgement falls back to the real year, and reading still works", async () => {
+  for (const level of ["{}", "not json", new Error("down")]) {
+    const r = await handleFeedback({ image: IMG, yearLevel: 2 }, { fetchImpl: mockFetch(JSON.stringify({ transcript: FLUENT }), { level }), env: ENV });
+    assert.equal(r.status, 200);
+    assert.equal(r.payload.pitchYear, 2);
+    assert.match(r.payload.transcript, /fisherman/);
+  }
+});
+
+test("Year 6 is never judged (nothing above it)", async () => {
+  const capture = {};
+  const r = await handleFeedback({ image: IMG, yearLevel: 6 }, { fetchImpl: mockFetch(JSON.stringify({ transcript: FLUENT }), { capture, level: '{"year":6}' }), env: ENV });
+  assert.equal(r.payload.pitchYear, 6);
+  assert.equal(capture.levelBody, undefined);
 });
 
 test("crossed-out words the model marks with ~~ are dropped from the transcript", async () => {
