@@ -484,12 +484,15 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .fb-slide .fb-heading { margin-top: 10px; }
 /* All four steps sit on one line: slimmer chips, and on narrow screens only the current step
    keeps its name. */
-.fb-steps { display: flex; flex-wrap: nowrap; gap: 6px; margin: 4px 0 18px; }
+/* Chips never shrink below their words (they used to squash on iPad: 763px needed, 712px
+   given); if a screen is still too narrow they wrap rather than squeeze. */
+.fb-steps { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 18px; }
 .fb-step {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px 6px 6px;
+  gap: 6px;
+  padding: 6px 13px 6px 6px;
   min-width: 44px;
   white-space: nowrap;
   border-radius: 999px;
@@ -498,18 +501,18 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
   border: 2px solid rgba(170, 182, 218, 0.45);
   font-family: var(--font-body);
   font-weight: 800;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   min-height: 44px;
 }
 .fb-step-num {
   display: inline-grid;
   place-items: center;
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
 }
 .fb-step.is-done { color: var(--sky-text); border-color: var(--purple-mid); }
 .fb-step.is-done .fb-step-num { background: var(--purple-mid); color: #fff; }
