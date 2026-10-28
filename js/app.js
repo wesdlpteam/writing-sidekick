@@ -1,5 +1,5 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, forReader, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison, pitchYearFor } from "./feedback-visuals.js?v=20261028-young";
+import { writingStrength, writingStrengthLines, skillExplanation, forReader, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison, pitchYearFor } from "./feedback-visuals.js?v=20261028-vocab";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
 import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, spellingHintSpoken, spellingRevealSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell2";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
@@ -1053,9 +1053,7 @@ const powerCount = () => state.feedback?.powerUps?.length || 0;
 function activeSlides() {
   const fb = state.feedback;
   const hasWords = Boolean(fb);
-  return SLIDES.filter((s) => (s.key !== "words" || hasWords) && (s.key !== "power" || fb?.powerUps?.length))
-    // Years 1 and 2 read the plain name, matching the "Word choices" skill.
-    .map((s) => (s.key === "words" && state.yearLevel <= 2 ? { ...s, label: "Word choices" } : s));
+  return SLIDES.filter((s) => (s.key !== "words" || hasWords) && (s.key !== "power" || fb?.powerUps?.length));
 }
 
 function renderSteps(slides, index) {
