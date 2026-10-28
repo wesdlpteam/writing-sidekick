@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Sidekick trial results</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css?v=20261028-survey">
+  <style>
+    /* Trial survey results for staff (api/_survey.js). Counts only: no row ever names a child. */
+    .stats-login { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 12px 0 8px; }
+    .stats-login label { display: grid; gap: 4px; font-weight: 800; }
+    .stats-login input { min-height: 44px; padding: 8px 12px; font: inherit; border: var(--border); border-radius: 12px; min-width: 220px; }
+    .stats-msg { min-height: 1.5em; font-weight: 700; color: var(--gold-soft); }
+    .stats-year { margin: 22px 0 8px; }
+    .stats-year h2 { margin-bottom: 2px; }
+    .stats-children { margin: 0 0 8px; color: var(--sky-muted); font-weight: 700; }
+    .stats-q { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 4px 14px; align-items: center; padding: 8px 0; border-top: 2px dashed rgba(19, 26, 48, 0.18); }
+    .stats-q-text { font-weight: 700; }
+    .stats-bar { display: flex; height: 30px; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; background: #f3f0f7; }
+    .stats-bar span { color: var(--ink); display: grid; place-items: center; font-weight: 800; font-size: 0.85rem; white-space: nowrap; overflow: hidden; }
+    .seg-yes { background: #8fdca6; }
+    .seg-bit { background: var(--gold-soft); }
+    .seg-no { background: #f5b3b0; }
+    .stats-key { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 0; font-weight: 700; }
+    .stats-key i { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 4px; vertical-align: -2px; margin-right: 4px; }
+    @media (max-width: 560px) { .stats-q { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="doc">
+    <h1>Sidekick trial results</h1>
+    <p>What trial students tapped on the "Mission complete" slide, by year level. Each child is counted once per session. Nothing here identifies a child.</p>
+
+    <form id="login" class="stats-login">
+      <label>Password <input id="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary" type="submit">Show results</button>
+      <button id="csv" class="secondary" type="button" hidden>Download for Excel</button>
+    </form>
+    <p id="msg" class="stats-msg" role="status"></p>
+    <p class="stats-key" id="key" hidden><span><i class="seg-yes"></i>😀 Yes</span><span><i class="seg-bit"></i>😐 A bit</span><span><i class="seg-no"></i>🙁 No</span></p>
+    <div id="results"></div>
+  </main>
+  <script type="module">
+    const API_BASE = location.hostname.endsWith("github.io") ? "https://writing-sidekick.vercel.app" : "";
+    const QUESTIONS = [
+      ["understood", "Did you understand your feedback?"],
+      ["liked", "Did you like using Sidekick?"],
+      ["stronger", "Did Sidekick help make your writing stronger?"],
+    ];
+    const $ = (id) => document.getElementById(id);
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+    let latest = null;
+
+    function bar(counts) {
+      const total = counts.yes + counts.bit + counts.no;
+      const box = el("div", "stats-bar");
+      box.setAttribute("role", "img");
+      box.setAttribute("aria-label", `Yes ${counts.yes}, A bit ${counts.bit}, No ${counts.no}`);
+      if (!total) { box.append(el("span", "", "No answers yet")); box.firstChild.style.flex = "1"; return box; }
+      for (const key of ["yes", "bit", "no"]) {
+        if (!counts[key]) continue;
+        const seg = el("span", `seg-${key}`, String(counts[key]));
+        seg.style.flex = String(counts[key]);
+        box.append(seg);
+      }
+      return box;
+    }
+
+    function render(data) {
+      const out = $("results");
+      out.replaceChildren();
+      const years = Object.keys(data.years || {});
+      $("key").hidden = !years.length;
+      $("csv").hidden = !years.length;
+      if (!years.length) { out.append(el("p", "", "No answers yet.")); return; }
+      out.append(el("p", "stats-children", `${data.total} ${data.total === 1 ? "child" : "children"} so far.`));
+      for (const year of years) {
+        const y = data.years[year];
+        const section = el("section", "stats-year");
+        section.append(el("h2", "", `Year ${year}`), el("p", "stats-children", `${y.children} ${y.children === 1 ? "child" : "children"}`));
+        for (const [key, text] of QUESTIONS) {
+          const row = el("div", "stats-q");
+          row.append(el("span", "stats-q-text", text), bar(y[key]));
+          section.append(row);
+        }
+        out.append(section);
+      }
+    }
+
+    $("login").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      $("msg").textContent = "Loading…";
+      try {
+        const response = await fetch(`${API_BASE}/api/survey`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stats: true, password: $("password").value }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 401) { $("msg").textContent = "That password didn't work."; return; }
+        if (!response.ok) { $("msg").textContent = "The results couldn't load. Please try again soon."; return; }
+        $("msg").textContent = "";
+        latest = data;
+        render(data);
+      } catch {
+        $("msg").textContent = "The results couldn't load. Check the internet and try again.";
+      }
+    });
+
+    $("csv").addEventListener("click", () => {
+      if (!latest) return;
+      const lines = ["year,question,yes,a_bit,no"];
+      for (const [year, y] of Object.entries(latest.years)) {
+        for (const [key, text] of QUESTIONS) lines.push(`${year},"${text}",${y[key].yes},${y[key].bit},${y[key].no}`);
+      }
+      const link = el("a");
+      link.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+      link.download = `sidekick-trial-results-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+  </script>
+</body>
+</html>
