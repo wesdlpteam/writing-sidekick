@@ -503,9 +503,12 @@ const powerUpCountRule = (transcript) =>
 // Words the child reads: strategy keys become the names they hear in class, and the book terms
 // "fragment" and "kernel sentence" come with their meaning. Shared by the feedback and the
 // round 2 "what got better" text so both read the same.
-function childText(value, { yearLevel, genre = "" }, options) {
+// Years 1 and 2 read one idea per sentence, so a semicolon (which the model keeps using in "why"
+// despite the prompt, 12 of 31 pieces on 2026-10-28) becomes a full stop and a capital.
+function childText(value, { yearLevel, readerYear = yearLevel, genre = "" }, options) {
+  const plain = readerYear <= 2 ? text(value).replace(/;\s+([a-z])/gi, (_, c) => `. ${c.toUpperCase()}`) : text(value);
   return defineBookTerms(
-    text(value).replace(/\b[a-z]+(?:_[a-z]+)+\b/g, (key) => describeMove(key, yearLevel, genre)?.name || MOVES[key]?.name || key),
+    plain.replace(/\b[a-z]+(?:_[a-z]+)+\b/g, (key) => describeMove(key, yearLevel, genre)?.name || MOVES[key]?.name || key),
     options,
   );
 }
@@ -519,7 +522,7 @@ function validateFeedback(data, { areas, yearLevel, pitchYear = yearLevel, genre
   // Strategy keys become the names the child hears in class. "Fragment" and "kernel sentence" are
   // the book's own terms: they stay, with their meaning added after the first use in each string
   // even if a prompt rule is ignored.
-  const studentText = (value, options) => childText(value, { yearLevel: pitchYear, genre }, options);
+  const studentText = (value, options) => childText(value, { yearLevel: pitchYear, readerYear: yearLevel, genre }, options);
   const raw = data.areas && typeof data.areas === "object" ? data.areas : {};
   const criteria = [];
   let slotFilled = false;
@@ -965,7 +968,11 @@ Ensure every repaired model still follows the SOURCE-BASED STRATEGY RULES: prese
     console.warn(`[feedback] ${why} after ${Date.now() - started}ms`);
     return { status: 502, payload: { error: FEEDBACK_ERROR } };
   }
-  let reviewed = review.feedback ?? draft;
+  // A review can approve yet send back only part of the feedback (seen 2026-10-28: the light
+  // retry returned "areas" alone). Anything it left out comes from the draft, area by area too.
+  const revised = review.feedback && typeof review.feedback === "object" ? review.feedback : {};
+  let reviewed = { ...(draft && typeof draft === "object" ? draft : {}), ...revised };
+  if (draft?.areas && revised.areas) reviewed.areas = { ...draft.areas, ...revised.areas };
   // A power-up that fails the guard is dropped on its own; the rest are kept. Validation below
   // links each area to the power-ups that are left, and returns nothing (502) only if none remain
   // while a craft area can be assessed.
@@ -1055,7 +1062,7 @@ const spellingFixed = (levelUp) =>
 
 function validateLevelUp(data, levelUp, { yearLevel, pitchYear = yearLevel, genre } = {}) {
   if (!data || typeof data !== "object") return null;
-  const child = (value) => childText(value, { yearLevel: pitchYear, genre });
+  const child = (value) => childText(value, { yearLevel: pitchYear, readerYear: yearLevel, genre });
   const cheer = child(data.cheer);
   if (!cheer) return null;
   const beforeNorm = normalise(levelUp.before);

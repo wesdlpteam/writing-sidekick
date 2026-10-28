@@ -1589,6 +1589,24 @@ test("a review that runs out of room is asked once more with lighter thinking", 
   assert.ok(bodies.filter(isReview).every((b) => b.max_completion_tokens <= 6000));
 });
 
+// Seen live 2026-10-28 (Year 1 recount): the light retry approved but sent back only "areas".
+test("a review that sends back only part of the feedback keeps the draft's missing parts", async () => {
+  const bodies = [];
+  const answer = stageFetch(bodies);
+  const fetchImpl = async (url, options) => {
+    const body = JSON.parse(options.body);
+    if (isReview(body)) {
+      bodies.push(body);
+      const partial = { areas: GOOD_PAYLOAD.areas };
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ approved: true, feedback: partial }) } }] }) };
+    }
+    return answer(url, options);
+  };
+  const r = await handleFeedback({ transcript: TEXT, yearLevel: 1, genre: "narrative" }, { fetchImpl, env: { OPENAI_API_KEY: "sk-test" } });
+  assert.equal(r.status, 200);
+  assert.ok(r.payload.powerUps.length >= 1);
+});
+
 test("a review that deliberately declines is not asked again", async () => {
   const bodies = [];
   const answer = stageFetch(bodies);
@@ -1748,4 +1766,13 @@ test('a quoted line the model closed with its own full stop is still found', () 
   assert.equal(quoteFromTranscript('Our first bridge collapsed under three coins.', page), 'Our first bridge collapsed under three coins');
   assert.equal(quoteFromTranscript('The second held twelve coins.', page), 'The second held twelve coins.', 'an exact quote keeps its mark');
   assert.equal(quoteFromTranscript('A bridge made of steel.', page), '');
+});
+
+test("Years 1 and 2 get a full stop where the model wrote a semicolon; Year 3 keeps it", async () => {
+  const run = async (yearLevel) => (await handleFeedback({ transcript: TEXT, yearLevel, genre: "narrative" }, { fetchImpl: stageFetch([]), env: { OPENAI_API_KEY: "sk-test" } })).payload;
+  const whys = (payload) => payload.powerUps.map((p) => p.why).join(" ");
+  const young = await run(1);
+  assert.match(whys(young), /tells us\. A strong verb shows us\./);
+  assert.doesNotMatch(whys(young), /;/);
+  assert.match(whys(await run(3)), /tells us; a strong verb/);
 });

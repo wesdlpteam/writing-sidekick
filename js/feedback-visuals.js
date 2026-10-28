@@ -83,8 +83,39 @@ export const SKILL_GUIDE = {
   },
 };
 
-export function skillExplanation(key) {
+// Years 1 and 2 read like a picture book: plain names and short sentences, no grammar words
+// (no pronoun, tense, paragraph or topic sentence), matching readingLevel() in api/_curriculum.js.
+export const YOUNG_SKILL_GUIDE = {
+  audience: { label: "Your reader", what: "The person who reads your writing.", how: "Make them want to keep reading. Help them never get lost." },
+  text_structure: { label: "Beginning, middle, end", what: "Your writing has a start, a middle and an end.", how: "Start by saying who and where. Then say what happened. Finish it off." },
+  ideas: { label: "Ideas", what: "What your writing is about.", how: "Stay on your topic. Add details to your ideas." },
+  character_setting: { label: "Who and where", what: "Who is in your story, and where it happens.", how: "Show what your characters do, say and feel. Help us see the place." },
+  persuasive_devices: { label: "Making them agree", what: "How you get your reader to agree with you.", how: "Give good reasons. Use strong words like should and must." },
+  vocabulary: { label: "Word choices", what: "The words you choose.", how: "Pick words that say exactly what you mean. Crept tells more than went." },
+  cohesion: { label: "Linking ideas", what: "How your ideas join up.", how: "Use words like then, next and after that. Keep things in order." },
+  paragraphing: { label: "Grouping ideas", what: "Putting ideas that go together in a group.", how: "Start a new group when the time or place changes." },
+  sentence_structure: { label: "Sentences", what: "Building good sentences.", how: "Each sentence tells one whole idea. Do not join too many with and." },
+  punctuation: { label: "Capitals and full stops", what: "Marks that help your reader.", how: "Start each sentence with a capital letter. End it with a full stop." },
+  spelling: { label: "Spelling", what: "Getting words right.", how: "Say the word slowly. Write a spelling for each sound you hear." },
+};
+
+const isYoung = (yearLevel) => Number(yearLevel) <= 2;
+
+export function skillExplanation(key, yearLevel) {
+  if (isYoung(yearLevel) && YOUNG_SKILL_GUIDE[key]) return YOUNG_SKILL_GUIDE[key];
   return SKILL_GUIDE[key] || { what: "One of the skills writers use.", how: "" };
+}
+
+// Years 1 and 2 see the plain skill names everywhere the child reads them (chips, power-ups,
+// hero powers, print and saved picture). Older years keep the names unchanged.
+export function forReader(feedback, yearLevel) {
+  if (!feedback || !isYoung(yearLevel)) return feedback;
+  const name = (key, label) => YOUNG_SKILL_GUIDE[key]?.label || label;
+  return {
+    ...feedback,
+    criteria: (feedback.criteria || []).map((c) => ({ ...c, label: name(c.key, c.label) })),
+    powerUps: (feedback.powerUps || []).map((p) => ({ ...p, areaLabel: p.areaLabel && name(p.area, p.areaLabel) })),
+  };
 }
 
 // The child's real strengths, quoting their writing: writing-craft areas first (full strengths,
@@ -137,7 +168,10 @@ const EDITING_SPEECH = {
 
 export function editingItems(yearLevel) {
   const year = Number(yearLevel);
-  const items = [EDITING_CAPITALS, EDITING_FULL_STOPS];
+  // Year 1 gets the same check in shorter sentences.
+  const fullStops = year <= 1 ? { ...EDITING_FULL_STOPS, tip: "Read it out loud. When one idea ends, put a full stop." } : EDITING_FULL_STOPS;
+  const capitals = year <= 1 ? { ...EDITING_CAPITALS, tip: "Check the start of each sentence, names and the word I." } : EDITING_CAPITALS;
+  const items = [capitals, fullStops];
   if (year >= 2) items.push(EDITING_LIST_COMMAS);
   if (year >= 3) items.push(EDITING_APOSTROPHES);
   if (year >= 4) items.push(EDITING_SPEECH);

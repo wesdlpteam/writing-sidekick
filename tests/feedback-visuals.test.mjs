@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writingStrength, writingStrengthLines, SKILL_GUIDE, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingLines, spellingLines, spellingStatusText, missionRows, levelUpRequest, usedComparison, pitchYearFor } from '../js/feedback-visuals.js';
+import { writingStrength, writingStrengthLines, SKILL_GUIDE, YOUNG_SKILL_GUIDE, skillExplanation, forReader, heroPowers, nextFocus, editingItems, editingCount, editingLines, spellingLines, spellingStatusText, missionRows, levelUpRequest, usedComparison, pitchYearFor } from '../js/feedback-visuals.js';
 import { CRITERIA } from '../api/_criteria.js';
 
 test('writing strength excludes editing and chooses the first power-up as the focus', () => {
@@ -201,4 +201,26 @@ test('pitchYearFor: pages averaged and rounded, then clamped like the server', (
   assert.equal(pitchYearFor([6], 6), 6);
   assert.equal(pitchYearFor([5], 1), 3, 'at most two years up');
   assert.equal(pitchYearFor([1], 3), 3, 'never down');
+});
+
+test('Years 1 and 2 get plain skill names and picture-book explanations', () => {
+  assert.deepEqual(Object.keys(YOUNG_SKILL_GUIDE).sort(), Object.keys(SKILL_GUIDE).sort(), 'one young version per area');
+  const grammar = /\b(noun|verb|adjective|adverb|pronoun|clause|tense|vocabulary|cohesion|punctuation|apostrophe|phrase|synonym|imagery|figurative|paragraph|topic sentence|transition|devices?)s?\b/i;
+  for (const [key, g] of Object.entries(YOUNG_SKILL_GUIDE)) {
+    const all = `${g.label} ${g.what} ${g.how}`;
+    assert.doesNotMatch(all, grammar, `${key}: no grammar words for Years 1 and 2`);
+    for (const sentence of `${g.what} ${g.how}`.split(/(?<=[.!?])\s+/)) assert.ok(sentence.split(/\s+/).length < 12, `${key}: "${sentence}" is under 12 words`);
+  }
+  assert.equal(skillExplanation('cohesion', 1).label, 'Linking ideas');
+  assert.equal(skillExplanation('cohesion', 3), SKILL_GUIDE.cohesion, 'Year 3 keeps the full explanation');
+  assert.ok(editingItems(1).every((item) => item.tip.split(/(?<=[.!?])\s+/).every((s) => s.split(/\s+/).length < 12)), 'Year 1 editing tips are short');
+});
+
+test('forReader relabels skills for Years 1 and 2 only', () => {
+  const fb = { criteria: [{ key: 'cohesion', label: 'Cohesion', status: 'steady' }], powerUps: [{ area: 'vocabulary', areaLabel: 'Vocabulary', skill: 'x' }] };
+  const young = forReader(fb, 2);
+  assert.equal(young.criteria[0].label, 'Linking ideas');
+  assert.equal(young.powerUps[0].areaLabel, 'Word choices');
+  assert.equal(fb.criteria[0].label, 'Cohesion', 'the original is not changed');
+  assert.equal(forReader(fb, 3), fb, 'Year 3 and up unchanged');
 });

@@ -1,5 +1,5 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison, pitchYearFor } from "./feedback-visuals.js?v=20261027-twoup";
+import { writingStrength, writingStrengthLines, skillExplanation, forReader, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison, pitchYearFor } from "./feedback-visuals.js?v=20261028-young";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
 import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, spellingHintSpoken, spellingRevealSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell2";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
@@ -390,7 +390,7 @@ async function submitWriting() {
     const waited = early ? Date.now() - early.started : 0;
     loadBar.stage(Math.min(0.85, 1 - Math.exp(-waited / 22000)), 1, 22000);
     // A head start that failed gets one fresh try before the child sees any error.
-    state.feedback = early ? await early.promise.catch(fresh) : await fresh();
+    state.feedback = forReader(early ? await early.promise.catch(fresh) : await fresh(), state.yearLevel);
     await loadBar.finish();
     renderFeedback();
     show("screen-feedback");
@@ -859,7 +859,7 @@ function showSkill(key) {
   }
   closeSkill();
   const status = STATUS[area.status] || STATUS.not_assessed;
-  const guide = skillExplanation(area.key);
+  const guide = skillExplanation(area.key, state.yearLevel);
   detail.dataset.key = key;
   detail.className = `skill-detail ${status.css}`;
   $("skill-detail-title").textContent = area.label;
@@ -1053,7 +1053,9 @@ const powerCount = () => state.feedback?.powerUps?.length || 0;
 function activeSlides() {
   const fb = state.feedback;
   const hasWords = Boolean(fb);
-  return SLIDES.filter((s) => (s.key !== "words" || hasWords) && (s.key !== "power" || fb?.powerUps?.length));
+  return SLIDES.filter((s) => (s.key !== "words" || hasWords) && (s.key !== "power" || fb?.powerUps?.length))
+    // Years 1 and 2 read the plain name, matching the "Word choices" skill.
+    .map((s) => (s.key === "words" && state.yearLevel <= 2 ? { ...s, label: "Word choices" } : s));
 }
 
 function renderSteps(slides, index) {
