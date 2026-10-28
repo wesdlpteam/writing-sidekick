@@ -73,3 +73,16 @@ export function checkSpelling({ yearLevel, wrote, correct, attempt, sentence, ki
 export function getLevelUp({ yearLevel, pitchYear, genre, levelUp }) {
   return post({ yearLevel, pitchYear, genre, levelUp });
 }
+
+// Trial survey: fire and forget. keepalive lets it finish even as the iPad clears the page, and a
+// failure is never shown to the child.
+export function sendSurvey(payload) {
+  try {
+    fetch(`${API_BASE}/api/survey`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {}
+}

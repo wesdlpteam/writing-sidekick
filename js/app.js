@@ -5,7 +5,8 @@ import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, 
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
-import { transcribePage, getFeedback, getLevelUp, checkSynonym, checkSpelling, detectOrientation } from "./api.js?v=20261027-stretch";
+import { transcribePage, getFeedback, getLevelUp, checkSynonym, checkSpelling, detectOrientation, sendSurvey } from "./api.js?v=20261028-survey";
+import { SURVEY_QUESTIONS, SURVEY_CHOICES, isTrial, surveyPayload, isComplete } from "./survey.js?v=20261028-survey";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261013-s6";
 
 const MAX_PAGES = 2;
@@ -1169,6 +1170,7 @@ function renderMission() {
   const list = $("mission-list");
   list.replaceChildren();
   updateRetake();
+  renderSurvey();
   if (!state.feedback) return;
   for (const row of missionRows(state.feedback, state.yearLevel)) {
     const item = el("li", "mission-item");
@@ -1177,6 +1179,51 @@ function renderMission() {
     item.appendChild(tickBox(row.key, content));
     list.appendChild(item);
   }
+}
+
+// ---- trial survey ----------------------------------------------------------
+// Only on the trial link. Three one-tap answers, sent once: when the third is tapped, or on
+// clearing if at least one was tapped. Answers can change until then. See js/survey.js.
+
+const TRIAL = isTrial(location.search);
+let survey = { answers: {}, sent: false };
+
+function sendSurveyOnce() {
+  if (survey.sent) return;
+  const payload = surveyPayload(survey.answers, state.yearLevel);
+  if (!payload) return;
+  survey.sent = true;
+  sendSurvey(payload);
+}
+
+function renderSurvey() {
+  $("survey-card").hidden = !TRIAL || !state.feedback;
+  if ($("survey-card").hidden) return;
+  mountListen($("listen-survey"), "the questions", () => SURVEY_QUESTIONS.map((q) => q.text).join(" "));
+  const box = $("survey-questions");
+  box.replaceChildren();
+  for (const q of SURVEY_QUESTIONS) {
+    const group = el("fieldset", "survey-q");
+    group.appendChild(el("legend", "survey-question", q.text));
+    const row = el("div", "survey-choices");
+    for (const choice of SURVEY_CHOICES) {
+      const button = el("button", "survey-choice");
+      button.type = "button";
+      button.disabled = survey.sent;
+      button.setAttribute("aria-pressed", String(survey.answers[q.key] === choice.value));
+      button.append(el("span", "survey-emoji", choice.emoji), el("span", "survey-label", choice.label));
+      button.addEventListener("click", () => {
+        if (survey.sent) return;
+        survey.answers[q.key] = choice.value;
+        if (isComplete(survey.answers)) sendSurveyOnce();
+        renderSurvey();
+      });
+      row.appendChild(button);
+    }
+    group.appendChild(row);
+    box.appendChild(group);
+  }
+  $("survey-thanks").hidden = !survey.sent;
 }
 
 // ---- round 2: "Snap my writing again" --------------------------------------
@@ -1448,6 +1495,11 @@ $("btn-print").addEventListener("click", () => {
 // Everything the app holds about this piece of writing, gone: photos, typing, feedback,
 // the prepared share picture, and the copies drawn on screen.
 function clearEverything() {
+  sendSurveyOnce(); // a half-answered survey still counts; then the next child starts fresh
+  survey = { answers: {}, sent: false };
+  $("survey-questions").replaceChildren();
+  $("listen-survey").replaceChildren();
+  $("survey-card").hidden = true;
   dropHeadStart(); // no feedback for this child may arrive after the iPad is cleared
   clearSpeechCache(); // stops any voice that is speaking
   state.pages = [];

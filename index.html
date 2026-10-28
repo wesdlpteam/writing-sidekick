@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=20261028-tabs">
+  <link rel="stylesheet" href="css/app.css?v=20261028-survey">
 </head>
 <body>
   <main id="app">
@@ -215,6 +215,13 @@
           <div id="listen-mission" class="listen-slot"></div>
           <ul id="mission-list" class="mission-list"></ul>
         </div>
+        <div id="survey-card" class="mission-card survey-card" hidden>
+          <p class="mission-title"><span class="h-emoji" aria-hidden="true">&#x1F4AC; </span>Three quick taps</p>
+          <p class="mission-hint">Tap a face for each one. Your answers have no name on them.</p>
+          <div id="listen-survey" class="listen-slot"></div>
+          <div id="survey-questions" class="survey-questions"></div>
+          <p id="survey-thanks" class="survey-thanks" role="status" hidden>Thank you! That helps us make Sidekick better.</p>
+        </div>
         <p class="lead fb-lead mission-save">Want to keep this feedback? Save a picture or print it before you finish.</p>
         <label class="check-row export-photos"><input id="include-photos" type="checkbox"> Include the photos of my writing in the picture and print-out</label>
         <div class="btn-row">
@@ -300,7 +307,7 @@
       reload.hidden = false;
     }, 12000);
     try {
-      await import("./js/app.js?v=20261028-vocab");
+      await import("./js/app.js?v=20261028-survey");
       clearTimeout(slow);
       status.textContent = "Choose your year to begin.";
       reload.hidden = true;

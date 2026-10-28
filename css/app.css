@@ -558,6 +558,25 @@ dialog .btn-row .ghost { color: var(--ink); text-decoration-color: var(--purple-
 .mission-label { display: block; font-weight: 800; color: var(--purple); }
 .mission-row input:checked + .mission-text .mission-label::after { content: " \2713"; }
 .mission-part { display: block; }
+
+/* Trial survey (?trial=1): three questions, three big faces each. A picked face turns gold. */
+.survey-questions { display: grid; gap: 18px; margin-top: 6px; }
+.survey-q { border: 0; margin: 0; padding: 0; min-width: 0; }
+.survey-question { padding: 0; margin-bottom: 8px; font-weight: 800; font-size: 1.1rem; line-height: 1.4; color: var(--purple); }
+.survey-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.survey-choice {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: 72px; padding: 8px 6px;
+  background: var(--card); color: var(--ink);
+  border: var(--border); border-radius: 16px; box-shadow: 3px 3px 0 var(--purple-mid);
+  font-family: var(--font-body); font-weight: 800; font-size: 1rem;
+  cursor: pointer;
+}
+.survey-emoji { font-size: 2rem; line-height: 1; }
+.survey-choice[aria-pressed="true"] { background: var(--gold); box-shadow: 3px 3px 0 var(--gold-deep); }
+.survey-choice:disabled { cursor: default; }
+.survey-choice:disabled:not([aria-pressed="true"]) { opacity: 0.45; }
+.survey-thanks { margin: 12px 0 0; font-weight: 800; font-size: 1.1rem; color: var(--purple); }
 .mission-line { font-style: italic; font-weight: 700; }
 /* The small Mission check box on each page: tick the job there, as soon as it is done. */
 .job-check:empty { display: none; }
