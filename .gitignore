@@ -6,3 +6,4 @@ node_modules/
 # Live eval results: these hold real student writing, so they never leave this machine.
 output/
 .playwright-cli/
+.superpowers/

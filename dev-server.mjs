@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleFeedback } from "./api/feedback.js";
 import { differingPart } from "./api/_spelling.js";
+import { handleSurvey } from "./api/_survey.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.argv.find((a) => a.startsWith("--port="))?.slice(7)) || 4173;
@@ -177,6 +178,26 @@ function mockLevelUp(levelUp = {}) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+
+  // Trial survey. Mock: logs each saved row and answers stats for the password "test".
+  if (url.pathname === "/api/survey" && req.method === "POST") {
+    res.setHeader("Content-Type", "application/json");
+    let body = {};
+    try {
+      body = JSON.parse((await collectBody(req)) || "{}");
+    } catch {}
+    const result = MOCK
+      ? body.stats
+        ? body.password === "test"
+          ? { status: 200, payload: { total: 7, years: {
+              1: { children: 3, understood: { yes: 2, bit: 1, no: 0 }, liked: { yes: 3, bit: 0, no: 0 }, stronger: { yes: 1, bit: 1, no: 1 } },
+              4: { children: 4, understood: { yes: 3, bit: 1, no: 0 }, liked: { yes: 2, bit: 1, no: 1 }, stronger: { yes: 2, bit: 2, no: 0 } } } } }
+          : { status: 401, payload: { error: "That password didn't work." } }
+        : (console.log("[mock survey]", JSON.stringify(body)), { status: 200, payload: { ok: true } })
+      : await handleSurvey(body, { fetchImpl: fetch, env: process.env });
+    res.writeHead(result.status).end(JSON.stringify(result.payload));
+    return;
+  }
 
   if (url.pathname === "/api/feedback") {
     res.setHeader("Cache-Control", "no-store");
