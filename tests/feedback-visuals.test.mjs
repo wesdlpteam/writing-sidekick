@@ -224,3 +224,10 @@ test('forReader relabels skills for Years 1 and 2 only', () => {
   assert.equal(fb.criteria[0].label, 'Cohesion', 'the original is not changed');
   assert.equal(forReader(fb, 3), fb, 'Year 3 and up unchanged');
 });
+
+test("the privacy page never claims there is no database now the trial survey exists", async () => {
+  const { readFileSync } = await import("node:fs");
+  const page = readFileSync(new URL("../privacy.html", import.meta.url), "utf8");
+  assert.doesNotMatch(page, /has no database(?! apart)/);
+  assert.doesNotMatch(page, /It keeps no copy\./);
+});

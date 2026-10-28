@@ -8,7 +8,7 @@ import { timingSafeEqual } from "node:crypto";
 const QUESTIONS = ["understood", "liked", "stronger"];
 const ANSWERS = new Set(["yes", "bit", "no"]);
 const TIMEOUT_MS = 8_000;
-const SAVE_LIMIT = 20; // saves per minute per server instance; a class is about 25 children
+const SAVE_LIMIT = 100; // saves per minute per server instance: several whole classes finishing at once
 const QUIET_FAIL = { status: 503, payload: { error: "Survey not saved." } };
 
 // Only a year level and the three answers survive; anything else in the body is dropped.
@@ -56,7 +56,7 @@ function passwordMatches(given, expected) {
 let windowStart = 0;
 let saves = 0;
 function tooMany(now) {
-  if (now - windowStart > 60_000) {
+  if (now < windowStart || now - windowStart > 60_000) {
     windowStart = now;
     saves = 0;
   }

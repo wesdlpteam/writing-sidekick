@@ -76,3 +76,12 @@ test("stats come back as yes, a bit and no counts per question per year", async 
   assert.equal(r.payload.total, 9);
   assert.deepEqual(Object.keys(r.payload.years), ["1", "4"]);
 });
+
+test("a whole class finishing in the same minute is saved; only a flood is turned away", async () => {
+  const neon = fakeNeon(() => ({ rows: [] }));
+  const at = 10_000_000; // a fresh minute for the limiter
+  const statuses = [];
+  for (let i = 0; i < 101; i++) statuses.push((await handleSurvey({ yearLevel: 3, liked: "yes" }, { env: env(), fetchImpl: neon.fetchImpl, now: at })).status);
+  assert.equal(statuses.slice(0, 100).every((s) => s === 200), true, "three classes of 30 at once all count");
+  assert.equal(statuses[100], 429);
+});
