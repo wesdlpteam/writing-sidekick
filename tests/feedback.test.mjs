@@ -1817,6 +1817,7 @@ test("simplify: junk -> 400 without the model; no job back -> 502; no key -> 500
   const empty = await handleFeedback({ yearLevel: 3, simplify: CARD }, { fetchImpl: mockFetch(JSON.stringify({ why: "x", now_you: "" })), env: ENV });
   assert.equal(empty.status, 502);
   assert.doesNotMatch(empty.payload.error, /json|parse|model/i);
+  assert.equal(empty.payload.error, "Hmm, I couldn't make it simpler just now. Please try again.");
   const noKey = await handleFeedback({ yearLevel: 3, simplify: CARD }, { fetchImpl: mockFetch("{}"), env: {} });
   assert.equal(noKey.status, 500);
 });

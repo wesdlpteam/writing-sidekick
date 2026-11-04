@@ -1224,7 +1224,7 @@ async function simplifyCard({ card, yearLevel, env, fetchImpl }) {
     },
   });
   const data = extractJson(content);
-  const fail = { status: 502, payload: { error: "Hmm, I couldn't make that simpler just now. Please try again." } };
+  const fail = { status: 502, payload: { error: "Hmm, I couldn't make it simpler just now. Please try again." } };
   if (!data || typeof data !== "object") return fail;
   const clean = (value) => childText(value, { yearLevel, readerYear: yearLevel });
   const nowYou = clean(data.now_you);
