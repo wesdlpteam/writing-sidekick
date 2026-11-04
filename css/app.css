@@ -1392,3 +1392,7 @@ body.senior .year-btn.selected::after { content: ""; }
 #practice-words.editing-junior li:last-child:nth-child(odd) { grid-column: 1 / -1; }
 @media (max-width: 560px) { .spelling-list { grid-template-columns: 1fr; } }
 .spelling-block .challenge-title { margin-top: 14px; }
+
+/* "Say it simpler" under a power-up's Listen button */
+.simpler-row { margin: 0 0 10px; }
+.simpler-note { margin: 6px 0 0; font-size: 0.95em; }

@@ -1,11 +1,11 @@
 import { reflowTranscript } from "./transcript.js?v=20260910-quality";
-import { writingStrength, writingStrengthLines, skillExplanation, forReader, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison, pitchYearFor } from "./feedback-visuals.js?v=20261028-vocab";
+import { writingStrength, writingStrengthLines, skillExplanation, forReader, heroPowers, nextFocus, editingItems, editingCount, editingCaption, editingAdvice, editingLines, spellingLines, spellingStatusText, missionRows, shownFeedback, simplifyRequest, EDITING_TASK, ROUGH_NOTE, levelUpRequest, usedComparison, pitchYearFor } from "./feedback-visuals.js?v=20261104-simpler";
 import { listenButton, stopSpeaking, clearSpeechCache } from "./speech.js?v=20261014-voice";
 import { listensForYear, SAY_ALOUD, staticSpoken, strengthsSpoken, focusSpoken, powerUpSpoken, wordPowerSpoken, challengeSpoken, editingSpoken, spellingSpoken, spellingHintSpoken, spellingRevealSpoken, fit, missionSpoken, levelUpSpoken, NO_WINS } from "./spoken.js?v=20261026-spell2";
 import { prepareScan, rotate90, rotateBy, thumbnail, SCAN_MAX_EDGE } from "./scan.js?v=20261009-pdf";
 import { isPdf, pdfPageCanvases } from "./pdf-pages.js?v=20261009-pdf";
 import { ProgressBar } from "./progress.js?v=20261009-bar";
-import { transcribePage, getFeedback, getLevelUp, checkSynonym, checkSpelling, detectOrientation, sendSurvey } from "./api.js?v=20261028-survey";
+import { transcribePage, getFeedback, simplifyPowerUp, getLevelUp, checkSynonym, checkSpelling, detectOrientation, sendSurvey } from "./api.js?v=20261104-simpler";
 import { SURVEY_QUESTIONS, SURVEY_CHOICES, isTrial, surveyPayload, isComplete } from "./survey.js?v=20261028-survey";
 import { buildFeedbackImage, saveFeedbackImage } from "./share-image.js?v=20261013-s6";
 
@@ -18,6 +18,7 @@ const state = {
   pages: [], // cleaned-up page photos as data URLs, in order
   transcript: "", // the typed copy of the whole piece (pages joined), kept up to date as the child edits
   feedback: null,
+  simpler: [], // per power-up: { card, showing } once the child has asked for easier wording
   // Round 2 ("Snap my writing again"): while the child photographs their revised page, pages and
   // transcript hold the NEW writing and the first version waits in original.
   round: 1,
@@ -391,6 +392,7 @@ async function submitWriting() {
     const waited = early ? Date.now() - early.started : 0;
     loadBar.stage(Math.min(0.85, 1 - Math.exp(-waited / 22000)), 1, 22000);
     // A head start that failed gets one fresh try before the child sees any error.
+    state.simpler = [];
     state.feedback = forReader(early ? await early.promise.catch(fresh) : await fresh(), state.yearLevel);
     await loadBar.finish();
     renderFeedback();
@@ -413,7 +415,7 @@ async function submitChanges(transcript) {
       yearLevel: state.yearLevel,
       pitchYear: state.pitchYear,
       genre: state.genre,
-      levelUp: levelUpRequest(state.feedback, state.original.transcript, transcript),
+      levelUp: levelUpRequest(shownFeedback(state.feedback, state.simpler), state.original.transcript, transcript),
     });
     await loadBar.finish();
     state.levelUp = reply;
@@ -761,31 +763,87 @@ function renderPowerUps(powerUps) {
     if (p.areaLabel) eyebrow.appendChild(el("span", "power-area", p.areaLabel));
     card.append(eyebrow, el("h3", "power-title", p.skill));
     const listenHost = el("div", "listen-slot");
-    mountListen(listenHost, `power-up ${index + 1}`, () => powerUpSpoken(state.feedback?.powerUps?.[index], { sayAloud: state.yearLevel <= 3 }));
+    mountListen(listenHost, `power-up ${index + 1}`, () => powerUpSpoken(shownFeedback(state.feedback, state.simpler).powerUps?.[index], { sayAloud: state.yearLevel <= 3 }));
     card.appendChild(listenHost);
-    if (p.why) card.appendChild(el("p", "power-why", p.why));
-    const steps = el("ol", "power-steps");
-    if (p.yourLine) steps.appendChild(step("Find this line in your book", [el("q", "step-line", p.yourLine)]));
-    const how = [];
-    if (p.rule) how.push(el("p", "step-rule", p.rule));
-    if (p.example) {
-      const example = el("p", "step-example");
-      const arrow = el("span", "ex-arrow", "→");
-      arrow.setAttribute("aria-hidden", "true");
-      example.append(el("span", "ex-before", p.example.before), arrow, el("span", "sr-only", "becomes"), el("strong", "ex-after", p.example.after));
-      how.push(example);
-    }
-    if (how.length) steps.appendChild(step(p.move ? ["Use the strategy: ", el("strong", "", p.move.name)] : "See an example", how));
-    if (p.nowYou) {
-      const task = [el("p", "step-task", p.nowYou)];
-      // Younger writers say the new sentence to a partner before they write it.
-      if (state.yearLevel <= 3) task.push(el("p", "step-say", SAY_ALOUD));
-      steps.appendChild(step("Do this", task));
-    }
-    card.appendChild(steps);
+    card.appendChild(simplerRow(card, p, index));
+    card.appendChild(el("div", "power-body"));
     card.appendChild(jobCheck([`power-${index}`]));
+    fillCard(card, index);
     box.appendChild(card);
   });
+}
+
+// The body of one card: the why line through the steps, from the version on screen. The quoted
+// line is the same in both versions. Only this wrapper is replaced when the child switches.
+function fillCard(card, index) {
+  const p = shownFeedback(state.feedback, state.simpler).powerUps[index];
+  const body = el("div", "power-body");
+  if (p.why) body.appendChild(el("p", "power-why", p.why));
+  const steps = el("ol", "power-steps");
+  if (p.yourLine) steps.appendChild(step("Find this line in your book", [el("q", "step-line", p.yourLine)]));
+  const how = [];
+  if (p.rule) how.push(el("p", "step-rule", p.rule));
+  if (p.example) {
+    const example = el("p", "step-example");
+    const arrow = el("span", "ex-arrow", "→");
+    arrow.setAttribute("aria-hidden", "true");
+    example.append(el("span", "ex-before", p.example.before), arrow, el("span", "sr-only", "becomes"), el("strong", "ex-after", p.example.after));
+    how.push(example);
+  }
+  if (how.length) steps.appendChild(step(p.move ? ["Use the strategy: ", el("strong", "", p.move.name)] : "See an example", how));
+  if (p.nowYou) {
+    const task = [el("p", "step-task", p.nowYou)];
+    // Younger writers say the new sentence to a partner before they write it.
+    if (state.yearLevel <= 3) task.push(el("p", "step-say", SAY_ALOUD));
+    steps.appendChild(step("Do this", task));
+  }
+  body.appendChild(steps);
+  card.querySelector(".power-body").replaceWith(body);
+  // The job line comes from the same card, so it changes with the version.
+  card.querySelector(".job-check")?.replaceWith(jobCheck([`power-${index}`]));
+}
+
+const SIMPLER_FAILED = "Hmm, I couldn't make it simpler just now. Please try again.";
+
+// "Say it simpler" / "Show the first version": the first tap asks for easier wording, after that
+// the button only switches which version is on screen (instant, no request).
+function simplerRow(card, p, index) {
+  const row = el("div", "simpler-row");
+  const button = el("button", "ghost", "Say it simpler");
+  button.type = "button";
+  const note = el("p", "simpler-note");
+  note.setAttribute("role", "status");
+  note.hidden = true;
+  const label = () => { button.textContent = state.simpler[index]?.showing ? "Show the first version" : state.simpler[index] ? "Show the simpler version" : "Say it simpler"; };
+  button.addEventListener("click", async () => {
+    note.hidden = true;
+    const have = state.simpler[index];
+    if (have) {
+      have.showing = !have.showing;
+      stopSpeaking();
+      fillCard(card, index);
+      label();
+      return;
+    }
+    const asked = state.feedback;
+    button.disabled = true;
+    button.textContent = "Making it simpler…";
+    try {
+      const reply = await simplifyPowerUp({ yearLevel: state.yearLevel, card: simplifyRequest(p) });
+      if (state.feedback !== asked) return; // the writing was cleared or replaced meanwhile
+      state.simpler[index] = { card: reply, showing: true };
+      stopSpeaking();
+      fillCard(card, index);
+    } catch {
+      if (state.feedback !== asked) return;
+      note.textContent = SIMPLER_FAILED;
+      note.hidden = false;
+    }
+    button.disabled = false;
+    label();
+  });
+  row.append(button, note);
+  return row;
 }
 
 const STATUS = {
@@ -1015,7 +1073,7 @@ function renderListens() {
   if (!challenge.length) $("listen-challenge").replaceChildren();
   mountListen($("listen-editing"), "the editing counts", () =>
     fit(`${spellingSpoken(fb.spellingStatus, (fb.spellingWords || []).length)} ${editingSpoken(fb.errorTotals, state.yearLevel)}`));
-  mountListen($("listen-mission"), "your mission", () => missionSpoken(fb, state.yearLevel));
+  mountListen($("listen-mission"), "your mission", () => missionSpoken(shownFeedback(state.feedback, state.simpler), state.yearLevel));
 }
 
 function renderFeedback() {
@@ -1149,7 +1207,7 @@ function tickBox(key, content) {
 // The small "Mission check" box on a page: one tick per job done on that page. Keys come from
 // missionRows(); a job this piece does not have (no word power) is left out.
 function jobCheck(keys) {
-  const rows = missionRows(state.feedback, state.yearLevel).filter((row) => keys.includes(row.key));
+  const rows = missionRows(shownFeedback(state.feedback, state.simpler), state.yearLevel).filter((row) => keys.includes(row.key));
   const card = el("div", "job-check");
   if (!rows.length) return card;
   const title = el("p", "job-check-title");
@@ -1172,7 +1230,7 @@ function renderMission() {
   updateRetake();
   renderSurvey();
   if (!state.feedback) return;
-  for (const row of missionRows(state.feedback, state.yearLevel)) {
+  for (const row of missionRows(shownFeedback(state.feedback, state.simpler), state.yearLevel)) {
     const item = el("li", "mission-item");
     const content = [el("strong", "mission-label", row.label)];
     if (row.job) content.push(el("span", "mission-part", row.job));
@@ -1505,6 +1563,7 @@ function clearEverything() {
   state.pages = [];
   state.transcript = "";
   state.feedback = null;
+  state.simpler = [];
   resetRound2(); // round 2's copy of the writing, its photos and its result go too
   ticks.clear();
   powerIndex = 0;
