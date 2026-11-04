@@ -1165,6 +1165,76 @@ async function synonymCheck({ check, yearLevel, env, fetchImpl }) {
   return { status: 200, payload };
 }
 
+// "Say it simpler": a child found one power-up card hard to understand. The same strategy on the
+// same line comes back in easier words with a smaller first job. Nothing is stored.
+const SIMPLIFY_SPEC = `A primary-school child found this feedback card hard to understand. Say the same thing again in easier words, with a smaller job.
+
+Keep the same strategy and the same line of the child's writing. Use short, plain words and short sentences.
+- "why": say in easier words why this helps the child's line.
+- "rule": the strategy as one short, easy rule.
+- "now_you": ONE smaller first step the child can do straight away. For example, only "when" instead of "when, where and why".
+- "example_before" and "example_after": a NEW example sentence that shows only that smaller step. It must never be the child's line or a copy of it, and it must not be about the same thing as the child's line.
+Do not rewrite the child's line. Do not give them the answer or the finished sentence.
+
+Reply with JSON only: { "why": "...", "rule": "...", "example_before": "...", "example_after": "...", "now_you": "..." }`;
+
+const SIMPLIFY_ERROR = "Something went wrong with that power-up. Please try again.";
+const SIMPLIFY_LIMITS = { skill: 200, why: 600, yourLine: 400, rule: 400, nowYou: 400, move: 80 };
+const SIMPLIFY_EXAMPLE_MAX = 400;
+
+// Reads and bounds a card sent back for simpler wording; over a limit is an error, not a trim.
+function readSimplify(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { error: SIMPLIFY_ERROR };
+  const card = {};
+  for (const [key, max] of Object.entries(SIMPLIFY_LIMITS)) {
+    card[key] = text(raw[key]);
+    if (card[key].length > max) return { error: SIMPLIFY_ERROR };
+  }
+  if (!card.yourLine || (!card.nowYou && !card.rule)) return { error: SIMPLIFY_ERROR };
+  const before = text(raw.example?.before);
+  const after = text(raw.example?.after);
+  if (before.length > SIMPLIFY_EXAMPLE_MAX || after.length > SIMPLIFY_EXAMPLE_MAX) return { error: SIMPLIFY_ERROR };
+  card.example = before && after ? { before, after } : null;
+  return card;
+}
+
+async function simplifyCard({ card, yearLevel, env, fetchImpl }) {
+  const systemPrompt = [`The child is in Year ${yearLevel}.`, readingLevel(Math.max(1, yearLevel - 1)), SIMPLIFY_SPEC].join("\n\n");
+  const userText = [
+    card.skill && `Power-up: ${card.skill}`,
+    card.move && `Strategy: ${card.move}`,
+    `The child's line: ${card.yourLine}`,
+    card.why && `Why it helps: ${card.why}`,
+    card.rule && `Rule: ${card.rule}`,
+    card.example && `Example before: ${card.example.before}\nExample after: ${card.example.after}`,
+    card.nowYou && `Now you: ${card.nowYou}`,
+  ].filter(Boolean).join("\n");
+  const content = await callModel({
+    fetchImpl,
+    env,
+    body: {
+      model: env.OPENAI_MODEL || DEFAULT_FEEDBACK_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [{ type: "text", text: userText }] },
+      ],
+      response_format: { type: "json_object" },
+      reasoning_effort: "none",
+      max_completion_tokens: 500,
+    },
+  });
+  const data = extractJson(content);
+  const fail = { status: 502, payload: { error: "Hmm, I couldn't make that simpler just now. Please try again." } };
+  if (!data || typeof data !== "object") return fail;
+  const clean = (value) => childText(value, { yearLevel, readerYear: yearLevel });
+  const nowYou = clean(data.now_you);
+  if (!nowYou) return fail;
+  const before = clean(data.example_before);
+  const after = clean(data.example_after);
+  const usable = before && after && !copiesLine(before, card.yourLine) && !copiesLine(after, card.yourLine);
+  return { status: 200, payload: { why: clean(data.why), rule: clean(data.rule), example: usable ? { before, after } : null, nowYou } };
+}
+
 const SPELLING_KINDS = ["sounds", "sound_alike"];
 const SPELLING_WORD = /^[\p{L}][\p{L}'\-]*$/u;
 const MAX_SPELLING_CHARS = 30;
@@ -1300,6 +1370,15 @@ export async function handleFeedback(body, { fetchImpl, env, isGone }) {
       return { status: 500, payload: { error: "The app isn't set up yet. Please tell your teacher." } };
     }
     return synonymCheck({ check: { ...check, sentence: minimiseContactDetails(check.sentence) }, yearLevel, env, fetchImpl });
+  }
+
+  if (body?.simplify !== undefined) {
+    const card = readSimplify(body.simplify);
+    if (card.error) return { status: 400, payload: { error: card.error } };
+    if (!env?.OPENAI_API_KEY) {
+      return { status: 500, payload: { error: "The app isn't set up yet. Please tell your teacher." } };
+    }
+    return simplifyCard({ card: { ...card, yourLine: minimiseContactDetails(card.yourLine) }, yearLevel, env, fetchImpl });
   }
 
   if (body?.spellingCheck !== undefined) {

@@ -1776,3 +1776,47 @@ test("Years 1 and 2 get a full stop where the model wrote a semicolon; Year 3 ke
   assert.doesNotMatch(whys(young), /;/);
   assert.match(whys(await run(3)), /tells us; a strong verb/);
 });
+
+const CARD = { skill: "Expand a sentence", why: "Your line is clear. Adding when helps.", yourLine: "The dog ran.",
+  rule: "Add when, where or why.", example: { before: "The cat slept.", after: "The cat slept on the warm mat after lunch." },
+  nowYou: "Expand your line with when, where and why.", move: "Sentence expansion" };
+
+test("simplify: one card goes to a small call pitched a year lower; a simpler card comes back", async () => {
+  const capture = {};
+  const reply = { why: "Your line is good.", rule: "Add when it happened.", example_before: "The cat slept.", example_after: "The cat slept after lunch.", now_you: "Add when to your line." };
+  const r = await handleFeedback({ yearLevel: 4, simplify: CARD }, { fetchImpl: mockFetch(JSON.stringify(reply), { capture }), env: ENV });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.payload, { why: "Your line is good.", rule: "Add when it happened.", example: { before: "The cat slept.", after: "The cat slept after lunch." }, nowYou: "Add when to your line." });
+  const sys = systemText(capture.body);
+  assert.match(sys, /This writer is in Year 3/);
+  assert.match(sys, /smaller/i);
+  assert.doesNotMatch(sys, /power_ups|areas/);
+  const user = capture.body.messages[1].content[0].text;
+  assert.match(user, /The dog ran\./);
+  assert.match(user, /Sentence expansion/);
+  assert.equal(capture.body.reasoning_effort, "none");
+});
+
+test("simplify: Year 1 stays Year 1; an example copying the child's line is dropped, the rest kept", async () => {
+  const capture = {};
+  const reply = { why: "Good line.", rule: "Add when.", example_before: "The dog ran.", example_after: "The dog ran after lunch.", now_you: "Add when." };
+  const r = await handleFeedback({ yearLevel: 1, simplify: CARD }, { fetchImpl: mockFetch(JSON.stringify(reply), { capture }), env: ENV });
+  assert.equal(r.status, 200);
+  assert.equal(r.payload.example, null);
+  assert.equal(r.payload.nowYou, "Add when.");
+  assert.match(systemText(capture.body), /This writer is in Year 1/);
+});
+
+test("simplify: junk -> 400 without the model; no job back -> 502; no key -> 500", async () => {
+  for (const bad of ["nope", {}, { ...CARD, nowYou: "", rule: "" }, { ...CARD, yourLine: "x".repeat(401) }]) {
+    const capture = {};
+    const r = await handleFeedback({ yearLevel: 3, simplify: bad }, { fetchImpl: mockFetch("{}", { capture }), env: ENV });
+    assert.equal(r.status, 400, JSON.stringify(bad));
+    assert.equal(capture.chatCalls, undefined);
+  }
+  const empty = await handleFeedback({ yearLevel: 3, simplify: CARD }, { fetchImpl: mockFetch(JSON.stringify({ why: "x", now_you: "" })), env: ENV });
+  assert.equal(empty.status, 502);
+  assert.doesNotMatch(empty.payload.error, /json|parse|model/i);
+  const noKey = await handleFeedback({ yearLevel: 3, simplify: CARD }, { fetchImpl: mockFetch("{}"), env: {} });
+  assert.equal(noKey.status, 500);
+});
