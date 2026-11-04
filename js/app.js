@@ -392,8 +392,9 @@ async function submitWriting() {
     const waited = early ? Date.now() - early.started : 0;
     loadBar.stage(Math.min(0.85, 1 - Math.exp(-waited / 22000)), 1, 22000);
     // A head start that failed gets one fresh try before the child sees any error.
-    state.simpler = [];
-    state.feedback = forReader(early ? await early.promise.catch(fresh) : await fresh(), state.yearLevel);
+    const next = forReader(early ? await early.promise.catch(fresh) : await fresh(), state.yearLevel);
+    state.simpler = []; // reset and assign together, so an old reply cannot land on the new feedback
+    state.feedback = next;
     await loadBar.finish();
     renderFeedback();
     show("screen-feedback");
