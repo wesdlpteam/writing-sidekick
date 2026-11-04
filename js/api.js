@@ -86,3 +86,9 @@ export function sendSurvey(payload) {
     }).catch(() => {});
   } catch {}
 }
+
+// "Say it simpler": one power-up card -> easier wording { why, rule, example, nowYou }. The child's
+// line and the strategy are not sent back for rewriting; the server keeps them out of the reply.
+export function simplifyPowerUp({ yearLevel, card }) {
+  return post({ yearLevel, simplify: card });
+}

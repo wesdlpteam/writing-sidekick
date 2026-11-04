@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writingStrength, writingStrengthLines, SKILL_GUIDE, YOUNG_SKILL_GUIDE, skillExplanation, forReader, heroPowers, nextFocus, editingItems, editingCount, editingLines, spellingLines, spellingStatusText, missionRows, levelUpRequest, usedComparison, pitchYearFor } from '../js/feedback-visuals.js';
+import { writingStrength, writingStrengthLines, SKILL_GUIDE, YOUNG_SKILL_GUIDE, skillExplanation, forReader, heroPowers, nextFocus, editingItems, editingCount, editingLines, spellingLines, spellingStatusText, missionRows, levelUpRequest, usedComparison, pitchYearFor, simplifyRequest, shownFeedback } from '../js/feedback-visuals.js';
 import { CRITERIA } from '../api/_criteria.js';
 
 test('writing strength excludes editing and chooses the first power-up as the focus', () => {
@@ -230,4 +230,32 @@ test("the privacy page never claims there is no database now the trial survey ex
   const page = readFileSync(new URL("../privacy.html", import.meta.url), "utf8");
   assert.doesNotMatch(page, /has no database(?! apart)/);
   assert.doesNotMatch(page, /It keeps no copy\./);
+});
+
+test("shownFeedback: swaps in only the showing simpler cards and never their line or strategy", () => {
+  const fb = { powerUps: [{ skill: "A", yourLine: "L1", nowYou: "big job", move: { name: "M" } }, { skill: "B", yourLine: "L2", nowYou: "job 2" }] };
+  const out = shownFeedback(fb, [{ card: { nowYou: "small job", yourLine: "HACK", why: "w" }, showing: true }, { card: { nowYou: "x" }, showing: false }]);
+  assert.equal(out.powerUps[0].nowYou, "small job");
+  assert.equal(out.powerUps[0].yourLine, "L1");
+  assert.equal(out.powerUps[0].move.name, "M");
+  assert.equal(out.powerUps[1].nowYou, "job 2");
+  assert.equal(fb.powerUps[0].nowYou, "big job", "the first version is untouched");
+  assert.equal(shownFeedback(fb, []), fb);
+});
+
+test("shownFeedback: an empty simpler field keeps the first version, a null example replaces it", () => {
+  const fb = { powerUps: [{ skill: "A", yourLine: "L", why: "first why", rule: "first rule", example: { before: "b", after: "a" }, nowYou: "big", move: { name: "M" } }] };
+  const out = shownFeedback(fb, [{ card: { why: "", rule: "", example: null, nowYou: "small" }, showing: true }]);
+  assert.equal(out.powerUps[0].why, "first why");
+  assert.equal(out.powerUps[0].rule, "first rule");
+  assert.equal(out.powerUps[0].example, null);
+  assert.equal(out.powerUps[0].nowYou, "small");
+});
+
+test("simplifyRequest + levelUpRequest + missionRows use the version on screen", () => {
+  const p = { skill: "A", why: "w", yourLine: "L", rule: "r", example: null, nowYou: "big", move: { name: "M" }, areaLabel: "Ideas" };
+  assert.deepEqual(simplifyRequest(p), { skill: "A", why: "w", yourLine: "L", rule: "r", example: null, nowYou: "big", move: "M" });
+  const shown = shownFeedback({ powerUps: [p] }, [{ card: { nowYou: "small" }, showing: true }]);
+  assert.equal(levelUpRequest(shown, "a", "b").powerUps[0].nowYou, "small");
+  assert.equal(missionRows(shown, 4)[0].job, "small");
 });

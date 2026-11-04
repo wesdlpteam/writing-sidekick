@@ -288,3 +288,32 @@ export function levelUpRequest(feedback, before, after) {
 // One AI comparison per piece of writing. A "looks the same" reply is answered for free without
 // the model (the server marks it unchanged), so it does not use up the child's turn.
 export const usedComparison = (reply) => Boolean(reply) && reply.unchanged !== true;
+
+// ---- "Say it simpler" ---------------------------------------------------------------------
+
+// What goes to the server to ask for easier wording of one power-up card.
+export function simplifyRequest(p) {
+  return { skill: p.skill, why: p.why, yourLine: p.yourLine, rule: p.rule, example: p.example, nowYou: p.nowYou, move: p.move?.name || "" };
+}
+
+const KEPT_FROM_FIRST = ["yourLine", "move", "skill", "area", "areaLabel"];
+
+// The feedback as the child sees it: where a simpler card is showing, it replaces the first
+// version's wording. The child's own line and the strategy always stay the first version's.
+// An empty text field never blanks the card; a null example does replace the first one (the
+// server dropped an example that copied the child's line).
+export function shownFeedback(feedback, simpler) {
+  if (!Array.isArray(simpler) || !simpler.some((s) => s?.showing && s.card)) return feedback;
+  const powerUps = (feedback?.powerUps || []).map((p, i) => {
+    const s = simpler[i];
+    if (!s?.showing || !s.card) return p;
+    const merged = { ...p };
+    for (const [k, v] of Object.entries(s.card)) {
+      if (KEPT_FROM_FIRST.includes(k)) continue;
+      if (v === "") continue;
+      merged[k] = v;
+    }
+    return merged;
+  });
+  return { ...feedback, powerUps };
+}
