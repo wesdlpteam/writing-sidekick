@@ -481,7 +481,7 @@ function renderSpelling(status, words) {
   box.hidden = false;
   list.hidden = !showList;
   $("spelling-lead").textContent = showList
-    ? "These words in your writing need a fix. Say each word slowly in parts, type a new spelling in the box, then press Check. Even one is a win."
+    ? "These words in your writing need a fix. Say each word slowly in parts, type a new spelling in the box, then press Check. You don't have to fix them all. Getting even one right is great!"
     : spellingStatusText(status === "words" ? "unavailable" : status);
   items.forEach((item, index) => {
     const { wrote, correct, sentence = "", kind, tricky } = item;
